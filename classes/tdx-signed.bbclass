@@ -29,3 +29,6 @@ FIT_KEY_SIGN_PKCS ?= "-x509"
 FIT_SIGN_ALG ?= "rsa2048"
 FIT_SIGN_NUMBITS ?= "2048"
 FIT_SIGN_INDIVIDUAL = "0"
+
+# enable IMX HAB support
+TDX_IMX_HAB_ENABLE:imx-generic-bsp ?= "1"
