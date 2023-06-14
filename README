@@ -1,0 +1,18 @@
+OpenEmbedded layer with security-related metadata for Toradex SoMs
+===================================================================
+
+This layer contains metadata to enable security features when building a
+Linux system with Toradex SoMs.
+
+For more information on available Toradex SoMs please visit:
+
+https://www.toradex.com/computer-on-modules
+
+License
+=======
+
+All metadata is MIT licensed unless otherwise stated. Source code and
+binaries included in tree for individual recipes is under the LICENSE
+stated in each recipe (.bb file) unless otherwise stated.
+
+This README document is Copyright (C) 2023 Toradex AG.
