@@ -5,6 +5,7 @@ inherit imx-hab
 SRC_URI:append = "\
     file://mx8m_create_csf.sh \
     file://mx8m_template.csf \
+    file://create_fuse_cmds.sh \
 "
 
 do_compile:append:mx8m-generic-bsp() {
@@ -16,7 +17,8 @@ do_compile:append:mx8m-generic-bsp() {
         exit 1
     fi
 
-    for f in ${TDX_IMX_HAB_CST_SRK} ${TDX_IMX_HAB_CST_CSF_CERT} ${TDX_IMX_HAB_CST_IMG_CERT}
+    for f in ${TDX_IMX_HAB_CST_SRK} ${TDX_IMX_HAB_CST_CSF_CERT} \
+             ${TDX_IMX_HAB_CST_IMG_CERT} ${TDX_IMX_HAB_CST_SRK_FUSE}
     do
         if [ ! -e "${f}" ]; then
             bberror "Could not find cert file at ${f}."
@@ -64,5 +66,15 @@ do_compile:append:mx8m-generic-bsp() {
            seek=$(printf "%d" ${TDX_IMX_OFFSET_SPL}) bs=1 conv=notrunc
         dd if=${WORKDIR}/${target}-csf-fit.bin of=${IMXBOOT_IMAGE} \
            seek=$(printf "%d" ${TDX_IMX_OFFSET_FIT}) bs=1 conv=notrunc
+
+        # create fuse commands
+        ${WORKDIR}/create_fuse_cmds.sh mx8m ${TDX_IMX_HAB_CST_SRK_FUSE} ${WORKDIR}/fuse-cmds.txt
     done
+}
+
+do_deploy:append() {
+    if [ -e ${WORKDIR}/fuse-cmds.txt ]; then
+        install -d ${DEPLOYDIR}
+        install -m 0644 ${WORKDIR}/fuse-cmds.txt ${DEPLOYDIR}
+    fi
 }
