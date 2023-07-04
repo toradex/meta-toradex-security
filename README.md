@@ -80,6 +80,7 @@ Summary of the variables that can be used to configure HAB/AHAB support:
 | :------- | :---------- | :------------ |
 | `TDX_IMX_HAB_ENABLE` | Enable/disable HAB/AHAB support | `1` |
 | `TDX_IMX_HAB_CST_KEY_SIZE` | Size of the generated keys | `2048` |
+| `TDX_IMX_HAB_CST_DIG_ALGO` | Digest algorithm | `sha256` |
 | `TDX_IMX_HAB_CST_DIR` | Location of the CST tool | `${TOPDIR}/keys/cst` |
 | `TDX_IMX_HAB_CST_CERTS_DIR` | Location of the certificates directory | `${TDX_IMX_HAB_CST_DIR}/crts` |
 
