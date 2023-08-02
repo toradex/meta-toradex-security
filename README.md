@@ -15,6 +15,7 @@ This layer supports the following security features:
 
 The features are currently supported on the following SoMs:
 
+- Verdin iMX8MM
 - Verdin iMX8MP
 - Apalis iMX8
 - Colibri iMX8X
