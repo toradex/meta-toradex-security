@@ -11,7 +11,7 @@ do_compile:append() {
     fi
 }
 
-do_deploy:prepend() {
+deploy_dtb() {
     # update U-Boot image with the one that has the signature node
     # this is required when the BSP is using UBOOT_CONFIG
     if [ -n "${UBOOT_CONFIG}" ]; then
@@ -34,4 +34,16 @@ do_deploy:prepend() {
         oe_runmake EXT_DTB=${DEPLOY_DIR_IMAGE}/${UBOOT_DTB_IMAGE} ${UBOOT_MAKE_TARGET}
         install ${UBOOT_BINARY} ${DEPLOYDIR}/${UBOOT_IMAGE}
     fi
+}
+
+do_deploy:prepend:mx6ull-generic-bsp() {
+    # If HAB is enabled the re-built U-Boot image must be signed
+    if [ "${TDX_IMX_HAB_ENABLE}" = "1" ]; then
+        sign_habv4 "IMX6ULL"
+	install ${B}/${UBOOT_BINARY} ${DEPLOYDIR}/${UBOOT_IMAGE}
+    fi
+}
+
+do_deploy:prepend() {
+    deploy_dtb
 }

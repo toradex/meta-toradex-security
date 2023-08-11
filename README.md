@@ -19,6 +19,7 @@ The features are currently supported on the following SoMs:
 - Verdin iMX8MP
 - Apalis iMX8
 - Colibri iMX8X
+- Colibri iMX6ULL (1GB eMMC variant only)
 
 # Secure boot
 
