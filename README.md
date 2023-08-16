@@ -51,7 +51,23 @@ TDX_IMX_HAB_CST_CERTS_DIR = "/opt/cst/crts"
 
 Obs.: The private keys must be located in a directory called `keys` at the same level as the `crts` directory. This is a requirement for the CST tool to work properly.
 
-If HAB/AHAB is enabled, in the end of the build, a file with the commands to fuse the SoC (`fuse-cmds.txt`) will be generated in the images directory. The commands in this file should be executed in the U-Boot command line interface. Read the warning messages carefully and be aware that the commands will write to One-Time Programmable e-fuses, and once you write them, you can't go back! It is recommended to read NXP documentation about HAB/AHAB before writing to the e-fuses. This is an output example of the `fuse-cmds.txt` file:
+Summary of the variables that can be used to configure HAB/AHAB support:
+
+| Variable | Description | Default value |
+| :------- | :---------- | :------------ |
+| `TDX_IMX_HAB_ENABLE` | Enable/disable HAB/AHAB support | `1` |
+| `TDX_IMX_HAB_CST_KEY_SIZE` | Size of the generated keys | `2048` |
+| `TDX_IMX_HAB_CST_DIG_ALGO` | Digest algorithm | `sha256` |
+| `TDX_IMX_HAB_CST_DIR` | Location of the CST tool | `${TOPDIR}/keys/cst` |
+| `TDX_IMX_HAB_CST_CERTS_DIR` | Location of the certificates directory | `${TDX_IMX_HAB_CST_DIR}/crts` |
+
+The complete list of variables can be found in the `imx-hab.bbclass` file.
+
+### Closing the device
+
+If HAB/AHAB is enabled, in the end of the build, a file with the commands to fuse the SoC (`fuse-cmds.txt`) will be generated in the images directory. The commands in this file should be executed in the U-Boot command line interface.
+
+Read the warning messages carefully and be aware that the commands will write to One-Time Programmable e-fuses, and once you write them, you can't go back! You can check for HAB events with the command `hab_status` for HAB or `ahab_status` for AHAB. It is recommended to read NXP documentation about HAB/AHAB before writing to the e-fuses. This is an output example of the `fuse-cmds.txt` file:
 
 ```
 $ cat deploy/images/verdin-imx8mp/fuse-cmds.txt
@@ -76,18 +92,6 @@ fuse prog -y 7 3 0x9CE57582
 # this bit, the SOM will not boot anymore!
 fuse prog -y 1 3 0x02000000
 ```
-
-Summary of the variables that can be used to configure HAB/AHAB support:
-
-| Variable | Description | Default value |
-| :------- | :---------- | :------------ |
-| `TDX_IMX_HAB_ENABLE` | Enable/disable HAB/AHAB support | `1` |
-| `TDX_IMX_HAB_CST_KEY_SIZE` | Size of the generated keys | `2048` |
-| `TDX_IMX_HAB_CST_DIG_ALGO` | Digest algorithm | `sha256` |
-| `TDX_IMX_HAB_CST_DIR` | Location of the CST tool | `${TOPDIR}/keys/cst` |
-| `TDX_IMX_HAB_CST_CERTS_DIR` | Location of the certificates directory | `${TDX_IMX_HAB_CST_DIR}/crts` |
-
-The complete list of variables can be found in the `imx-hab.bbclass` file.
 
 ## Configuring FIT image signing
 
