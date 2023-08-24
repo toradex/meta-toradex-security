@@ -44,6 +44,14 @@ do_deploy:prepend:mx6ull-generic-bsp() {
     fi
 }
 
+do_deploy:prepend:mx7-generic-bsp() {
+    # If HAB is enabled the re-built U-Boot image must be signed
+    if [ "${TDX_IMX_HAB_ENABLE}" = "1" ]; then
+        sign_habv4 "IMX7"
+        install ${B}/${UBOOT_BINARY} ${DEPLOYDIR}/${UBOOT_IMAGE}
+    fi
+}
+
 do_deploy:prepend() {
     deploy_dtb
 }

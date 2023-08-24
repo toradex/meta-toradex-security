@@ -8,6 +8,7 @@ SRC_URI:append = "\
     file://create_csf.sh \
     file://create_fuse_cmds.sh \
     file://imx6ull_template.csf \
+    file://imx7_template.csf \
 "
 
 SRC_URI:append:use-nxp-bsp = "\
@@ -70,6 +71,14 @@ do_compile:append:mx6ull-generic-bsp() {
     # Otherwise we sign later instead (see u-boot-fit-signature.inc).
     if [ "${UBOOT_SIGN_ENABLE}" != "1" ]; then
         sign_habv4 "IMX6ULL"
+    fi
+}
+
+do_compile:append:mx7-generic-bsp() {
+    # Only sign here if FIT image signing is disabled.
+    # Otherwise we sign later instead (see u-boot-fit-signature.inc).
+    if [ "${UBOOT_SIGN_ENABLE}" != "1" ]; then
+        sign_habv4 "IMX7"
     fi
 }
 

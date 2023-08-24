@@ -65,6 +65,9 @@ set_template_file() {
         "IMX6ULL")
             TEMPLATE_FILE="imx6ull_template.csf"
 	    ;;
+	"IMX7")
+	    TEMPLATE_FILE="imx7_template.csf"
+	    ;;
         *)
 	    echo "Invalid SoC!"
 	    return 1

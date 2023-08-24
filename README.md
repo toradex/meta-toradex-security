@@ -25,6 +25,7 @@ The features are currently supported on the following SoMs:
 - Apalis iMX8
 - Colibri iMX8X
 - Colibri iMX6ULL (1GB eMMC variant only)
+- Colibri iMX7D (1GB eMMC variant only)
 
 This layer only works on Embedded Linux 6.3.0 and newer releases.
 
