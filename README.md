@@ -13,6 +13,11 @@ This layer supports the following security features:
 
 - Secure boot
 
+The level of support of the above features is:
+
+- TorizonCore: tested and integrated.
+- BSP Layers and Reference Images: not tested, integration effort is expected.
+
 The features are currently supported on the following SoMs:
 
 - Verdin iMX8MM
@@ -20,6 +25,8 @@ The features are currently supported on the following SoMs:
 - Apalis iMX8
 - Colibri iMX8X
 - Colibri iMX6ULL (1GB eMMC variant only)
+
+This layer only works on Embedded Linux 6.3.0 and newer releases.
 
 # Secure boot
 
