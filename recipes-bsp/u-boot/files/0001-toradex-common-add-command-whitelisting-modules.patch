@@ -1,0 +1,1195 @@
+From ffd539f1d3a8e2d158662ffc65bb95aab74c716c Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Mon, 28 Aug 2023 13:28:50 -0300
+Subject: [PATCH 1/3] toradex: common: add command whitelisting modules
+
+Add modules implementing the command whitelisting feature to be
+integrated into U-Boot on a separate commit.
+
+Upstream-Status: Inappropriate [TorizonCore specific]
+
+Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+---
+ common/whitelist.c                            | 1044 +++++++++++++++++
+ .../dt-bindings/secure-boot/cmd-categories.h  |   94 ++
+ include/whitelist.h                           |   16 +
+ 3 files changed, 1154 insertions(+)
+ create mode 100644 common/whitelist.c
+ create mode 100644 include/dt-bindings/secure-boot/cmd-categories.h
+ create mode 100644 include/whitelist.h
+
+diff --git a/common/whitelist.c b/common/whitelist.c
+new file mode 100644
+index 0000000000..d50ae854d3
+--- /dev/null
++++ b/common/whitelist.c
+@@ -0,0 +1,1044 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Copyright 2023 Toradex
++ */
++
++/* To see messages, also set CONFIG_LOG_MAX_LEVEL=8 and CONFIG_LOG_LEVEL=8. */
++/* #define DEBUG */
++/* #define LOG_DEBUG */
++
++#include <common.h>
++#include <compiler.h>
++#include <command.h>
++#include <log.h>
++#include <fdt_support.h>
++#include <asm/global_data.h>
++#include <whitelist.h>
++#include <dt-bindings/secure-boot/cmd-categories.h>
++
++#if defined(CONFIG_IMX_HAB)
++#include <asm/mach-imx/hab.h>
++#elif defined(CONFIG_AHAB_BOOT)
++#include <asm/mach-imx/ahab.h>
++#endif
++
++DECLARE_GLOBAL_DATA_PTR;
++
++/*
++ * Sample device-tree:
++ * / {
++ *     chosen {
++ *         toradex,secure-boot {    [if not present: disable Toradex hardening]
++ *             disabled;                  [optional: disable Toradex hardening]
++ *             bootloader-commands {
++ *                 allow-open = <CMD_CAT_ALL>;
++ *                 allow-closed = <CMD_CAT_NEEDED CMD_CAT_SAFE>;
++ *                 deny-open = <CMD_CAT_ALL_UNSAFE>;    [optional, discouraged]
++ *                 deny-closed = <CMD_CAT_ALL_UNSAFE>;  [optional, discouraged]
++ *                 needed = <CMD_CAT_NEEDED>            [optional, discouraged]
++ *             };
++ *         };
++ *     };
++ * };
++ */
++
++/* Path of node in FDT containing all Secure Boot setup. */
++static const char secboot_node_path[] = "/chosen/toradex,secure-boot";
++
++/* Path of node in FDT containing command whitelist/blacklist. */
++static const char bootldr_cmds_node_path[] =
++	"/chosen/toradex,secure-boot/bootloader-commands";
++
++#define WHITELIST_MAX_CMD_ARGUMENTS 4
++#define WHITELIST_MAX_CMD_CATEGORIES 4
++
++/* Structure describing the whitelist entries. */
++struct cmd_whitelist_entry {
++	const char *args[WHITELIST_MAX_CMD_ARGUMENTS];
++	const uint16_t categories[WHITELIST_MAX_CMD_CATEGORIES];
++};
++
++/* Wildcard strings to be used in the whitelist entries. */
++static const char single_arg_wildcard[] = "<?>";
++static const char multi_arg_wildcard[] = "<*>";
++
++#define SNG single_arg_wildcard
++#define ALL multi_arg_wildcard
++
++/* Maximum length of the following default_*_categories arrays. */
++#define MAX_DEF_CATEGORIES 8
++
++/* Allowed categories when device is open; must be CMD_CAT_NULL terminated. */
++static const uint16_t default_allowed_categories_open[] = {
++	CMD_CAT_ALL, CMD_CAT_NULL
++};
++
++/* Denied categories when device is open; must be CMD_CAT_NULL terminated. */
++static const uint16_t default_denied_categories_open[] = {
++	CMD_CAT_ALL_UNSAFE, CMD_CAT_NULL
++};
++
++/* Allowed categories when device is closed; must be CMD_CAT_NULL terminated. */
++static const uint16_t default_allowed_categories_closed[] = {
++	CMD_CAT_ALL_SAFE, CMD_CAT_NULL
++};
++
++/* Denied categories when device is closed; must be CMD_CAT_NULL terminated. */
++static const uint16_t default_denied_categories_closed[] = {
++	CMD_CAT_ALL_UNSAFE, CMD_CAT_NULL
++};
++
++/* Needed categories; must be CMD_CAT_NULL terminated. */
++static const uint16_t default_needed_categories[] = {
++	CMD_CAT_NEEDED, CMD_CAT_NULL
++};
++
++/* Maximum length of the following pseudo category arrays. */
++#define MAX_CATEGS_IN_PSEUDO_CATEG 8
++
++/* List of categories normally considered safe; CMD_CAT_NULL terminated. */
++static const uint16_t pseudo_all_safe_categories[] = {
++	CMD_CAT_SAFE, CMD_CAT_NULL
++};
++
++/* List of categories normally considered unsafe; CMD_CAT_NULL terminated.
++ * Why?
++ * - CMD_CAT_EXEC - to prevent execution of arbitrary code.
++ * - CMD_CAT_MEM_WRITE - to prevent writing arbitrary memory areas which could
++ *   be used for overwriting the running U-Boot.
++ * - CMD_CAT_FDT_CONTROL - to prevent writing to the control DTB which has the
++ *   whitelisting configuration in it.
++ */
++static const uint16_t pseudo_all_unsafe_categories[] = {
++	CMD_CAT_EXEC, CMD_CAT_MEM_WRITE, CMD_CAT_FDT_CONTROL, CMD_CAT_NULL
++};
++
++/**
++ * Command whitelist.
++ *
++ * .args[0]: will be matched against the command name which is not necessarily
++ *           the same as the command argv; e.g. commands having a suffix for
++ *           data length such as md (md.b, md.w, md.l, ...) will all be found
++ *           in the same whitelist entry where .args[0] = "md".
++ *
++ * IMPORTANT: Command names must be in alphabetic order (to allow binary search).
++ *
++ * TODO: Consider protecting commands with ifdef CONFIG_CMD_... to avoid having
++ *       entries for commands that are not even present in the code.
++ */
++static const struct cmd_whitelist_entry cmd_whitelist[] = {
++	{ { "?", ALL }, { CMD_CAT_SAFE } },
++	{ { "ahab_close", ALL }, { CMD_CAT_AHAB_CONTROL } },
++	{ { "ahab_status", ALL }, { CMD_CAT_AHAB_DIAG, CMD_CAT_SAFE } },
++	{ { "askenv", ALL }, { CMD_CAT_SAFE } },
++	{ { "auth_cntr", ALL }, { CMD_CAT_AHAB_AUTH } },
++	{ { "base", ALL }, { CMD_CAT_MEM_READ } },
++	{ { "bdinfo" }, { CMD_CAT_DIAG } },
++	{ { "blkcache", "show" }, { CMD_CAT_BLKCACHE_DIAG } },
++	{ { "blkcache", "configure", ALL }, { CMD_CAT_BLKCACHE_CONTROL } },
++	{ { "boot" }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
++	{ { "bootaux", ALL }, { CMD_CAT_AUXCORE } },
++	{ { "bootcount", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
++	{ { "bootd" }, { CMD_CAT_SAFE } },
++	{ { "bootefi", ALL }, { CMD_CAT_EXEC } },
++	{ { "bootelf", ALL }, { CMD_CAT_EXEC } },
++	{ { "booti", ALL }, { CMD_CAT_EXEC } },
++	{ { "bootm", ALL }, { CMD_CAT_EXEC, CMD_CAT_NEEDED } },
++	{ { "bootp", ALL }, { CMD_CAT_EXEC, CMD_CAT_MEM_WRITE } },
++	{ { "bootvx", ALL }, { CMD_CAT_EXEC, CMD_CAT_MEM_WRITE } },
++	{ { "cfgblock", "create", ALL }, { CMD_CAT_CFGBLOCK_WRITE } },
++	{ { "cfgblock", "reload" }, { CMD_CAT_CFGBLOCK_DIAG } },
++	{ { "check_fips_mode", ALL }, { CMD_CAT_SNVS_DIAG } },
++	{ { "clk", "dump" }, { CMD_CAT_CLK_DIAG } },
++	{ { "clk", "setfreq", ALL }, { CMD_CAT_CLK_CONTROL } },
++	{ { "clocks" }, { CMD_CAT_CLK_DIAG } },
++	{ { "cmp", ALL }, { CMD_CAT_MEM_READ } },
++	{ { "coninfo" }, { CMD_CAT_DIAG } },
++	{ { "cp", ALL }, { CMD_CAT_MEM_READ, CMD_CAT_MEM_WRITE } },
++	{ { "cpu", ALL }, { CMD_CAT_DIAG } },
++	{ { "crc32", ALL }, { CMD_CAT_MEM_READ, CMD_CAT_MEM_WRITE } },
++	{ { "dcache", ALL }, { CMD_CAT_DCACHE_CONTROL } },
++	{ { "dhcp", ALL }, { CMD_CAT_EXEC, CMD_CAT_MEM_WRITE } },
++	{ { "dm", "tree", ALL }, { CMD_CAT_DM_DIAG } },
++	{ { "dm", "uclass", ALL }, { CMD_CAT_DM_DIAG } },
++	{ { "dm", "devres", ALL }, { CMD_CAT_DM_DIAG } },
++	{ { "dm", "drivers", ALL }, { CMD_CAT_DM_DIAG } },
++	{ { "dm", "compat", ALL }, { CMD_CAT_DM_DIAG } },
++	{ { "dm", "static", ALL }, { CMD_CAT_DM_DIAG } },
++	{ { "echo", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
++	{ { "editenv", ALL }, { CMD_CAT_SAFE } },
++	{ { "env", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
++	{ { "exit", ALL }, { CMD_CAT_SAFE } },
++	{ { "ext2load", ALL }, { CMD_CAT_FS_READ, CMD_CAT_MEM_WRITE_SAFE } },
++	{ { "ext2ls", ALL }, { CMD_CAT_FS_DIAG } },
++	{ { "ext4load", ALL },
++	  { CMD_CAT_FS_READ, CMD_CAT_MEM_WRITE_SAFE, CMD_CAT_NEEDED } },
++	{ { "ext4ls", ALL }, { CMD_CAT_FS_DIAG } },
++	{ { "ext4size", ALL }, { CMD_CAT_FS_DIAG } },
++	{ { "ext4write", ALL }, { CMD_CAT_FS_WRITE } },
++	{ { "false", ALL }, { CMD_CAT_SAFE } },
++	{ { "fatinfo", ALL }, { CMD_CAT_FS_DIAG } },
++	{ { "fatload", ALL }, { CMD_CAT_FS_READ, CMD_CAT_MEM_WRITE_SAFE } },
++	{ { "fatls", ALL }, { CMD_CAT_FS_DIAG } },
++	{ { "fatmkdir", ALL }, { CMD_CAT_FS_WRITE } },
++	{ { "fatrm", ALL }, { CMD_CAT_FS_WRITE } },
++	{ { "fatsize", ALL }, { CMD_CAT_FS_DIAG } },
++	{ { "fatwrite", ALL }, { CMD_CAT_FS_WRITE } },
++	{ { "fdt", "addr", ALL }, { CMD_CAT_FDT_CONTROL } },
++	{ { "fdt", "apply", ALL }, { CMD_CAT_FDT_CONTROL } },
++	{ { "fdt", "boardsetup", ALL }, { CMD_CAT_FDT_CONTROL } },
++	{ { "fdt", "systemsetup", ALL }, { CMD_CAT_FDT_CONTROL } },
++	{ { "fdt", "move", ALL }, { CMD_CAT_FDT_CONTROL, CMD_CAT_MEM_WRITE } },
++	{ { "fdt", "resize", ALL }, { CMD_CAT_FDT_CONTROL, CMD_CAT_MEM_WRITE } },
++	{ { "fdt", "print", ALL }, { CMD_CAT_FDT_DIAG } },
++	{ { "fdt", "list", ALL }, { CMD_CAT_FDT_DIAG } },
++	{ { "fdt", "get", ALL }, { CMD_CAT_FDT_DIAG } },
++	{ { "fdt", "set", ALL }, { CMD_CAT_FDT_CONTROL } },
++	{ { "fdt", "mknode", ALL }, { CMD_CAT_FDT_CONTROL } },
++	{ { "fdt", "rm", ALL }, { CMD_CAT_FDT_CONTROL } },
++	{ { "fdt", "header", ALL }, { CMD_CAT_FDT_DIAG } },
++	{ { "fdt", "bootcpu", ALL }, { CMD_CAT_FDT_CONTROL } },
++	{ { "fdt", "memory", ALL }, { CMD_CAT_FDT_CONTROL } },
++	{ { "fdt", "rsvmem", "print", ALL }, { CMD_CAT_FDT_DIAG } },
++	{ { "fdt", "rsvmem", "add", ALL }, { CMD_CAT_FDT_CONTROL } },
++	{ { "fdt", "rsvmem", "delete", ALL }, { CMD_CAT_FDT_CONTROL } },
++	{ { "fdt", "chosen", ALL }, { CMD_CAT_FDT_CONTROL } },
++	{ { "fdt", "checksign", ALL }, { CMD_CAT_FDT_DIAG } },
++	{ { "fstype", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
++	{ { "fstypes", ALL }, { CMD_CAT_SAFE } },
++	{ { "fuse", "read", ALL }, { CMD_CAT_FUSE_READ } },
++	{ { "fuse", "cmp", ALL }, { CMD_CAT_FUSE_READ } },
++	{ { "fuse", "readm", ALL }, { CMD_CAT_FUSE_READ, CMD_CAT_MEM_WRITE } },
++	{ { "fuse", "sense", ALL }, { CMD_CAT_FUSE_READ } },
++	{ { "fuse", "prog", ALL }, { CMD_CAT_FUSE_WRITE } },
++	{ { "fuse", "override", ALL }, { CMD_CAT_FUSE_WRITE } },
++	{ { "go", ALL }, { CMD_CAT_EXEC } },
++#ifdef CONFIG_CMD_GPIO
++	{ { "gpio", "input", ALL }, { CMD_CAT_GPIO_CONTROL } },
++	{ { "gpio", "set", ALL }, { CMD_CAT_GPIO_CONTROL } },
++	{ { "gpio", "clear", ALL }, { CMD_CAT_GPIO_CONTROL } },
++	{ { "gpio", "toggle", ALL }, { CMD_CAT_GPIO_CONTROL } },
++	{ { "gpio", "status", ALL }, { CMD_CAT_GPIO_DIAG } },
++#endif /* CONFIG_CMD_GPIO */
++	{ { "gpio_conf", ALL }, { CMD_CAT_SNVS_CONTROL } },
++#ifdef CONFIG_CMD_GPT
++	{ { "gpt", "verify", ALL }, { CMD_CAT_GPT_DIAG } },
++	{ { "gpt", "setenv", ALL }, { CMD_CAT_GPT_DIAG } },
++	{ { "gpt", "enumerate", ALL }, { CMD_CAT_GPT_DIAG } },
++	{ { "gpt", "read", ALL }, { CMD_CAT_GPT_READ } },
++	{ { "gpt", "guid", ALL }, { CMD_CAT_GPT_READ } },
++	{ { "gpt", "read", ALL }, { CMD_CAT_GPT_READ } },
++	{ { "gpt", "swap", ALL }, { CMD_CAT_GPT_WRITE } },
++	{ { "gpt", "rename", ALL }, { CMD_CAT_GPT_WRITE } },
++	{ { "gpt", "write", ALL }, { CMD_CAT_GPT_WRITE } },
++#endif /* CONFIG_CMD_GPT */
++	{ { "guid", ALL }, { CMD_CAT_SAFE } },
++	{ { "gzwrite", ALL }, { CMD_CAT_FS_WRITE, CMD_CAT_MEM_READ } },
++	{ { "hab_auth_img", ALL }, { CMD_CAT_HAB_AUTH } },
++	{ { "hab_auth_img_or_fail", ALL }, { CMD_CAT_HAB_AUTH, CMD_CAT_BOOTROM } },
++	{ { "hab_failsafe", ALL }, { CMD_CAT_BOOTROM } },
++	{ { "hab_status" }, { CMD_CAT_HAB_DIAG, CMD_CAT_SAFE } },
++	{ { "hab_version" }, { CMD_CAT_HAB_DIAG, CMD_CAT_SAFE } },
++	{ { "hash", ALL }, { CMD_CAT_MEM_READ, CMD_CAT_MEM_WRITE } },
++	{ { "help", ALL }, { CMD_CAT_SAFE } },
++#ifdef CONFIG_CMD_I2C
++	{ { "i2c", "bus", ALL }, { CMD_CAT_I2C_DIAG } },
++	{ { "i2c", "crc32", ALL }, { CMD_CAT_I2C_READ } },
++	{ { "i2c", "dev", ALL }, { CMD_CAT_I2C_DIAG } },
++	{ { "i2c", "loop", ALL }, { CMD_CAT_I2C_READ } },
++	{ { "i2c", "md", ALL }, { CMD_CAT_I2C_READ } },
++	{ { "i2c", "mm", ALL }, { CMD_CAT_I2C_WRITE } },
++	{ { "i2c", "mw", ALL }, { CMD_CAT_I2C_WRITE } },
++	{ { "i2c", "nm", ALL }, { CMD_CAT_I2C_WRITE } },
++	{ { "i2c", "probe", ALL }, { CMD_CAT_I2C_DIAG } },
++	{ { "i2c", "read", ALL }, { CMD_CAT_I2C_READ, CMD_CAT_MEM_WRITE } },
++	{ { "i2c", "write", ALL }, { CMD_CAT_I2C_WRITE, CMD_CAT_MEM_READ } },
++	{ { "i2c", "flags", ALL }, { CMD_CAT_I2C_CONTROL } },
++	{ { "i2c", "olen", ALL }, { CMD_CAT_I2C_CONTROL } },
++	{ { "i2c", "reset", ALL }, { CMD_CAT_I2C_CONTROL } },
++	{ { "i2c", "speed", ALL }, { CMD_CAT_I2C_CONTROL } },
++#endif /* CONFIG_CMD_I2C */
++	{ { "icache", ALL }, { CMD_CAT_ICACHE_CONTROL } },
++	{ { "iminfo", ALL }, { CMD_CAT_IMG_DIAG } },
++	{ { "imxtract", ALL },
++	  { CMD_CAT_IMG_READ, CMD_CAT_MEM_READ, CMD_CAT_MEM_WRITE } },
++	{ { "itest", ALL }, { CMD_CAT_MEM_READ } },
++	{ { "led", "list" }, { CMD_CAT_LED_DIAG } },
++	{ { "led", SNG }, { CMD_CAT_LED_DIAG } },
++	{ { "led", SNG, "on" }, { CMD_CAT_LED_CONTROL } },
++	{ { "led", SNG, "off" }, { CMD_CAT_LED_CONTROL } },
++	{ { "led", SNG, "toggle" }, { CMD_CAT_LED_CONTROL } },
++	{ { "ln", ALL }, { CMD_CAT_FS_WRITE } },
++	{ { "load", ALL }, { CMD_CAT_FS_READ, CMD_CAT_NEEDED } },
++	{ { "loadb", ALL }, { CMD_CAT_SER_LOAD, CMD_CAT_MEM_WRITE } },
++	{ { "loads", ALL }, { CMD_CAT_SER_LOAD, CMD_CAT_MEM_WRITE } },
++	{ { "loadx", ALL }, { CMD_CAT_SER_LOAD, CMD_CAT_MEM_WRITE } },
++	{ { "loady", ALL }, { CMD_CAT_SER_LOAD, CMD_CAT_MEM_WRITE } },
++	{ { "loop", ALL }, { CMD_CAT_DIAG, CMD_CAT_MEM_READ } },
++	{ { "ls", ALL }, { CMD_CAT_FS_DIAG } },
++	{ { "lzmadec", ALL }, { CMD_CAT_MEM_WRITE } },
++	{ { "md", ALL }, { CMD_CAT_MEM_READ } },
++	{ { "md5sum", ALL }, { CMD_CAT_MEM_READ, CMD_CAT_MEM_WRITE } },
++	{ { "mdio", "list", ALL }, { CMD_CAT_MDIO_DIAG } },
++	{ { "mdio", "read", ALL }, { CMD_CAT_MDIO_READ } },
++	{ { "mdio", "write", ALL }, { CMD_CAT_MDIO_WRITE } },
++	{ { "mdio", "rx", ALL }, { CMD_CAT_MDIO_READ } },
++	{ { "mdio", "wx", ALL }, { CMD_CAT_MDIO_WRITE } },
++	{ { "mii", "device" }, { CMD_CAT_MII_DIAG } },
++	{ { "mii", "device", SNG, ALL }, { CMD_CAT_MII_DIAG } },
++	{ { "mii", "info", ALL }, { CMD_CAT_MII_DIAG } },
++	{ { "mii", "read", ALL }, { CMD_CAT_MII_READ } },
++	{ { "mii", "write", ALL }, { CMD_CAT_MII_WRITE } },
++	{ { "mii", "modify", ALL }, { CMD_CAT_MII_WRITE } },
++	{ { "mii", "dump", ALL }, { CMD_CAT_MII_READ } },
++	{ { "mm", ALL }, { CMD_CAT_MEM_READ, CMD_CAT_MEM_WRITE } },
++	{ { "mmc", "info", ALL }, { CMD_CAT_MMC_DIAG } },
++	{ { "mmc", "read", ALL }, { CMD_CAT_MMC_READ, CMD_CAT_MEM_WRITE } },
++	{ { "mmc", "write", ALL }, { CMD_CAT_MMC_WRITE, CMD_CAT_MEM_READ } },
++	{ { "mmc", "erase", ALL }, { CMD_CAT_MMC_WRITE } },
++	{ { "mmc", "rescan", ALL }, { CMD_CAT_MMC_DIAG } },
++	{ { "mmc", "part", ALL }, { CMD_CAT_MMC_DIAG } },
++	{ { "mmc", "dev", ALL }, { CMD_CAT_MMC_DIAG, CMD_CAT_NEEDED } },
++	{ { "mmc", "list", ALL }, { CMD_CAT_MMC_DIAG } },
++	{ { "mmc", "wp", ALL }, { CMD_CAT_MMC_CONTROL } },
++	{ { "mmc", "hwpartition", ALL }, { CMD_CAT_MMC_WRITE } },
++	{ { "mmc", "bootbus", ALL }, { CMD_CAT_MMC_CONTROL } },
++	{ { "mmc", "bootpart-resize", ALL }, { CMD_CAT_MMC_WRITE } },
++	{ { "mmc", "partconf", ALL }, { CMD_CAT_MMC_CONTROL } },
++	{ { "mmc", "rst-function", ALL }, { CMD_CAT_MMC_CONTROL } },
++	{ { "mmc", "setdsr", ALL }, { CMD_CAT_MMC_CONTROL } },
++	{ { "mmcinfo", ALL }, { CMD_CAT_MMC_DIAG } },
++	{ { "mtest", ALL }, { CMD_CAT_MEM_WRITE } },
++	{ { "mw", ALL }, { CMD_CAT_MEM_WRITE } },
++	{ { "net", "list", ALL }, { CMD_CAT_NET_DIAG } },
++	{ { "nfs", ALL }, { CMD_CAT_EXEC, CMD_CAT_MEM_WRITE } },
++	{ { "nm", ALL }, { CMD_CAT_MEM_READ, CMD_CAT_MEM_WRITE } },
++	{ { "panic", ALL }, { CMD_CAT_SAFE } },
++	{ { "part", "uuid", ALL }, { CMD_CAT_PART_READ } },
++	{ { "part", "list", ALL }, { CMD_CAT_PART_READ, CMD_CAT_NEEDED } },
++	{ { "part", "start", ALL }, { CMD_CAT_PART_READ } },
++	{ { "part", "size", ALL }, { CMD_CAT_PART_READ } },
++	{ { "part", "number", ALL }, { CMD_CAT_PART_READ } },
++	{ { "part", "types", ALL }, { CMD_CAT_PART_DIAG } },
++	{ { "ping", ALL }, { CMD_CAT_NET_DIAG } },
++	{ { "pinmux", "list", ALL }, { CMD_CAT_PINMUX_DIAG } },
++	{ { "pinmux", "dev", ALL }, { CMD_CAT_PINMUX_DIAG } },
++	{ { "pinmux", "status", ALL }, { CMD_CAT_PINMUX_DIAG } },
++#ifdef CONFIG_CMD_PMIC
++	{ { "pmic", "list", ALL }, { CMD_CAT_PMIC_DIAG } },
++	{ { "pmic", "dev", ALL }, { CMD_CAT_PMIC_DIAG } },
++	{ { "pmic", "dump", ALL }, { CMD_CAT_PMIC_DIAG } },
++	{ { "pmic", "read", ALL }, { CMD_CAT_PMIC_READ } },
++	{ { "pmic", "write", ALL }, { CMD_CAT_PMIC_WRITE } },
++#endif /* CONFIG_CMD_PMIC */
++	{ { "printenv", ALL }, { CMD_CAT_SAFE } },
++	{ { "pxe", ALL }, { CMD_CAT_EXEC, CMD_CAT_MEM_WRITE } },
++	{ { "random", ALL }, { CMD_CAT_MEM_WRITE } },
++	{ { "read", ALL }, { CMD_CAT_FS_READ, CMD_CAT_MEM_WRITE } },
++	{ { "regulator", "list", ALL }, { CMD_CAT_REGULATOR_DIAG } },
++	{ { "regulator", "dev", ALL }, { CMD_CAT_REGULATOR_DIAG } },
++	{ { "regulator", "info", ALL }, { CMD_CAT_REGULATOR_DIAG } },
++	{ { "regulator", "status", ALL }, { CMD_CAT_REGULATOR_DIAG } },
++	{ { "regulator", "value", ALL }, { CMD_CAT_REGULATOR_CONTROL } },
++	{ { "regulator", "current", ALL }, { CMD_CAT_REGULATOR_CONTROL } },
++	{ { "regulator", "mode", ALL }, { CMD_CAT_REGULATOR_CONTROL } },
++	{ { "regulator", "enable", ALL }, { CMD_CAT_REGULATOR_CONTROL } },
++	{ { "regulator", "disable", ALL }, { CMD_CAT_REGULATOR_CONTROL } },
++	{ { "reset", ALL }, { CMD_CAT_SAFE } },
++	{ { "run", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
++	{ { "save", ALL }, { CMD_CAT_FS_WRITE, CMD_CAT_MEM_READ } },
++	{ { "saveenv", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
++	{ { "scu_rm", ALL }, { CMD_CAT_SCU_PART } },
++	{ { "select_dt_from_module_version", ALL },
++	  { CMD_CAT_TDX_AUTOSEL_DT, CMD_CAT_SAFE  } },
++	{ { "set_fips_mode", ALL }, { CMD_CAT_SNVS_CONTROL } },
++	{ { "setenv", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
++#ifdef CONFIG_CMD_SETEXPR
++	{ { "setexpr", ALL }, { CMD_CAT_SETEXPR, CMD_CAT_MEM_READ } },
++#endif /* CONFIG_CMD_SETEXPR */
++	{ { "showvar", ALL }, { CMD_CAT_SAFE } },
++	{ { "size", ALL }, { CMD_CAT_SAFE, CMD_CAT_FS_DIAG } },
++	{ { "sleep", ALL }, { CMD_CAT_SAFE } },
++	{ { "snvs_cfg", ALL }, { CMD_CAT_SNVS_CONTROL } },
++	{ { "snvs_clear_status", ALL }, { CMD_CAT_SNVS_CONTROL } },
++	{ { "snvs_dgo_cfg", ALL }, { CMD_CAT_SNVS_CONTROL } },
++	{ { "snvs_sec_status", ALL }, { CMD_CAT_SNVS_DIAG } },
++	{ { "source", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
++	{ { "sysboot", ALL }, { CMD_CAT_EXEC, CMD_CAT_MEM_WRITE } },
++	{ { "tamper_pin_cfg", ALL }, { CMD_CAT_SNVS_CONTROL } },
++	{ { "test", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
++	{ { "tftpboot", ALL }, { CMD_CAT_EXEC, CMD_CAT_MEM_WRITE } },
++	{ { "time", ALL }, { CMD_CAT_DIAG } },
++	{ { "true", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
++	{ { "ums", ALL }, { CMD_CAT_UMS_CONTROL } },
++	{ { "unlz4", ALL }, { CMD_CAT_MEM_WRITE } },
++	{ { "unzip", ALL }, { CMD_CAT_MEM_WRITE } },
++#ifdef CONFIG_CMD_USB
++	{ { "usb", "start", ALL }, { CMD_CAT_USB_CONTROL } },
++	{ { "usb", "reset", ALL }, { CMD_CAT_USB_CONTROL } },
++	{ { "usb", "stop", ALL }, { CMD_CAT_USB_CONTROL } },
++	{ { "usb", "tree", ALL }, { CMD_CAT_USB_DIAG } },
++	{ { "usb", "info", ALL }, { CMD_CAT_USB_DIAG } },
++	{ { "usb", "test", ALL }, { CMD_CAT_USB_CONTROL } },
++#ifdef CONFIG_USB_STORAGE
++	{ { "usb", "storage", ALL }, { CMD_CAT_USB_DIAG } },
++	{ { "usb", "dev", ALL }, { CMD_CAT_USB_DIAG } },
++	{ { "usb", "part", ALL }, { CMD_CAT_USB_DIAG } },
++	{ { "usb", "read", ALL }, { CMD_CAT_USB_READ, CMD_CAT_MEM_WRITE } },
++	{ { "usb", "write", ALL }, { CMD_CAT_USB_WRITE, CMD_CAT_MEM_READ } },
++#endif /* CONFIG_USB_STORAGE */
++	{ { "usbboot", ALL }, { CMD_CAT_EXEC } },
++#endif /* CONFIG_CMD_USB */
++	{ { "uuid", ALL }, { CMD_CAT_SAFE } },
++	{ { "whitelist", "info" }, { CMD_CAT_SAFE } },
++#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
++	{ { "whitelist", ALL }, { CMD_CAT_WHITELIST, CMD_CAT_NEEDED } },
++#endif
++};
++
++#define CMD_WHITELIST_LEN (sizeof(cmd_whitelist) / sizeof(cmd_whitelist[0]))
++
++#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
++/* Fake HAB status for debugging purposes. */
++enum dbg_hab_status_t {
++	DBG_HAB_STATUS_AUTO,
++	DBG_HAB_STATUS_OPEN,
++	DBG_HAB_STATUS_CLOSED,
++};
++
++/* Fake hardening status for debugging purposes. */
++enum dbg_hdn_status_t {
++	DBG_HDN_STATUS_AUTO,
++	DBG_HDN_STATUS_DISABLED,
++	DBG_HDN_STATUS_ENABLED,
++};
++
++enum dbg_hab_status_t dbg_hab_status = DBG_HAB_STATUS_AUTO;
++enum dbg_hdn_status_t dbg_hdn_status = DBG_HDN_STATUS_AUTO;
++#endif
++
++/**
++ * bsearch_whitelist - Perform binary search on whitelist
++ *
++ * @name: Command name
++ * Return: Index of the entry in the whitelist or -1 if no entry found
++ *
++ * Perform a binary search on the whitelist looking for entries having a
++ * specific command name. Beware that the whitelist can have multiple entries
++ * relating to the same command name in which case the returned index may not
++ * refer to the first one.
++ */
++static int bsearch_whitelist(const char *name)
++{
++	int left, mid, right;
++
++	left = 0;
++	right = CMD_WHITELIST_LEN - 1;
++
++	while (left <= right) {
++		int cmp;
++		mid = (left + right) / 2;
++		cmp = strcmp(cmd_whitelist[mid].args[0], name);
++		if (cmp < 0) {
++			left = mid + 1;
++		} else if (cmp > 0) {
++			right = mid - 1;
++		} else {
++			return mid;
++		}
++	}
++
++	return -1;
++}
++
++/**
++ * find_range_in_whitelist - Find range of whitelist related to command
++ *
++ * @name: Command name
++ * @range_start: Pointer to where the first index will be stored
++ * @range_end: Pointer to where the last index will be stored
++ * Return: 1 if command was found or 0 otherwise
++ *
++ * Given a command name, find the range of indices in the whitelist referring to
++ * that command.
++ */
++static int find_range_in_whitelist(const char *name,
++				   int *range_start, int *range_end)
++{
++	int rbeg, rend;
++
++	rbeg = rend = bsearch_whitelist(name);
++	if (rbeg < 0) {
++		debug("Command name '%s' NOT found in whitelist\n", name);
++		return 0;
++	}
++
++	/* Determine range of indices in the table having the same command name;
++	 * they are supposed to be contiguous in the table. */
++	while (rbeg > 0) {
++		if (strcmp(cmd_whitelist[rbeg - 1].args[0], name) != 0)
++			break;
++		rbeg--;
++	}
++
++	while (rend < (CMD_WHITELIST_LEN - 1)) {
++		if (strcmp(cmd_whitelist[rend + 1].args[0], name) != 0)
++			break;
++		rend++;
++	}
++
++	debug("Command name '%s' found in whitelist in range [%d, %d]\n",
++	      name, rbeg, rend);
++
++#ifdef LOG_DEBUG
++	for (int ind = rbeg; ind <= rend; ind++) {
++		debug("cmd_whitelist[%d]: ", ind);
++		for (int i = 0; i < WHITELIST_MAX_CMD_ARGUMENTS; i++) {
++			if (cmd_whitelist[ind].args[i] == NULL)
++				break;
++			debug("args[%d]=\"%s\" ",
++			      i, cmd_whitelist[ind].args[i]);
++		}
++		debug("; ");
++		for (int i = 0; i < WHITELIST_MAX_CMD_CATEGORIES; i++) {
++			if (cmd_whitelist[ind].categories[i] == CMD_CAT_NULL)
++				break;
++			debug("cat[%d]=%d ",
++			      i, cmd_whitelist[ind].categories[i]);
++		}
++		debug("\n");
++	}
++#endif
++
++	if (range_start)
++		*range_start = rbeg;
++	if (range_end)
++		*range_end = rend;
++
++	return 1;
++}
++
++/**
++ * args_match_whitelist_entry - Determine if arguments match whitelist entry
++ */
++static int args_match_whitelist_entry(int argc, char *const argv[], int index)
++{
++	const struct cmd_whitelist_entry *wle = &cmd_whitelist[index];
++
++	int match = 1;		/* Default result is a match. */
++	int wlind = 1;		/* Index in the whitelist args array. */
++	int argind;		/* Index in the input array (argv). */
++
++	for (argind = 1; argind < argc; argind++) {
++		debug("match[%d]: argv[%d]=\"%s\" <> args[%d]=\"%s\"\n",
++		      index, argind, argv[argind], wlind,
++		      ((wlind < WHITELIST_MAX_CMD_ARGUMENTS) ?
++		       (wle->args[wlind] ? wle->args[wlind] : "<null>")
++		       : "<none>"));
++
++		/* Note: here we check the wildcard strings directly by pointer
++		 * comparison because the whitelist is supposed to always use
++		 * the same variables to refer to them. */
++		if (wlind >= WHITELIST_MAX_CMD_ARGUMENTS) {
++			match = 0;
++			break;
++		} else if (wle->args[wlind] == NULL) {
++			match = 0;
++			break;
++		} else if (wle->args[wlind] == single_arg_wildcard) {
++			/* Match any single argument. */
++			wlind++;
++		} else if (wle->args[wlind] == multi_arg_wildcard) {
++			/* Match any extra arguments. */
++		} else if (!strcmp(wle->args[wlind], argv[argind])) {
++			/* Match specific string. */
++			wlind++;
++		} else {
++			match = 0;
++			break;
++		}
++	}
++
++	if (!match || (argind < argc)) {
++		/* No match or not all input arguments consumed. */
++		debug("match[%d]: no match or extra input\n", index);
++		match = 0;
++		goto done;
++	}
++
++	/* Ensure args array in the whitelist was consumed too. */
++	if ((wlind >= WHITELIST_MAX_CMD_ARGUMENTS) ||
++	    (wle->args[wlind] == NULL)) {
++		debug("match[%d]: args array fully consumed\n", index);
++	} else if (wle->args[wlind] == multi_arg_wildcard) {
++		debug("match[%d]: args array consumed by wildcard\n", index);
++	} else {
++		debug("match[%d]: no match (missing args)\n", index);
++		match = 0;
++	}
++
++done:
++
++#ifdef LOG_DEBUG
++	if (match) {
++		debug("cmd_whitelist[%d] (MATCH): ", index);
++		for (int i = 0; i < WHITELIST_MAX_CMD_ARGUMENTS; i++) {
++			if (wle->args[i] == NULL)
++				break;
++			debug("args[%d]=\"%s\" ", i, wle->args[i]);
++		}
++		debug("; ");
++		for (int i = 0; i < WHITELIST_MAX_CMD_CATEGORIES; i++) {
++			if (wle->categories[i] == CMD_CAT_NULL)
++				break;
++			debug("cat[%d]=%d ", i, wle->categories[i]);
++		}
++		debug("\n");
++	}
++#endif
++
++	return match;
++}
++
++/**
++ * category_in - Determine if a category matches another (maybe pseudo) one.
++ */
++static int category_in(uint16_t categ, uint16_t pseudo_categ)
++{
++	const uint16_t *categs = NULL;
++
++	debug("categ-in: %u~%u\n", (unsigned)categ, (unsigned)pseudo_categ);
++
++	if (pseudo_categ == CMD_CAT_ALL) {
++		return 1;
++	} else if (pseudo_categ == CMD_CAT_ALL_SAFE) {
++		categs = pseudo_all_safe_categories;
++	} else if (pseudo_categ == CMD_CAT_ALL_UNSAFE) {
++		categs = pseudo_all_unsafe_categories;
++	} else {
++		/* Not really a pseudo category. */
++		return (categ == pseudo_categ) ? 1 : 0;
++	}
++
++	if (!categs) {
++		/* This should never happen. */
++		return 0;
++	}
++
++	for (int catind = 0; catind < MAX_CATEGS_IN_PSEUDO_CATEG; catind++) {
++		if (categs[catind] == CMD_CAT_NULL)
++			break;
++		if (categ == categs[catind])
++			return 1;
++	}
++
++	return 0;
++}
++
++/**
++ * _find_category_in_cell_array - Find category in FDT cell array
++ */
++static int _find_category_in_cell_array(
++	const uint16_t *categs, int categs_length,
++	const fdt32_t *cells, int n_cells, uint16_t *found_categ)
++{
++	for (int catind = 0; catind < categs_length; catind++) {
++		uint16_t cmd_categ = categs[catind];
++		if (cmd_categ == CMD_CAT_NULL)
++			break;
++		for (int cell = 0; cell < n_cells; cell++) {
++			uint16_t fdt_categ =
++				(uint16_t) fdt32_to_cpu(cells[cell]);
++			if (category_in(cmd_categ, fdt_categ)) {
++				*found_categ = cmd_categ;
++				return 1;
++			}
++		}
++	}
++
++	return 0;
++}
++
++/**
++ * find_category_in_fdt - Find given category in specified control DTB node
++ *
++ * @categs: Command categories array (terminated by a CMD_CAT_NULL)
++ * @categs_length: Maximum size of 'categs' array
++ * @cmds_node_path: Path to FDT node holding categories property
++ * @prop: Name of the categories property
++ * @def_categs: Default categories to use (if property not found in FDT)
++ * Return: 1 any of the categories was found or 0 otherwise
++ *
++ * Find any of the categories in 'categs' in the specified control DTB node and
++ * property (of the cell array type). If the node or property is not found, then
++ * do the same but on the 'def_categs' array.
++ */
++static int find_category_in_fdt(const uint16_t *categs, int categs_length,
++				const char *cmds_node_path, const char *prop,
++				const uint16_t *def_categs)
++{
++	int node_off, prop_len;
++	const fdt32_t *cells;
++
++	node_off = fdt_path_offset(gd->fdt_blob, cmds_node_path);
++	if ((node_off >= 0) &&
++	    (cells = fdt_getprop(gd->fdt_blob,
++				 node_off, prop, &prop_len)) != NULL) {
++		/* Property found in FDT - search inside it. */
++		uint16_t cmd_categ;
++		int n_cells = prop_len / sizeof(uint32_t);
++		if (_find_category_in_cell_array(categs, categs_length,
++						 cells, n_cells, &cmd_categ)) {
++			debug("Found category %u in '%s' (FDT)\n",
++			      cmd_categ, prop);
++			return 1;
++		}
++		return 0;
++	}
++
++	if (!def_categs) {
++		/* No default categories specified; this should not happen. */
++		return 0;
++	}
++
++	for (int catind = 0; catind < categs_length; catind++) {
++		uint16_t cmd_categ = categs[catind];
++		if (cmd_categ == CMD_CAT_NULL)
++			break;
++		for (int defind = 0; defind < MAX_DEF_CATEGORIES; defind++) {
++			if (def_categs[defind] == CMD_CAT_NULL)
++				break;
++			if (category_in(cmd_categ, def_categs[defind])) {
++				debug("Found category %u in '%s' (default)\n",
++				      cmd_categ, prop);
++				return 1;
++			}
++		}
++	}
++
++	return 0;
++}
++
++/**
++ * on_cmd_execution_denied - Handle command execution denials
++ */
++static void on_cmd_execution_denied(int argc,
++				    char *const argv[], char *const reason)
++{
++	puts("Command execution denied (");
++	puts(reason);
++	puts(") for `");
++	for (int i = 0; i < argc; i++) {
++		if (i > 0)
++			puts(" ");
++		puts(argv[i]);
++		if (i >= 3) {
++			puts("...");
++			break;
++		}
++	}
++	puts("`.\n");
++}
++
++/**
++ * cmd_whitelist_enabled - Determine "whitelist feature" status.
++ */
++static int cmd_whitelist_enabled(int *dev_is_open)
++{
++	int dev_is_open_res = tdx_secboot_dev_is_open();
++	int hdn_is_enabled_res = tdx_hardening_enabled();
++
++#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
++	/* Override results (for debugging). */
++	if (dbg_hab_status == DBG_HAB_STATUS_OPEN) {
++		dev_is_open_res = 1;
++	} else if (dbg_hab_status == DBG_HAB_STATUS_CLOSED) {
++		dev_is_open_res = 0;
++	}
++
++	if (dbg_hdn_status == DBG_HDN_STATUS_ENABLED) {
++		hdn_is_enabled_res = 1;
++	} else if (dbg_hdn_status == DBG_HDN_STATUS_DISABLED) {
++		hdn_is_enabled_res = 0;
++	}
++#endif
++
++	if (dev_is_open)
++		*dev_is_open = dev_is_open_res;
++
++	return hdn_is_enabled_res;
++}
++
++/**
++ * cmd_allowed_by_whitelist - Check if command execution is allowed by whitelist
++ *
++ * @cmdtp: Pointer to the command to execute
++ * @argc: Number of arguments (arg 0 must be the command text)
++ * @argv: Arguments (include command name at index 0)
++ * Return: 1 if command is allowed or 0 otherwise
++ */
++int cmd_allowed_by_whitelist(struct cmd_tbl *cmd, int argc, char *const argv[])
++{
++	int rbeg, rend;
++	int allow = 0, device_is_open = 0, found_ind = -1;
++	const struct cmd_whitelist_entry *wle = NULL;
++
++	if (!cmd_whitelist_enabled(&device_is_open)) {
++		/* Whitelist feature disabled (at runtime). */
++		return 1;
++	}
++	if (!gd->fdt_blob) {
++		printf("whitelist feature requires a valid FDT blob\n");
++		return 1;
++	}
++
++	if (!find_range_in_whitelist(cmd->name, &rbeg, &rend)) {
++		/* Command name not in whitelist: deny execution. */
++		on_cmd_execution_denied(argc, argv, "name not in whitelist");
++		return 0;
++	}
++
++	/* Find first entry matching command arguments. */
++	for (int ind = rbeg; ind <= rend; ind++) {
++		if (args_match_whitelist_entry(argc, argv, ind)) {
++			found_ind = ind;
++			break;
++		}
++	}
++	if (found_ind < 0) {
++		/* Specific command format not in whitelist: deny execution. */
++		on_cmd_execution_denied(argc, argv, "format not in whitelist");
++		return 0;
++	}
++
++	/* Check the command categories against the allowed/denied ones. */
++	wle = &cmd_whitelist[found_ind];
++
++	if (!allow &&
++	    find_category_in_fdt(
++		    wle->categories, WHITELIST_MAX_CMD_CATEGORIES,
++		    bootldr_cmds_node_path,
++		    (device_is_open ? "allow-open" : "allow-closed"),
++		    (device_is_open ?
++		     default_allowed_categories_open :
++		     default_allowed_categories_closed))) {
++		debug("Entry %d passed categories whitelist\n", found_ind);
++		allow = 1;
++	}
++
++	if (allow &&
++	    find_category_in_fdt(
++		    wle->categories, WHITELIST_MAX_CMD_CATEGORIES,
++		    bootldr_cmds_node_path,
++		    (device_is_open ? "deny-open" : "deny-closed"),
++		    (device_is_open ?
++		     default_denied_categories_open :
++		     default_denied_categories_closed))) {
++		debug("Entry %d blocked by categories blacklist\n", found_ind);
++		allow = 0;
++	}
++
++	/* Always allow commands in the "needed" categories. */
++	if (!allow &&
++	    find_category_in_fdt(
++		    wle->categories, WHITELIST_MAX_CMD_CATEGORIES,
++		    bootldr_cmds_node_path,
++		    "needed", default_needed_categories)) {
++		debug("Entry %d allowed by needed list\n", found_ind);
++		allow = 1;
++	}
++
++	if (!allow) {
++		/* Some command category is not the whitelist */
++		/* or is present in the blacklist. */
++		on_cmd_execution_denied(argc, argv, "blocked by category");
++	}
++
++	return allow;
++}
++
++static int whitelist_info(void)
++{
++	int enabled, dev_is_open;
++
++	enabled = cmd_whitelist_enabled(&dev_is_open);
++	printf("whitelisting:  %s\n", enabled ? "enabled" : "disabled");
++	printf("device status: %s\n", dev_is_open ? "open" : "closed");
++
++	return CMD_RET_SUCCESS;
++}
++
++#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
++static int whitelist_set_hab_status(int argc, char *const argv[])
++{
++	const char *str_subcmd;
++
++	if (argc < 1)
++		return CMD_RET_USAGE;
++
++	str_subcmd = argv[0];
++	if (!strcmp(str_subcmd, "auto")) {
++		dbg_hab_status = DBG_HAB_STATUS_AUTO;
++	} else if (!strcmp(str_subcmd, "open")) {
++		dbg_hab_status = DBG_HAB_STATUS_OPEN;
++	} else if (!strcmp(str_subcmd, "closed")) {
++		dbg_hab_status = DBG_HAB_STATUS_CLOSED;
++	} else {
++		return CMD_RET_USAGE;
++	}
++
++	return CMD_RET_SUCCESS;
++}
++
++static int whitelist_set_hdn_status(int argc, char *const argv[])
++{
++	const char *str_subcmd;
++
++	if (argc < 1)
++		return CMD_RET_USAGE;
++
++	str_subcmd = argv[0];
++	if (!strcmp(str_subcmd, "auto")) {
++		dbg_hdn_status = DBG_HDN_STATUS_AUTO;
++	} else if (!strcmp(str_subcmd, "enabled")) {
++		dbg_hdn_status = DBG_HDN_STATUS_ENABLED;
++	} else if (!strcmp(str_subcmd, "disabled")) {
++		dbg_hdn_status = DBG_HDN_STATUS_DISABLED;
++	} else {
++		return CMD_RET_USAGE;
++	}
++
++	return CMD_RET_SUCCESS;
++}
++#endif
++
++static int do_whitelist(struct cmd_tbl *cmdtp, int flag, int argc,
++			char *const argv[])
++{
++	const char *str_cmd;
++
++	if (argc < 2)
++		return CMD_RET_USAGE;
++	str_cmd = argv[1];
++	argc -= 2;
++	argv += 2;
++
++	if (!strcmp(str_cmd, "info")) {
++		return whitelist_info();
++#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
++	} else if (!strcmp(str_cmd, "set-hab-status")) {
++		return whitelist_set_hab_status(argc, argv);
++	} else if (!strcmp(str_cmd, "set-hardening-status")) {
++		return whitelist_set_hdn_status(argc, argv);
++#endif
++	}
++
++	return CMD_RET_USAGE;
++
++}
++
++U_BOOT_CMD(whitelist, 5, 0, do_whitelist,
++	   "whitelist status and control",
++	   "info - show whitelist feature information\n"
++#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
++	   "whitelist set-hab-status <auto|open|closed>"
++	   " - fake HAB status for testing purposes\n"
++	   "whitelist set-hardening-status <auto|enabled|disabled>"
++	   " - fake hardening status for testing purposes\n"
++#endif
++	  );
++
++/* ======================================================================== */
++/* TODO: Consider moving the code below this point to a different module */
++
++int tdx_secboot_dev_is_open(void)
++{
++#if defined(CONFIG_IMX_HAB)
++	/* TODO: Test with a HAB-based device that is closed. */
++	if (imx_hab_is_enabled()) {
++		/* Device is closed (OR some error occurred). */
++		/* Notice that imx_hab_is_enabled() returns bool as per its
++		 * prototype but checking its code it can return a negative
++		 * value in case of fuse read errors. */
++		/* TODO: Evaluate if this is the best we can do here. */
++		return 0;
++	}
++#elif defined(CONFIG_AHAB_BOOT)
++	/* TODO: Test with a AHAB-based device that is closed. */
++	u16 lc;
++	if (sc_seco_chip_info(-1, &lc, NULL, NULL, NULL)) {
++		/* Some error occurred. */
++		return 0;
++	}
++	switch (lc) {
++	case 0x1:	/* Pristine */
++	case 0x2:	/* Fab */
++	case 0x8:	/* Open */
++		debug("Device is in a pre NXP-closed state!\n");
++		break;
++	case 0x20:	/* NXP closed */
++		debug("Device is in a NXP-closed state!\n");
++		break;
++	case 0x80:	/* OEM closed */
++		debug("Device is in OEM-closed state!\n");
++		return 0;
++	case 0x100:	/* Partial field return */
++	case 0x200:	/* Full field return */
++	case 0x400:	/* No return */
++		debug("Device is in some 'return' state!\n");
++		return 1;
++	default:	/* Unknown */
++		break;
++	}
++#else
++#error Neither CONFIG_IMX_HAB nor CONFIG_AHAB_BOOT is set
++#endif
++
++	/* Device is (assumed to be) open. */
++	return 1;
++}
++
++/**
++ * tdx_hardening_enabled - Determine if Toradex U-Boot hardening is enabled
++ * Return: 1 if hardening is enabled or 0 otherwise.
++ *
++ * Check FDT to see if the hardening feature is enabled. Currently the feature
++ * is enabled if the node defined by `secboot_node_path` exists in the FDT and
++ * the same node does not have a "disabled" property under it.
++ */
++int tdx_hardening_enabled(void)
++{
++	const void *dis_prop;
++	int secboot_offset, prop_len;
++
++	if (!gd->fdt_blob) {
++		debug("No FDT blob -> hardening disabled\n");
++		return 0;
++	}
++
++	secboot_offset = fdt_path_offset(gd->fdt_blob, secboot_node_path);
++	if (secboot_offset < 0) {
++		debug("Node '%s' does not exist -> hardening disabled\n",
++		      secboot_node_path);
++		return 0;
++	}
++
++	dis_prop = fdt_getprop(gd->fdt_blob,
++			       secboot_offset, "disabled", &prop_len);
++	if (dis_prop) {
++		debug("Hardening explicitly disabled by property (len=%d)\n",
++		      prop_len);
++		return 0;
++	}
++
++	debug("Hardening is enabled\n");
++	return 1;
++}
++
++#ifndef CONFIG_LMB
++/* We assume CONFIG_LMB is set so that the load commands have protections to
++ * prevent overwriting the reserved memory areas; if CONFIG_LMB is not set then
++ * either this configuration options was replaced by something else or the
++ * U-Boot configuration is wrong. */
++#error Toradex hardening assumes CONFIG_LMB is set
++#endif
+diff --git a/include/dt-bindings/secure-boot/cmd-categories.h b/include/dt-bindings/secure-boot/cmd-categories.h
+new file mode 100644
+index 0000000000..0094eff2a8
+--- /dev/null
++++ b/include/dt-bindings/secure-boot/cmd-categories.h
+@@ -0,0 +1,94 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * This header provides constants for command categories used with the whitelist
++ * feature (Toradex hardened U-Boot).
++ */
++#ifndef _DT_BINDINGS_SECURE_BOOT_CMD_CATEGORIES_H
++#define _DT_BINDINGS_SECURE_BOOT_CMD_CATEGORIES_H
++
++#define CMD_CAT_NULL			0
++
++/* Pseudo categories. */
++#define CMD_CAT_ALL			10
++#define CMD_CAT_ALL_SAFE		11
++#define CMD_CAT_ALL_UNSAFE		12
++
++/* Normal categories. */
++#define CMD_CAT_AHAB_CONTROL		20
++#define CMD_CAT_AHAB_DIAG		21
++#define CMD_CAT_AHAB_AUTH		22
++#define CMD_CAT_AUXCORE			30
++#define CMD_CAT_BLKCACHE_CONTROL	40
++#define CMD_CAT_BLKCACHE_DIAG		41
++#define CMD_CAT_BOOTROM			50
++#define CMD_CAT_CFGBLOCK_DIAG		60
++#define CMD_CAT_CFGBLOCK_WRITE		61
++#define CMD_CAT_CLK_CONTROL		70
++#define CMD_CAT_CLK_DIAG		71
++#define CMD_CAT_DCACHE_CONTROL		80
++#define CMD_CAT_DIAG			90
++#define CMD_CAT_DM_DIAG			100
++#define CMD_CAT_EXEC			110
++#define CMD_CAT_FDT_CONTROL		120
++#define CMD_CAT_FDT_DIAG		121
++#define CMD_CAT_FS_DIAG			130
++#define CMD_CAT_FS_READ			131
++#define CMD_CAT_FS_WRITE		132
++#define CMD_CAT_FUSE_READ		140
++#define CMD_CAT_FUSE_WRITE		141
++#define CMD_CAT_GPT_DIAG		150
++#define CMD_CAT_GPT_READ		151
++#define CMD_CAT_GPT_WRITE		152
++#define CMD_CAT_GPIO_CONTROL		160
++#define CMD_CAT_GPIO_DIAG		161
++#define CMD_CAT_HAB_DIAG		170
++#define CMD_CAT_HAB_AUTH		171
++#define CMD_CAT_HAB_BOOTROM		172
++#define CMD_CAT_I2C_CONTROL		180
++#define CMD_CAT_I2C_DIAG		181
++#define CMD_CAT_I2C_READ		182
++#define CMD_CAT_I2C_WRITE		183
++#define CMD_CAT_ICACHE_CONTROL		190
++#define CMD_CAT_IMG_DIAG		200
++#define CMD_CAT_IMG_READ		201
++#define CMD_CAT_LED_CONTROL		210
++#define CMD_CAT_LED_DIAG		211
++#define CMD_CAT_MDIO_DIAG		220
++#define CMD_CAT_MDIO_READ		221
++#define CMD_CAT_MDIO_WRITE		222
++#define CMD_CAT_MEM_READ		230
++#define CMD_CAT_MEM_WRITE		231
++#define CMD_CAT_MEM_WRITE_SAFE		232
++#define CMD_CAT_MII_DIAG		240
++#define CMD_CAT_MII_READ		241
++#define CMD_CAT_MII_WRITE		242
++#define CMD_CAT_MMC_CONTROL		250
++#define CMD_CAT_MMC_DIAG		251
++#define CMD_CAT_MMC_READ		252
++#define CMD_CAT_MMC_WRITE		253
++#define CMD_CAT_NET_DIAG		260
++#define CMD_CAT_PART_DIAG		270
++#define CMD_CAT_PART_READ		271
++#define CMD_CAT_PINMUX_DIAG		280
++#define CMD_CAT_PMIC_DIAG		290
++#define CMD_CAT_PMIC_READ		291
++#define CMD_CAT_PMIC_WRITE		292
++#define CMD_CAT_REGULATOR_CONTROL	300
++#define CMD_CAT_REGULATOR_DIAG		301
++#define CMD_CAT_SCU_PART		310
++#define CMD_CAT_SER_LOAD		320
++#define CMD_CAT_SETEXPR			330
++#define CMD_CAT_SNVS_CONTROL		341
++#define CMD_CAT_SNVS_DIAG		340
++#define CMD_CAT_TDX_AUTOSEL_DT		350
++#define CMD_CAT_UMS_CONTROL		360
++#define CMD_CAT_USB_CONTROL		370
++#define CMD_CAT_USB_DIAG		380
++#define CMD_CAT_USB_READ		381
++#define CMD_CAT_USB_WRITE		382
++#define CMD_CAT_WHITELIST		390
++
++#define CMD_CAT_NEEDED			1000	/* Special: commands needed for booting. */
++#define CMD_CAT_SAFE			1001	/* Special: commands considered safe. */
++
++#endif
+diff --git a/include/whitelist.h b/include/whitelist.h
+new file mode 100644
+index 0000000000..b67765e132
+--- /dev/null
++++ b/include/whitelist.h
+@@ -0,0 +1,16 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Copyright 2023 Toradex
++ */
++
++#ifndef __WHITELIST_H
++#define __WHITELIST_H
++
++struct cmd_tbl;
++
++int cmd_allowed_by_whitelist(struct cmd_tbl *cmd, int argc, char *const argv[]);
++
++int tdx_secboot_dev_is_open(void);
++int tdx_hardening_enabled(void);
++
++#endif	/* __WHITELIST_H */
+-- 
+2.25.1
+

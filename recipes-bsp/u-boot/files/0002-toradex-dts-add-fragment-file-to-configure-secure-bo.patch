@@ -1,0 +1,46 @@
+From 76c1f39714683e10e5b6de7e64c89ba5cc8b7ce5 Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Tue, 22 Aug 2023 22:56:24 -0300
+Subject: [PATCH 2/3] toradex: dts: add fragment file to configure secure boot
+
+Add to the source tree the file 'tdx-secboot.dtsi' having the default
+configuration for the Toradex "Secure Boot"-related features. If built
+into the control DTB of U-Boot this will effectively configure and
+enable at runtime the various hardening features in U-Boot (mostly by
+Toradex). This of course assumes these U-Boot features were enabled at
+build-time via config options.
+
+Upstream-Status: Inappropriate [TorizonCore specific]
+
+Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+---
+ arch/arm/dts/tdx-secboot.dtsi | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+ create mode 100644 arch/arm/dts/tdx-secboot.dtsi
+
+diff --git a/arch/arm/dts/tdx-secboot.dtsi b/arch/arm/dts/tdx-secboot.dtsi
+new file mode 100644
+index 0000000000..3d456471c2
+--- /dev/null
++++ b/arch/arm/dts/tdx-secboot.dtsi
+@@ -0,0 +1,17 @@
++// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
++/*
++ * Copyright 2023 Toradex
++ */
++
++#include <dt-bindings/secure-boot/cmd-categories.h>
++
++/ {
++	chosen {
++		toradex,secure-boot {
++			bootloader-commands {
++				allow-open = <CMD_CAT_ALL>;
++				allow-closed = <CMD_CAT_ALL_SAFE>;
++			};
++		};
++	};
++};
+-- 
+2.25.1
+
