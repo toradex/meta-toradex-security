@@ -1,7 +1,7 @@
-From 76c1f39714683e10e5b6de7e64c89ba5cc8b7ce5 Mon Sep 17 00:00:00 2001
+From 67fb6c2de3636f6999c938d583a1088fe7609297 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Tue, 22 Aug 2023 22:56:24 -0300
-Subject: [PATCH 2/3] toradex: dts: add fragment file to configure secure boot
+Subject: [PATCH 2/5] toradex: dts: add fragment file to configure secure boot
 
 Add to the source tree the file 'tdx-secboot.dtsi' having the default
 configuration for the Toradex "Secure Boot"-related features. If built

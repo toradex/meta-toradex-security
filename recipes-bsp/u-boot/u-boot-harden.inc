@@ -4,6 +4,8 @@ SRC_URI:append:use-nxp-bsp = "\
     file://0001-toradex-common-add-command-whitelisting-modules.patch \
     file://0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch \
     file://0003-toradex-integrate-command-whitelisting-downstream.patch \
+    file://0004-toradex-integrate-bootm-protection-downstream.patch \
+    file://0005-toradex-integrate-CLI-access-protection-downstream.patch \
 "
 
 # TODO: handle machines using upstream U-Boot (use-mainline-bsp) - remove this block.

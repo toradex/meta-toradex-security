@@ -1,7 +1,7 @@
-From ffd539f1d3a8e2d158662ffc65bb95aab74c716c Mon Sep 17 00:00:00 2001
+From f383146ad438536ba45e6ca846cd8048ddc8ce2b Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:28:50 -0300
-Subject: [PATCH 1/3] toradex: common: add command whitelisting modules
+Subject: [PATCH 1/5] toradex: common: add command whitelisting modules
 
 Add modules implementing the command whitelisting feature to be
 integrated into U-Boot on a separate commit.
@@ -10,20 +10,288 @@ Upstream-Status: Inappropriate [TorizonCore specific]
 
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
- common/whitelist.c                            | 1044 +++++++++++++++++
- .../dt-bindings/secure-boot/cmd-categories.h  |   94 ++
- include/whitelist.h                           |   16 +
- 3 files changed, 1154 insertions(+)
+ common/tdx-harden.c                           | 260 ++++++
+ common/whitelist.c                            | 795 ++++++++++++++++++
+ .../dt-bindings/secure-boot/cmd-categories.h  |  94 +++
+ include/tdx-harden.h                          |  42 +
+ 4 files changed, 1191 insertions(+)
+ create mode 100644 common/tdx-harden.c
  create mode 100644 common/whitelist.c
  create mode 100644 include/dt-bindings/secure-boot/cmd-categories.h
- create mode 100644 include/whitelist.h
+ create mode 100644 include/tdx-harden.h
 
+diff --git a/common/tdx-harden.c b/common/tdx-harden.c
+new file mode 100644
+index 0000000000..fb8aaa5eed
+--- /dev/null
++++ b/common/tdx-harden.c
+@@ -0,0 +1,260 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Copyright 2023 Toradex
++ */
++
++#include <common.h>
++#include <compiler.h>
++#include <command.h>
++#include <log.h>
++#include <fdt_support.h>
++#include <asm/global_data.h>
++#include <tdx-harden.h>
++
++#if defined(CONFIG_IMX_HAB)
++#include <asm/mach-imx/hab.h>
++#elif defined(CONFIG_AHAB_BOOT)
++#include <asm/arch/sci/sci.h>
++#endif
++
++DECLARE_GLOBAL_DATA_PTR;
++
++/* Path of node in FDT containing all Secure Boot setup. */
++static const char secboot_node_path[] = TDX_SECBOOT_NODE_PATH;
++
++#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
++/* Fake HAB status for debugging purposes. */
++enum dbg_hab_status_t {
++	DBG_HAB_STATUS_AUTO,
++	DBG_HAB_STATUS_OPEN,
++	DBG_HAB_STATUS_CLOSED,
++};
++
++/* Fake hardening status for debugging purposes. */
++enum dbg_hdn_status_t {
++	DBG_HDN_STATUS_AUTO,
++	DBG_HDN_STATUS_DISABLED,
++	DBG_HDN_STATUS_ENABLED,
++};
++
++enum dbg_hab_status_t dbg_hab_status = DBG_HAB_STATUS_AUTO;
++enum dbg_hdn_status_t dbg_hdn_status = DBG_HDN_STATUS_AUTO;
++#endif
++
++static int _tdx_hardening_enabled(void)
++{
++	const void *dis_prop;
++	int secboot_offset, prop_len;
++
++	if (!gd->fdt_blob) {
++		debug("No FDT blob -> hardening disabled\n");
++		return 0;
++	}
++
++	secboot_offset = fdt_path_offset(gd->fdt_blob, secboot_node_path);
++	if (secboot_offset < 0) {
++		debug("Node '%s' does not exist -> hardening disabled\n",
++		      secboot_node_path);
++		return 0;
++	}
++
++	dis_prop = fdt_getprop(gd->fdt_blob,
++			       secboot_offset, "disabled", &prop_len);
++	if (dis_prop) {
++		debug("Hardening explicitly disabled by property (len=%d)\n",
++		      prop_len);
++		return 0;
++	}
++
++	debug("Hardening is enabled\n");
++	return 1;
++}
++
++static int _tdx_secboot_dev_is_open(void)
++{
++#if defined(CONFIG_IMX_HAB)
++	if (imx_hab_is_enabled()) {
++		/* Device is closed (OR some error occurred). */
++		/* Notice that imx_hab_is_enabled() returns bool as per its
++		 * prototype but checking its code it can return a negative
++		 * value in case of fuse read errors. */
++		/* TODO: Evaluate if this is the best we can do here. */
++		return 0;
++	}
++#elif defined(CONFIG_AHAB_BOOT)
++	u16 lc;
++	if (sc_seco_chip_info(-1, &lc, NULL, NULL, NULL)) {
++		/* Some error occurred. */
++		return 0;
++	}
++	switch (lc) {
++	case 0x1:	/* Pristine */
++	case 0x2:	/* Fab */
++	case 0x8:	/* Open */
++		debug("Device is in a pre NXP-closed state!\n");
++		break;
++	case 0x20:	/* NXP closed */
++		debug("Device is in a NXP-closed state!\n");
++		break;
++	case 0x80:	/* OEM closed */
++		debug("Device is in OEM-closed state!\n");
++		return 0;
++	case 0x100:	/* Partial field return */
++	case 0x200:	/* Full field return */
++	case 0x400:	/* No return */
++		debug("Device is in some 'return' state!\n");
++		return 1;
++	default:	/* Unknown */
++		break;
++	}
++#else
++#error Neither CONFIG_IMX_HAB nor CONFIG_AHAB_BOOT is set
++#endif
++
++	/* Device is (assumed to be) open. */
++	return 1;
++}
++
++/**
++ * tdx_hardening_enabled - Determine if Toradex U-Boot hardening is enabled
++ * Return: 1 if hardening is enabled or 0 otherwise.
++ *
++ * Check FDT to see if the hardening feature is enabled. Currently the feature
++ * is enabled if the node defined by `secboot_node_path` exists in the FDT and
++ * the same node does not have a "disabled" property under it.
++ */
++int tdx_hardening_enabled(void)
++{
++	int hdn_enabled = _tdx_hardening_enabled();
++
++#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
++	/* Override results (for debugging). */
++	if (dbg_hdn_status == DBG_HDN_STATUS_ENABLED) {
++		hdn_enabled = 1;
++	} else if (dbg_hdn_status == DBG_HDN_STATUS_DISABLED) {
++		hdn_enabled = 0;
++	}
++#endif
++	return hdn_enabled;
++}
++
++/**
++ * tdx_secboot_dev_is_open - Determine if device is open (w.r.t. HAB/AHAB)
++ * Return: 1 if device is open or 0 otherwise.
++ *
++ * Determine if device is open for the purpose of the Toradex U-Boot
++ * hardening.
++ */
++int tdx_secboot_dev_is_open(void)
++{
++	int dev_open = _tdx_secboot_dev_is_open();
++
++#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
++	/* Override results (for debugging). */
++	if (dbg_hab_status == DBG_HAB_STATUS_OPEN) {
++		dev_open = 1;
++	} else if (dbg_hab_status == DBG_HAB_STATUS_CLOSED) {
++		dev_open = 0;
++	}
++#endif
++	return dev_open;
++}
++
++static int hardening_info(void)
++{
++	int hdn_enabled = tdx_hardening_enabled();
++	int dev_open = tdx_secboot_dev_is_open();
++
++	printf("Hardening : %s\n", hdn_enabled ? "enabled" : "disabled");
++	printf("HAB status: %s\n", dev_open ? "open" : "closed");
++
++	return CMD_RET_SUCCESS;
++}
++
++#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
++static int hardening_set_hab_status(int argc, char *const argv[])
++{
++	const char *str_subcmd;
++
++	if (argc < 1)
++		return CMD_RET_USAGE;
++
++	str_subcmd = argv[0];
++	if (!strcmp(str_subcmd, "auto")) {
++		dbg_hab_status = DBG_HAB_STATUS_AUTO;
++	} else if (!strcmp(str_subcmd, "open")) {
++		dbg_hab_status = DBG_HAB_STATUS_OPEN;
++	} else if (!strcmp(str_subcmd, "closed")) {
++		dbg_hab_status = DBG_HAB_STATUS_CLOSED;
++	} else {
++		return CMD_RET_USAGE;
++	}
++
++	return CMD_RET_SUCCESS;
++}
++
++static int hardening_set_hdn_status(int argc, char *const argv[])
++{
++	const char *str_subcmd;
++
++	if (argc < 1)
++		return CMD_RET_USAGE;
++
++	str_subcmd = argv[0];
++	if (!strcmp(str_subcmd, "auto")) {
++		dbg_hdn_status = DBG_HDN_STATUS_AUTO;
++	} else if (!strcmp(str_subcmd, "enabled")) {
++		dbg_hdn_status = DBG_HDN_STATUS_ENABLED;
++	} else if (!strcmp(str_subcmd, "disabled")) {
++		dbg_hdn_status = DBG_HDN_STATUS_DISABLED;
++	} else {
++		return CMD_RET_USAGE;
++	}
++
++	return CMD_RET_SUCCESS;
++}
++#endif
++
++static int do_hardening(struct cmd_tbl *cmdtp, int flag, int argc,
++			char *const argv[])
++{
++	const char *str_cmd;
++
++	if (argc < 2)
++		return CMD_RET_USAGE;
++	str_cmd = argv[1];
++	argc -= 2;
++	argv += 2;
++
++	if (!strcmp(str_cmd, "info")) {
++		return hardening_info();
++#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
++	} else if (!strcmp(str_cmd, "set-hab-status")) {
++		return hardening_set_hab_status(argc, argv);
++	} else if (!strcmp(str_cmd, "set-hdn-status")) {
++		return hardening_set_hdn_status(argc, argv);
++#endif
++	}
++
++	return CMD_RET_USAGE;
++
++}
++
++U_BOOT_CMD(hardening, 5, 0, do_hardening,
++	   "hardening status and control",
++	   "info - show hardening feature information\n"
++#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
++	   "hardening set-hab-status <auto|open|closed>"
++	   " - fake HAB status for testing purposes\n"
++	   "hardening set-hdn-status <auto|enabled|disabled>"
++	   " - fake hardening status for testing purposes\n"
++#endif
++	  );
++
++#ifndef CONFIG_LMB
++/* We assume CONFIG_LMB is set so that the load commands have protections to
++ * prevent overwriting the reserved memory areas; if CONFIG_LMB is not set then
++ * either this configuration option was replaced by something else or the
++ * U-Boot configuration is wrong. */
++#error Toradex hardening assumes CONFIG_LMB is set
++#endif
 diff --git a/common/whitelist.c b/common/whitelist.c
 new file mode 100644
-index 0000000000..d50ae854d3
+index 0000000000..c56278f9b9
 --- /dev/null
 +++ b/common/whitelist.c
-@@ -0,0 +1,1044 @@
+@@ -0,0 +1,795 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2023 Toradex
@@ -39,41 +307,13 @@ index 0000000000..d50ae854d3
 +#include <log.h>
 +#include <fdt_support.h>
 +#include <asm/global_data.h>
-+#include <whitelist.h>
++#include <tdx-harden.h>
 +#include <dt-bindings/secure-boot/cmd-categories.h>
-+
-+#if defined(CONFIG_IMX_HAB)
-+#include <asm/mach-imx/hab.h>
-+#elif defined(CONFIG_AHAB_BOOT)
-+#include <asm/mach-imx/ahab.h>
-+#endif
 +
 +DECLARE_GLOBAL_DATA_PTR;
 +
-+/*
-+ * Sample device-tree:
-+ * / {
-+ *     chosen {
-+ *         toradex,secure-boot {    [if not present: disable Toradex hardening]
-+ *             disabled;                  [optional: disable Toradex hardening]
-+ *             bootloader-commands {
-+ *                 allow-open = <CMD_CAT_ALL>;
-+ *                 allow-closed = <CMD_CAT_NEEDED CMD_CAT_SAFE>;
-+ *                 deny-open = <CMD_CAT_ALL_UNSAFE>;    [optional, discouraged]
-+ *                 deny-closed = <CMD_CAT_ALL_UNSAFE>;  [optional, discouraged]
-+ *                 needed = <CMD_CAT_NEEDED>            [optional, discouraged]
-+ *             };
-+ *         };
-+ *     };
-+ * };
-+ */
-+
-+/* Path of node in FDT containing all Secure Boot setup. */
-+static const char secboot_node_path[] = "/chosen/toradex,secure-boot";
-+
 +/* Path of node in FDT containing command whitelist/blacklist. */
-+static const char bootldr_cmds_node_path[] =
-+	"/chosen/toradex,secure-boot/bootloader-commands";
++static const char bootldr_cmds_node_path[] = TDX_BOOTLDR_CMDS_NODE_PATH;
 +
 +#define WHITELIST_MAX_CMD_ARGUMENTS 4
 +#define WHITELIST_MAX_CMD_CATEGORIES 4
@@ -265,6 +505,12 @@ index 0000000000..d50ae854d3
 +	{ { "hab_failsafe", ALL }, { CMD_CAT_BOOTROM } },
 +	{ { "hab_status" }, { CMD_CAT_HAB_DIAG, CMD_CAT_SAFE } },
 +	{ { "hab_version" }, { CMD_CAT_HAB_DIAG, CMD_CAT_SAFE } },
++#ifdef CONFIG_TDX_SECBOOT_HARDENING
++	{ { "hardening", "info" }, { CMD_CAT_SAFE } },
++#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
++	{ { "hardening", ALL }, { CMD_CAT_WHITELIST, CMD_CAT_NEEDED } },
++#endif
++#endif
 +	{ { "hash", ALL }, { CMD_CAT_MEM_READ, CMD_CAT_MEM_WRITE } },
 +	{ { "help", ALL }, { CMD_CAT_SAFE } },
 +#ifdef CONFIG_CMD_I2C
@@ -416,32 +662,9 @@ index 0000000000..d50ae854d3
 +	{ { "usbboot", ALL }, { CMD_CAT_EXEC } },
 +#endif /* CONFIG_CMD_USB */
 +	{ { "uuid", ALL }, { CMD_CAT_SAFE } },
-+	{ { "whitelist", "info" }, { CMD_CAT_SAFE } },
-+#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
-+	{ { "whitelist", ALL }, { CMD_CAT_WHITELIST, CMD_CAT_NEEDED } },
-+#endif
 +};
 +
 +#define CMD_WHITELIST_LEN (sizeof(cmd_whitelist) / sizeof(cmd_whitelist[0]))
-+
-+#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
-+/* Fake HAB status for debugging purposes. */
-+enum dbg_hab_status_t {
-+	DBG_HAB_STATUS_AUTO,
-+	DBG_HAB_STATUS_OPEN,
-+	DBG_HAB_STATUS_CLOSED,
-+};
-+
-+/* Fake hardening status for debugging purposes. */
-+enum dbg_hdn_status_t {
-+	DBG_HDN_STATUS_AUTO,
-+	DBG_HDN_STATUS_DISABLED,
-+	DBG_HDN_STATUS_ENABLED,
-+};
-+
-+enum dbg_hab_status_t dbg_hab_status = DBG_HAB_STATUS_AUTO;
-+enum dbg_hdn_status_t dbg_hdn_status = DBG_HDN_STATUS_AUTO;
-+#endif
 +
 +/**
 + * bsearch_whitelist - Perform binary search on whitelist
@@ -771,28 +994,10 @@ index 0000000000..d50ae854d3
 + */
 +static int cmd_whitelist_enabled(int *dev_is_open)
 +{
-+	int dev_is_open_res = tdx_secboot_dev_is_open();
-+	int hdn_is_enabled_res = tdx_hardening_enabled();
-+
-+#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
-+	/* Override results (for debugging). */
-+	if (dbg_hab_status == DBG_HAB_STATUS_OPEN) {
-+		dev_is_open_res = 1;
-+	} else if (dbg_hab_status == DBG_HAB_STATUS_CLOSED) {
-+		dev_is_open_res = 0;
-+	}
-+
-+	if (dbg_hdn_status == DBG_HDN_STATUS_ENABLED) {
-+		hdn_is_enabled_res = 1;
-+	} else if (dbg_hdn_status == DBG_HDN_STATUS_DISABLED) {
-+		hdn_is_enabled_res = 0;
-+	}
-+#endif
-+
 +	if (dev_is_open)
-+		*dev_is_open = dev_is_open_res;
++		*dev_is_open = tdx_secboot_dev_is_open();
 +
-+	return hdn_is_enabled_res;
++	return tdx_hardening_enabled();
 +}
 +
 +/**
@@ -882,192 +1087,6 @@ index 0000000000..d50ae854d3
 +
 +	return allow;
 +}
-+
-+static int whitelist_info(void)
-+{
-+	int enabled, dev_is_open;
-+
-+	enabled = cmd_whitelist_enabled(&dev_is_open);
-+	printf("whitelisting:  %s\n", enabled ? "enabled" : "disabled");
-+	printf("device status: %s\n", dev_is_open ? "open" : "closed");
-+
-+	return CMD_RET_SUCCESS;
-+}
-+
-+#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
-+static int whitelist_set_hab_status(int argc, char *const argv[])
-+{
-+	const char *str_subcmd;
-+
-+	if (argc < 1)
-+		return CMD_RET_USAGE;
-+
-+	str_subcmd = argv[0];
-+	if (!strcmp(str_subcmd, "auto")) {
-+		dbg_hab_status = DBG_HAB_STATUS_AUTO;
-+	} else if (!strcmp(str_subcmd, "open")) {
-+		dbg_hab_status = DBG_HAB_STATUS_OPEN;
-+	} else if (!strcmp(str_subcmd, "closed")) {
-+		dbg_hab_status = DBG_HAB_STATUS_CLOSED;
-+	} else {
-+		return CMD_RET_USAGE;
-+	}
-+
-+	return CMD_RET_SUCCESS;
-+}
-+
-+static int whitelist_set_hdn_status(int argc, char *const argv[])
-+{
-+	const char *str_subcmd;
-+
-+	if (argc < 1)
-+		return CMD_RET_USAGE;
-+
-+	str_subcmd = argv[0];
-+	if (!strcmp(str_subcmd, "auto")) {
-+		dbg_hdn_status = DBG_HDN_STATUS_AUTO;
-+	} else if (!strcmp(str_subcmd, "enabled")) {
-+		dbg_hdn_status = DBG_HDN_STATUS_ENABLED;
-+	} else if (!strcmp(str_subcmd, "disabled")) {
-+		dbg_hdn_status = DBG_HDN_STATUS_DISABLED;
-+	} else {
-+		return CMD_RET_USAGE;
-+	}
-+
-+	return CMD_RET_SUCCESS;
-+}
-+#endif
-+
-+static int do_whitelist(struct cmd_tbl *cmdtp, int flag, int argc,
-+			char *const argv[])
-+{
-+	const char *str_cmd;
-+
-+	if (argc < 2)
-+		return CMD_RET_USAGE;
-+	str_cmd = argv[1];
-+	argc -= 2;
-+	argv += 2;
-+
-+	if (!strcmp(str_cmd, "info")) {
-+		return whitelist_info();
-+#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
-+	} else if (!strcmp(str_cmd, "set-hab-status")) {
-+		return whitelist_set_hab_status(argc, argv);
-+	} else if (!strcmp(str_cmd, "set-hardening-status")) {
-+		return whitelist_set_hdn_status(argc, argv);
-+#endif
-+	}
-+
-+	return CMD_RET_USAGE;
-+
-+}
-+
-+U_BOOT_CMD(whitelist, 5, 0, do_whitelist,
-+	   "whitelist status and control",
-+	   "info - show whitelist feature information\n"
-+#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
-+	   "whitelist set-hab-status <auto|open|closed>"
-+	   " - fake HAB status for testing purposes\n"
-+	   "whitelist set-hardening-status <auto|enabled|disabled>"
-+	   " - fake hardening status for testing purposes\n"
-+#endif
-+	  );
-+
-+/* ======================================================================== */
-+/* TODO: Consider moving the code below this point to a different module */
-+
-+int tdx_secboot_dev_is_open(void)
-+{
-+#if defined(CONFIG_IMX_HAB)
-+	/* TODO: Test with a HAB-based device that is closed. */
-+	if (imx_hab_is_enabled()) {
-+		/* Device is closed (OR some error occurred). */
-+		/* Notice that imx_hab_is_enabled() returns bool as per its
-+		 * prototype but checking its code it can return a negative
-+		 * value in case of fuse read errors. */
-+		/* TODO: Evaluate if this is the best we can do here. */
-+		return 0;
-+	}
-+#elif defined(CONFIG_AHAB_BOOT)
-+	/* TODO: Test with a AHAB-based device that is closed. */
-+	u16 lc;
-+	if (sc_seco_chip_info(-1, &lc, NULL, NULL, NULL)) {
-+		/* Some error occurred. */
-+		return 0;
-+	}
-+	switch (lc) {
-+	case 0x1:	/* Pristine */
-+	case 0x2:	/* Fab */
-+	case 0x8:	/* Open */
-+		debug("Device is in a pre NXP-closed state!\n");
-+		break;
-+	case 0x20:	/* NXP closed */
-+		debug("Device is in a NXP-closed state!\n");
-+		break;
-+	case 0x80:	/* OEM closed */
-+		debug("Device is in OEM-closed state!\n");
-+		return 0;
-+	case 0x100:	/* Partial field return */
-+	case 0x200:	/* Full field return */
-+	case 0x400:	/* No return */
-+		debug("Device is in some 'return' state!\n");
-+		return 1;
-+	default:	/* Unknown */
-+		break;
-+	}
-+#else
-+#error Neither CONFIG_IMX_HAB nor CONFIG_AHAB_BOOT is set
-+#endif
-+
-+	/* Device is (assumed to be) open. */
-+	return 1;
-+}
-+
-+/**
-+ * tdx_hardening_enabled - Determine if Toradex U-Boot hardening is enabled
-+ * Return: 1 if hardening is enabled or 0 otherwise.
-+ *
-+ * Check FDT to see if the hardening feature is enabled. Currently the feature
-+ * is enabled if the node defined by `secboot_node_path` exists in the FDT and
-+ * the same node does not have a "disabled" property under it.
-+ */
-+int tdx_hardening_enabled(void)
-+{
-+	const void *dis_prop;
-+	int secboot_offset, prop_len;
-+
-+	if (!gd->fdt_blob) {
-+		debug("No FDT blob -> hardening disabled\n");
-+		return 0;
-+	}
-+
-+	secboot_offset = fdt_path_offset(gd->fdt_blob, secboot_node_path);
-+	if (secboot_offset < 0) {
-+		debug("Node '%s' does not exist -> hardening disabled\n",
-+		      secboot_node_path);
-+		return 0;
-+	}
-+
-+	dis_prop = fdt_getprop(gd->fdt_blob,
-+			       secboot_offset, "disabled", &prop_len);
-+	if (dis_prop) {
-+		debug("Hardening explicitly disabled by property (len=%d)\n",
-+		      prop_len);
-+		return 0;
-+	}
-+
-+	debug("Hardening is enabled\n");
-+	return 1;
-+}
-+
-+#ifndef CONFIG_LMB
-+/* We assume CONFIG_LMB is set so that the load commands have protections to
-+ * prevent overwriting the reserved memory areas; if CONFIG_LMB is not set then
-+ * either this configuration options was replaced by something else or the
-+ * U-Boot configuration is wrong. */
-+#error Toradex hardening assumes CONFIG_LMB is set
-+#endif
 diff --git a/include/dt-bindings/secure-boot/cmd-categories.h b/include/dt-bindings/secure-boot/cmd-categories.h
 new file mode 100644
 index 0000000000..0094eff2a8
@@ -1168,19 +1187,45 @@ index 0000000000..0094eff2a8
 +#define CMD_CAT_SAFE			1001	/* Special: commands considered safe. */
 +
 +#endif
-diff --git a/include/whitelist.h b/include/whitelist.h
+diff --git a/include/tdx-harden.h b/include/tdx-harden.h
 new file mode 100644
-index 0000000000..b67765e132
+index 0000000000..dfdaa69d3a
 --- /dev/null
-+++ b/include/whitelist.h
-@@ -0,0 +1,16 @@
++++ b/include/tdx-harden.h
+@@ -0,0 +1,42 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2023 Toradex
 + */
 +
-+#ifndef __WHITELIST_H
-+#define __WHITELIST_H
++#ifndef __TDX_HARDEN_H
++#define __TDX_HARDEN_H
++
++/*
++ * Sample device-tree configuring hardening:
++ * / {
++ *     chosen {
++ *         toradex,secure-boot {    [if not present: disable Toradex hardening]
++ *             disabled;                  [optional: disable Toradex hardening]
++ *             bootloader-commands {
++ *                 allow-open = <CMD_CAT_ALL>;
++ *                 allow-closed = <CMD_CAT_NEEDED CMD_CAT_SAFE>;
++ *                 deny-open = <CMD_CAT_ALL_UNSAFE>;    [optional, discouraged]
++ *                 deny-closed = <CMD_CAT_ALL_UNSAFE>;  [optional, discouraged]
++ *                 needed = <CMD_CAT_NEEDED>            [optional, discouraged]
++ *             };
++ *         };
++ *     };
++ * };
++ */
++
++/* Path of node in FDT containing all Secure Boot setup. */
++#define TDX_SECBOOT_NODE_PATH \
++        "/chosen/toradex,secure-boot"
++
++/* Path of node in FDT containing command whitelist/blacklist. */
++#define TDX_BOOTLDR_CMDS_NODE_PATH \
++        "/chosen/toradex,secure-boot/bootloader-commands"
 +
 +struct cmd_tbl;
 +
@@ -1189,7 +1234,7 @@ index 0000000000..b67765e132
 +int tdx_secboot_dev_is_open(void);
 +int tdx_hardening_enabled(void);
 +
-+#endif	/* __WHITELIST_H */
++#endif	/* __TDX_HARDEN_H */
 -- 
 2.25.1
 

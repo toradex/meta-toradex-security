@@ -107,16 +107,15 @@ fuse prog -y 1 3 0x02000000
 Toradex is implementing various changes to U-Boot (currently as a series of patches) with the purpose of hardening it for secure boot. The hardening includes the following features:
 
 - Command whitelisting<sup>(1)</sup>;
-- Protection against execution of unsigned software by `bootm`<sup>(2)</sup>;
-- CLI access prevention<sup>(2)</sup>.
+- Protection against execution of unsigned software by `bootm`<sup>(1)</sup>;
+- CLI access prevention<sup>(1)</sup>.
 
 <sup>(1)</sup> Implemented on the i.MX8 family of system-on-chips.
-
-<sup>(2)</sup> Not yet implemented.
 
 By default, when HAB/AHAB is enabled (`TDX_IMX_HAB_ENABLE` is set to `1`) the hardening is also enabled, but it can be disabled by setting `TDX_UBOOT_HARDENING_ENABLE` to `0`.
 
 <!-- TODO: Describe how one can configure the whitelisting feature. -->
+<!-- TODO: Describe how one can configure the CLI access prevention feature. -->
 
 ## Configuring FIT image signing
 
