@@ -1,4 +1,4 @@
-From a45faa9a780557e47ab25b2baaea1ac945256da8 Mon Sep 17 00:00:00 2001
+From 03d81485c5728de9d1461d0682d13bc16d2b9e21 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:29:34 -0300
 Subject: [PATCH 3/5] toradex: integrate command whitelisting (downstream)
@@ -20,7 +20,7 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  3 files changed, 35 insertions(+)
 
 diff --git a/Kconfig b/Kconfig
-index 2c5b703566..ed67576e67 100644
+index 2c5b7035662..ed67576e677 100644
 --- a/Kconfig
 +++ b/Kconfig
 @@ -504,3 +504,31 @@ source "lib/Kconfig"
@@ -56,7 +56,7 @@ index 2c5b703566..ed67576e67 100644
 +	help
 +	  Enable the command white-listing feature provided by Toradex.
 diff --git a/common/Makefile b/common/Makefile
-index 3eff719601..b3e36e4352 100644
+index 3eff7196016..b3e36e43520 100644
 --- a/common/Makefile
 +++ b/common/Makefile
 @@ -103,6 +103,8 @@ obj-$(CONFIG_FSL_DDR_INTERACTIVE) += cli_simple.o cli_readline.o
@@ -69,7 +69,7 @@ index 3eff719601..b3e36e4352 100644
  obj-$(CONFIG_$(SPL_TPL_)LOG_CONSOLE) += log_console.o
  obj-$(CONFIG_$(SPL_TPL_)LOG_SYSLOG) += log_syslog.o
 diff --git a/common/command.c b/common/command.c
-index 41c91c6d8c..b35cb3acd4 100644
+index 41c91c6d8c8..b35cb3acd41 100644
 --- a/common/command.c
 +++ b/common/command.c
 @@ -16,6 +16,7 @@
