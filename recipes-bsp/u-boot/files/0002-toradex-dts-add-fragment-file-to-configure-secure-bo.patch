@@ -1,4 +1,4 @@
-From 67fb6c2de3636f6999c938d583a1088fe7609297 Mon Sep 17 00:00:00 2001
+From d2427fb9bf8d2a227bb6ce884d01cc0d55060ee3 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Tue, 22 Aug 2023 22:56:24 -0300
 Subject: [PATCH 2/5] toradex: dts: add fragment file to configure secure boot
@@ -20,7 +20,7 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 
 diff --git a/arch/arm/dts/tdx-secboot.dtsi b/arch/arm/dts/tdx-secboot.dtsi
 new file mode 100644
-index 0000000000..3d456471c2
+index 00000000000..3d456471c2d
 --- /dev/null
 +++ b/arch/arm/dts/tdx-secboot.dtsi
 @@ -0,0 +1,17 @@
