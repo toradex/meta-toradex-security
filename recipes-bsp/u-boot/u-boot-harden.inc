@@ -1,4 +1,3 @@
-# TODO: handle machines using upstream U-Boot (use-mainline-bsp)
 SRC_URI:append:use-nxp-bsp = "\
     file://u-boot-harden.cfg \
     file://0001-toradex-common-add-command-whitelisting-modules.patch \
@@ -8,10 +7,15 @@ SRC_URI:append:use-nxp-bsp = "\
     file://0005-toradex-integrate-CLI-access-protection-downstream.patch \
 "
 
-# TODO: handle machines using upstream U-Boot (use-mainline-bsp) - remove this block.
-do_compile:prepend:use-mainline-bsp() {
-    bbfatal "U-Boot hardening is not currently supported with the mainline BSP."
-}
+SRC_URI:append:use-mainline-bsp = "\
+    file://u-boot-harden.cfg \
+    file://0001-toradex-common-add-command-whitelisting-modules.patch \
+    file://0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch \
+    file://0003-toradex-integrate-command-whitelisting-upstream.patch \
+    file://0004-toradex-integrate-bootm-protection-upstream.patch \
+    file://0005-toradex-integrate-CLI-access-protection-upstream.patch \
+    file://0006-arm-dts-add-missing-newline-to-end-of-file.patch \
+"
 
 do_compile:prepend() {
     if [ "${TDX_IMX_HAB_ENABLE}" = "0" -a "${TDX_UBOOT_HARDENING_ENABLE}" = "1" ]; then
