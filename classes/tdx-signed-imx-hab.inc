@@ -5,6 +5,3 @@ TDX_IMX_HAB_ENABLE ?= "1"
 # hardening requires HAB to be enabled so that the combination
 # TDX_IMX_HAB_ENABLE="0" TDX_UBOOT_HARDENING_ENABLE="1" is not valid
 TDX_UBOOT_HARDENING_ENABLE ?= "${TDX_IMX_HAB_ENABLE}"
-
-# TODO: handle machines using upstream U-Boot (use-mainline-bsp) - remove this line.
-TDX_UBOOT_HARDENING_ENABLE:use-mainline-bsp ?= "0"

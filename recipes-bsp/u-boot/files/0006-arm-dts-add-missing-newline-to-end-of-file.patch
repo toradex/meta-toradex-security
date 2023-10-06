@@ -1,0 +1,45 @@
+From dfeb9b5d597eeb95654043dbbea219fb24cbce3a Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Thu, 5 Oct 2023 20:21:44 -0300
+Subject: [PATCH 6/6] arm: dts: add missing newline to end of file
+
+This is a temporary measure to fix a build failure that occurs when the
+control DTB is augmented at build time via CONFIG_DEVICE_TREE_INCLUDES
+as done with Secure Boot. The failure happens due to the lack of a new-
+line at the end of some .dts files. The addition is already present in
+the latest versions of U-Boot (synchronized from the Linux kernel) so
+in the future this patch should be dropped.
+
+Upstream-Status: Backport
+
+Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+---
+ arch/arm/dts/imx7d-pico-hobbit.dts | 2 +-
+ arch/arm/dts/imx7d-pico-pi.dts     | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/dts/imx7d-pico-hobbit.dts b/arch/arm/dts/imx7d-pico-hobbit.dts
+index 98604f0fa65..7b2198a9372 100644
+--- a/arch/arm/dts/imx7d-pico-hobbit.dts
++++ b/arch/arm/dts/imx7d-pico-hobbit.dts
+@@ -102,4 +102,4 @@
+ 			MX7D_PAD_EPDC_DATA13__GPIO2_IO13	0x14
+ 		>;
+ 	};
+-};
+\ No newline at end of file
++};
+diff --git a/arch/arm/dts/imx7d-pico-pi.dts b/arch/arm/dts/imx7d-pico-pi.dts
+index 66ca59045f3..70bea95c06d 100644
+--- a/arch/arm/dts/imx7d-pico-pi.dts
++++ b/arch/arm/dts/imx7d-pico-pi.dts
+@@ -90,4 +90,4 @@
+ 		>;
+ 	};
+ 
+-};
+\ No newline at end of file
++};
+-- 
+2.25.1
+
