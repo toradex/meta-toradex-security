@@ -110,7 +110,7 @@ Toradex is implementing various changes to U-Boot (currently as a series of patc
 - **Protection against execution of unsigned software by** `bootm`: for securely booting secure boot images the "bootm" command is used in the boot scripts, but this command can also be used insecurely; this part of the hardening tries to ensure only the secure use of the command is possible so that the only possible code path at runtime is that for booting from signed FIT images.
 - **CLI access prevention**: this is an extra safeguard whereby the access to the U-Boot CLI gets disabled once the device is in closed state; this is what happens by default (but can be overridden).
 
-By default, when HAB/AHAB is enabled (`TDX_IMX_HAB_ENABLE` is set to `1`) the hardening (i.e. the features listed above) is also enabled, but it can be disabled by setting `TDX_UBOOT_HARDENING_ENABLE` to `0`.
+By default, the hardening (i.e. the features listed above) is enabled if `TDX_IMX_HAB_ENABLE` and `UBOOT_SIGN_ENABLE` are both set to `1`, but it can be disabled by setting `TDX_UBOOT_HARDENING_ENABLE` to `0`.
 
 The behavior of the different hardening features can be set via the control FDT (see [Devicetree Control in U-Boot](https://u-boot.readthedocs.io/en/stable/develop/devicetree/control.html)). Setting the control FDT at build time can be achieved by adding extra device-tree [.dtsi fragments](https://u-boot.readthedocs.io/en/stable/develop/devicetree/control.html#external-dtsi-fragments) to U-Boot and setting the Kconfig variable `CONFIG_DEVICE_TREE_INCLUDES` appropriately; with Yocto/OE this would normally involve adding small patches to U-Boot and appending changes to its recipe but the details are outside the scope of the present document.
 
