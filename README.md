@@ -29,6 +29,8 @@ The features are currently supported on the following SoMs:
 
 This layer only works on Embedded Linux 6.3.0 and newer releases.
 
+> ⚠️ **_NOTE_**: The main branch is not intended for consumer use. It is not as well maintained as the current yocto branch, and its focus is for our internal CI.
+
 # Secure boot
 
 To enable secure boot, the `tdx-signed` class needs to be inherited in a configuration file.
