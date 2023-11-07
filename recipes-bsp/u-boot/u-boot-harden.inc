@@ -5,6 +5,9 @@ SRC_URI:append:use-nxp-bsp = "\
     file://0003-toradex-integrate-command-whitelisting-downstream.patch \
     file://0004-toradex-integrate-bootm-protection-downstream.patch \
     file://0005-toradex-integrate-CLI-access-protection-downstream.patch \
+    file://0006-arm-dts-add-missing-newline-to-eof-downstream.patch \
+    file://0007-toradex-add-implementation-of-bootargs-protection.patch \
+    file://0008-toradex-integrate-bootargs-protection-downstream.patch \
 "
 
 SRC_URI:append:use-mainline-bsp = "\
@@ -14,7 +17,9 @@ SRC_URI:append:use-mainline-bsp = "\
     file://0003-toradex-integrate-command-whitelisting-upstream.patch \
     file://0004-toradex-integrate-bootm-protection-upstream.patch \
     file://0005-toradex-integrate-CLI-access-protection-upstream.patch \
-    file://0006-arm-dts-add-missing-newline-to-end-of-file.patch \
+    file://0006-arm-dts-add-missing-newline-to-eof-upstream.patch \
+    file://0007-toradex-add-implementation-of-bootargs-protection.patch \
+    file://0008-toradex-integrate-bootargs-protection-upstream.patch \
 "
 
 do_compile:prepend() {

@@ -1,7 +1,7 @@
 From 8876c5b5f78c3e2091f13557bfdb4069adf06e27 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:29:34 -0300
-Subject: [PATCH 3/6] toradex: integrate command whitelisting (upstream)
+Subject: [PATCH 3/8] toradex: integrate command whitelisting (upstream)
 
 Integrate the command whitelisting feature which is part of the Secure
 Boot hardening on U-Boot made by Toradex. The feature allows categories
