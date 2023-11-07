@@ -1,7 +1,7 @@
-From 85740b8db26917a182fce7df3df050d1c034f58c Mon Sep 17 00:00:00 2001
+From dadb3d9d6d31a8e3ac74beb6fcc8cfb1bd3ed968 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Wed, 13 Sep 2023 15:22:25 -0300
-Subject: [PATCH 5/5] toradex: integrate CLI access protection (downstream)
+Subject: [PATCH 5/8] toradex: integrate CLI access protection (downstream)
 
 Integrate the protection in U-Boot to prevent access to its CLI once
 the device is closed; this is part of the hardening for Secure Boot.
@@ -62,7 +62,7 @@ index 3f5214fd44b..3662c0361e7 100644
  		cli_secure_boot_cmd(s);
  
 diff --git a/common/tdx-harden.c b/common/tdx-harden.c
-index fb8aaa5eed0..56cdd44c047 100644
+index fb8aaa5eed0..1134b6ce596 100644
 --- a/common/tdx-harden.c
 +++ b/common/tdx-harden.c
 @@ -6,6 +6,7 @@
@@ -121,7 +121,7 @@ index fb8aaa5eed0..56cdd44c047 100644
 +	disable_ctrlc(1);
 +	rc = run_command_list(cmd, -1, 0);
 +
-+	panic("## Error: \"%s\" returned (code %d) and CLI access is "
++	panic("## ERROR: \"%s\" returned (code %d) and CLI access is "
 +	      "disabled\n", cmd, rc);
 +}
 +#endif
