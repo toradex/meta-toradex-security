@@ -6,3 +6,6 @@ require tdx-signed-fit-image.inc
 
 # IXM HAB configuration
 require tdx-signed-imx-hab.inc
+
+# Hardening configuration
+require tdx-signed-harden.inc
