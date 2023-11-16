@@ -67,7 +67,7 @@ create_fuse_cmds_mx7() {
 }
 
 case ${SOC} in
-    "IMX6ULL")
+    "IMX6ULL"|"IMX6")
         create_fuse_cmds_mx6 > ${FUSE_CMDS_FILE}
         ;;
     "IMX7")
