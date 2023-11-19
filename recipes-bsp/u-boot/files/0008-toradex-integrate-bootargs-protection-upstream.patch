@@ -1,4 +1,4 @@
-From e39e40bdfee2acd81373f1dccb056b97ecbec038 Mon Sep 17 00:00:00 2001
+From 4592df88c8d43ee9a2972bdf8f8ac7094b44a390 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Thu, 26 Oct 2023 12:40:46 -0300
 Subject: [PATCH 8/8] toradex: integrate bootargs protection (upstream)

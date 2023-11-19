@@ -1,4 +1,4 @@
-From 867414ca332702cbdd6fea3fbce6485c6954a60d Mon Sep 17 00:00:00 2001
+From 5881144bcbe3b25f5bb61f7d91adbdcaeda7e204 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Thu, 7 Sep 2023 23:54:48 -0300
 Subject: [PATCH 4/8] toradex: integrate bootm protection (upstream)
