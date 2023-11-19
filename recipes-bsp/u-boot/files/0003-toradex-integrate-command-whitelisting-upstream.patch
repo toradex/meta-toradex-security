@@ -1,4 +1,4 @@
-From 8876c5b5f78c3e2091f13557bfdb4069adf06e27 Mon Sep 17 00:00:00 2001
+From 5e3fc59dab6f6cfc1250075d73d65bdbca9e3545 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:29:34 -0300
 Subject: [PATCH 3/8] toradex: integrate command whitelisting (upstream)
@@ -56,18 +56,18 @@ index f7e3c332f07..bd3f9c9e95f 100644
 +	help
 +	  Enable the command white-listing feature provided by Toradex.
 diff --git a/common/Makefile b/common/Makefile
-index 75c24e32492..89ae0ddb46b 100644
+index 75c24e32492..5a366888909 100644
 --- a/common/Makefile
 +++ b/common/Makefile
-@@ -105,6 +105,8 @@ obj-$(CONFIG_FSL_DDR_INTERACTIVE) += cli_simple.o cli_readline.o
- obj-$(CONFIG_STM32MP1_DDR_INTERACTIVE) += cli_simple.o cli_readline.o
- obj-$(CONFIG_DFU_OVER_USB) += dfu.o
- obj-y += command.o
+@@ -22,6 +22,8 @@ obj-$(CONFIG_$(SPL_TPL_)OF_LIBFDT) += fdt_support.o
+ obj-$(CONFIG_MII) += miiphyutil.o
+ obj-$(CONFIG_CMD_MII) += miiphyutil.o
+ obj-$(CONFIG_PHYLIB) += miiphyutil.o
 +obj-$(CONFIG_TDX_SECBOOT_HARDENING) += tdx-harden.o
 +obj-$(CONFIG_TDX_CMD_WHITELIST) += whitelist.o
- obj-$(CONFIG_$(SPL_TPL_)LOG) += log.o
- obj-$(CONFIG_$(SPL_TPL_)LOG_CONSOLE) += log_console.o
- obj-$(CONFIG_$(SPL_TPL_)LOG_SYSLOG) += log_syslog.o
+ 
+ ifdef CONFIG_USB
+ obj-y += usb.o usb_hub.o
 diff --git a/common/command.c b/common/command.c
 index 41c91c6d8c8..b35cb3acd41 100644
 --- a/common/command.c

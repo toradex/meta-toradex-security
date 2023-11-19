@@ -1,4 +1,4 @@
-From dc4292190e7493c375e4e23a8d75484382678273 Mon Sep 17 00:00:00 2001
+From 42ed297aeee9a4e39f7bc1fec60d8946f7ccfcce Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Thu, 5 Oct 2023 20:21:44 -0300
 Subject: [PATCH 6/8] arm: dts: add missing newline to eof (upstream)

@@ -1,4 +1,4 @@
-From dadb3d9d6d31a8e3ac74beb6fcc8cfb1bd3ed968 Mon Sep 17 00:00:00 2001
+From 8a2aa56d770e6d381ec0ed150a0c55be9144f3b2 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Wed, 13 Sep 2023 15:22:25 -0300
 Subject: [PATCH 5/8] toradex: integrate CLI access protection (downstream)

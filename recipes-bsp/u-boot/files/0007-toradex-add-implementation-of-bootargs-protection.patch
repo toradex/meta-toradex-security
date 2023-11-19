@@ -1,4 +1,4 @@
-From 18b182628dd04953ab5f873e919092d9756458e3 Mon Sep 17 00:00:00 2001
+From e607277dac5e54186e2b287c696924b443ba1fc2 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 6 Nov 2023 22:25:28 -0300
 Subject: [PATCH 7/8] toradex: add implementation of bootargs protection
