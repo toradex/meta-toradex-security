@@ -40,5 +40,7 @@ TDX_SECBOOT_REQUIRED_BOOTARGS:verdin-am62 = ""
 TDX_SECBOOT_REQUIRED_BOOTARGS:qemuarm64 = ""
 
 # Name of the overlay file (without extension) that will contain the fixed part
-# of the kernel command line; this will be stored inside the FIT image.
-TDX_SECBOOT_KARGS_OVERLAY = "secboot-kargs_overlay"
+# of the kernel command line; this will be stored inside the FIT image; notice
+# we add the machine prefix to ensure the overlay is identified as a machine-
+# specific one and picked up by toradex-devicetree.bbclass.
+TDX_SECBOOT_KARGS_OVERLAY = "${MACHINE}-secboot-kargs_overlay"
