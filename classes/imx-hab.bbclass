@@ -66,7 +66,7 @@ def make_srk_cert_name(d, basedir):
         if ksize.isdigit():
             bb.warn("TDX_IMX_HAB_CST_KEY_SIZE is likely not set correctly;"
                     "check the documentation to understand how to set this variable for ECDSA.")
-        res = f"SRK{kidx+1}_${dalgo}_${ksize}_v3_{castr}_crt.pem"
+        res = f"SRK{kidx+1}_{dalgo}_{ksize}_v3_{castr}_crt.pem"
     else:
         bb.fatal('TDX_IMX_HAB_CST_CRYPTO is not set correctly'
                  '(its value must be either "rsa" or "ecdsa")')
