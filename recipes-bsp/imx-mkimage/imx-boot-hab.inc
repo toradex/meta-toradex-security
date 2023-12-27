@@ -65,6 +65,7 @@ sign_habv4_helper() {
 
         # generate SPL and FIT CSF files
         TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
+        TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
         TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
         TDX_IMX_HAB_CST_IMG_CERT="${TDX_IMX_HAB_CST_IMG_CERT}" \
         TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
@@ -161,14 +162,9 @@ sign_habv4() {
         exit 1
     fi
 
-    for f in "${TDX_IMX_HAB_CST_SRK}" "${TDX_IMX_HAB_CST_CSF_CERT}" \
-             "${TDX_IMX_HAB_CST_IMG_CERT}" "${TDX_IMX_HAB_CST_SRK_FUSE}"
-    do
-        if [ ! -e "${f}" ]; then
-            bberror "Could not find cert file at ${f}."
-            exit 1
-        fi
-    done
+    if [ ! -e "${TDX_IMX_HAB_CST_SRK_FUSE}" ]; then
+        bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
+    fi
 
     sign_common habv4
 }
