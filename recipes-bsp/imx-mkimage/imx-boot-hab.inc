@@ -73,8 +73,8 @@ sign_habv4_helper() {
         ${WORKDIR}/mx8m_create_csf.sh -t ${target}
 
         # get SPL and FIT CSF offset
-        TDX_IMX_OFFSET_SPL="$(cat ${MKIMAGE_BUILD_LOG} | grep " csf_off" | awk '{print $NF}')"
-        TDX_IMX_OFFSET_FIT="$(cat ${MKIMAGE_BUILD_LOG} | grep " sld_csf_off" | awk '{print $NF}')"
+        TDX_IMX_OFFSET_SPL="$(grep "^ *csf_off" "${MKIMAGE_BUILD_LOG}" | awk '{print $NF}')"
+        TDX_IMX_OFFSET_FIT="$(grep "^ *sld_csf_off" "${MKIMAGE_BUILD_LOG}" | awk '{print $NF}')"
 
         # save unsigned image
         cp -v ${IMXBOOT_IMAGE} ${IMXBOOT_IMAGE}-unsigned
