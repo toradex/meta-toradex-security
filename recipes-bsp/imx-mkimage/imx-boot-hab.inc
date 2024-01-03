@@ -21,9 +21,10 @@ sign_ahab_helper() {
 	     ${target} > ${MKIMAGE_BUILD_LOG} 2>&1
 
         # sign flash.bin
+        TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
         TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
         TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
-        TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
+        TDX_IMX_HAB_CST_SGK_CERT="${TDX_IMX_HAB_CST_SGK_CERT}" \
         UNSIGNED_IMAGE="${IMXBOOT_IMAGE}" \
         LOG_MKIMAGE="${MKIMAGE_BUILD_LOG}" \
         ${WORKDIR}/mx8_sign.sh -t ${target}
@@ -62,8 +63,9 @@ sign_habv4_helper() {
 	     PRINT_FIT_HAB_OFFSET=${PRINT_FIT_HAB_OFFSET} \
 	     print_fit_hab > ${MKIMAGE_HAB_LOG} 2>&1
 
-        # generate SPL and FIT CFS files
+        # generate SPL and FIT CSF files
         TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
+        TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
         TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
         TDX_IMX_HAB_CST_IMG_CERT="${TDX_IMX_HAB_CST_IMG_CERT}" \
         TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
@@ -73,8 +75,8 @@ sign_habv4_helper() {
         ${WORKDIR}/mx8m_create_csf.sh -t ${target}
 
         # get SPL and FIT CSF offset
-        TDX_IMX_OFFSET_SPL="$(cat ${MKIMAGE_BUILD_LOG} | grep " csf_off" | awk '{print $NF}')"
-        TDX_IMX_OFFSET_FIT="$(cat ${MKIMAGE_BUILD_LOG} | grep " sld_csf_off" | awk '{print $NF}')"
+        TDX_IMX_OFFSET_SPL="$(grep "^ *csf_off" "${MKIMAGE_BUILD_LOG}" | awk '{print $NF}')"
+        TDX_IMX_OFFSET_FIT="$(grep "^ *sld_csf_off" "${MKIMAGE_BUILD_LOG}" | awk '{print $NF}')"
 
         # save unsigned image
         cp -v ${IMXBOOT_IMAGE} ${IMXBOOT_IMAGE}-unsigned
@@ -147,14 +149,9 @@ sign_ahab() {
         exit 1
     fi
 
-    for f in "${TDX_IMX_HAB_CST_SRK}" "${TDX_IMX_HAB_CST_SRK_CERT}" \
-             "${TDX_IMX_HAB_CST_SRK_FUSE}"
-    do
-        if [ ! -e "${f}" ]; then
-            bberror "Could not find cert file at ${f}."
-            exit 1
-        fi
-    done
+    if [ ! -e "${TDX_IMX_HAB_CST_SRK_FUSE}" ]; then
+        bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
+    fi
 
     sign_common ahab
 }
@@ -165,14 +162,9 @@ sign_habv4() {
         exit 1
     fi
 
-    for f in "${TDX_IMX_HAB_CST_SRK}" "${TDX_IMX_HAB_CST_CSF_CERT}" \
-             "${TDX_IMX_HAB_CST_IMG_CERT}" "${TDX_IMX_HAB_CST_SRK_FUSE}"
-    do
-        if [ ! -e "${f}" ]; then
-            bberror "Could not find cert file at ${f}."
-            exit 1
-        fi
-    done
+    if [ ! -e "${TDX_IMX_HAB_CST_SRK_FUSE}" ]; then
+        bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
+    fi
 
     sign_common habv4
 }
