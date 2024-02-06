@@ -33,10 +33,10 @@ This layer only works on Embedded Linux 6.3.0 and newer releases.
 
 # Secure boot
 
-To enable secure boot, the `tdx-signed` class needs to be inherited in a configuration file.
+To enable secure boot, the `tdx-signed-bsp` class needs to be inherited in a configuration file.
 
 ```
-INHERIT += "tdx-signed"
+INHERIT += "tdx-signed-bsp"
 ```
 
 When secure boot is enabled:
@@ -46,7 +46,7 @@ When secure boot is enabled:
 
 ## Configuring HAB/AHAB support
 
-When the `tdx-signed` class is inherited, signing bootloader images via HAB/AHAB is enabled by default. Set `TDX_IMX_HAB_ENABLE` to `0` to disable it.
+When the `tdx-signed-bsp` class is inherited, signing bootloader images via HAB/AHAB is enabled by default. Set `TDX_IMX_HAB_ENABLE` to `0` to disable it.
 
 Before using this feature, it is required to:
 
@@ -145,7 +145,7 @@ The command categories are currently only available as part of a [patch](./recip
 
 ## Configuring FIT image signing
 
-When the `tdx-signed` class is inherited, generating and signing a FIT image is enabled by default. Set `UBOOT_SIGN_ENABLE` to `0` to disable it.
+When the `tdx-signed-bsp` class is inherited, generating and signing a FIT image is enabled by default. Set `UBOOT_SIGN_ENABLE` to `0` to disable it.
 
 This features uses the default FIT image signing support provided by the `uboot-sign` and `kernel-fitimage` classes from OpenEmbedded Core. See the [Yocto Project documentation](https://docs.yoctoproject.org/ref-manual/classes.html#kernel-fitimage) for more details.
 

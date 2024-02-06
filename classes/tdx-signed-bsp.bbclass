@@ -1,5 +1,5 @@
 # globally enable signed images
-DISTROOVERRIDES:append = ":tdx-signed"
+DISTROOVERRIDES:append = ":tdx-signed-bsp"
 
 # FIT image configuration
 require tdx-signed-fit-image.inc

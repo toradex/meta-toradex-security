@@ -23,7 +23,7 @@ TDX_UBOOT_HARDENING_ENABLE ?= "${@'1' if bb.utils.to_boolean(d.getVar('TDX_IMX_H
 # this will be changed in the future.
 #
 # TODO: Set TDX_SECBOOT_REQUIRED_BOOTARGS differently based on overrides
-# "tdx-signed" or "torizon-signed"; the former for booting the BSP reference
+# "tdx-signed-bsp" or "tdx-signed-torizon"; the former for booting the BSP reference
 # image and the latter for Torizon OS.
 #
 # TODO: Use variable OSTREE_KERNEL_ARGS provided by layer meta-toradex-torizon
