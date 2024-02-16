@@ -8,6 +8,7 @@ UBOOT_SIGN_ENABLE:verdin-am62-k3r5 = "0"
 UBOOT_MKIMAGE_DTCOPTS = "-I dts -O dtb -p 2000"
 UBOOT_SIGN_KEYDIR ?= "${TOPDIR}/keys/fit"
 UBOOT_SIGN_KEYNAME ?= "dev"
+UBOOT_SIGN_IMG_KEYNAME ?= "dev2"
 
 # parameters to generate the keys to sign the FIT image
 FIT_GENERATE_KEYS ?= "1"

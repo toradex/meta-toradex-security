@@ -158,7 +158,8 @@ A few variables can be used to configure this feature, including:
 | `UBOOT_SIGN_ENABLE` | Enable signing of FIT image | `1` |
 | `FIT_GENERATE_KEYS` | Generate signing keys | `1` |
 | `UBOOT_SIGN_KEYDIR` | Location of the RSA key and certificate used for signing | `${TOPDIR}/keys/fit` |
-| `UBOOT_SIGN_KEYNAME` | The name of the key used for signing | `dev` |
+| `UBOOT_SIGN_KEYNAME` | The name of the key used for signing configuration nodes | `dev` |
+| `UBOOT_SIGN_IMG_KEYNAME` | The name of the key used for signing individual images | `dev2` |
 
 The complete list of variables can be found in the `tdx-signed-fit-image.inc` file.
 
