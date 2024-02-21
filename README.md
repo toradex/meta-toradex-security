@@ -1,7 +1,6 @@
 # OpenEmbedded layer with security-related metadata for Toradex SoMs
 
-This layer contains metadata to enable security features when building a
-Linux system with Toradex SoMs.
+This layer contains metadata to enable security features when building a Linux system with Toradex SoMs.
 
 For more information on available Toradex SoMs please visit:
 
@@ -15,19 +14,20 @@ This layer supports the following security features:
 
 The level of support of the above features is:
 
+- BSP reference images: tested during development but not in Toradex's CI environment, integration effort is expected.
 - Torizon OS (formerly named TorizonCore): tested and integrated.
-- BSP Layers and Reference Images: not tested, integration effort is expected.
 
 The features are currently supported on the following SoMs:
 
-- Verdin iMX8MM
-- Verdin iMX8MP
+- Apalis iMX6
 - Apalis iMX8
-- Colibri iMX8X
+- Colibri iMX6DL
 - Colibri iMX6ULL (1GB eMMC variant only)
 - Colibri iMX7D (1GB eMMC variant only)
-- Colibri iMX6DL
-- Apalis iMX6
+- Colibri iMX8X
+- Verdin AM62
+- Verdin iMX8MM
+- Verdin iMX8MP
 
 This layer only works on Embedded Linux 6.3.0 and newer releases.
 
@@ -41,67 +41,19 @@ To enable secure boot, the `tdx-signed` class needs to be inherited in a configu
 INHERIT += "tdx-signed"
 ```
 
-When secure boot is enabled:
+When the `tdx-signed` class is inherited, the following features will be enabled (details on the level of support and how to configure might vary depending on the SoM):
 
-- The bootloader image is signed at build time and its signature is verified at runtime using i.MX HAB/AHAB.
-- A FIT image with the kernel and its artifacts (device trees, ramdisk, etc) is signed at build time and its signature is verified at runtime by the bootloader.
+- **Bootloader signature checking**: bootloader images are signed at build time and their signature is verified at runtime by the SoC's ROM code.
+- **U-Boot hardening**: a few patches are applied to the U-Boot bootloader to make it harder for an attacker to bypass the secure boot process.
+- **FIT image signature checking**: a FIT image with the kernel and its artifacts (device trees, ramdisk, etc) is signed at build time and its signature is verified at runtime by the bootloader.
 
-## Configuring HAB/AHAB support
+## Bootloader signature checking
 
-When the `tdx-signed` class is inherited, signing bootloader images via HAB/AHAB is enabled by default. Set `TDX_IMX_HAB_ENABLE` to `0` to disable it.
+The bootloader signature checking implementation is dependent on the System on Chip (SoC).
 
-Before using this feature, it is required to:
+For details on the bootloader signature checking implementation for SoMs that use NXP iMX-based platforms (i.e. iMX6/7/8), see the `README-imx.md` file.
 
-1. Download NXP CST tool from https://www.nxp.com/webapp/sps/download/license.jsp?colCode=IMX_CST_TOOL_NEW.
-2. Follow the NXP documentation to generate the keys, certificates, SRK tables and Efuse Hash (the documentation can be found inside the CST tool in `docs/CST_UG.pdf`); be sure to take note of your answers to the key generation script.
-
-After that, configure the various variables listed below to match your choices; pay special attention to the ones depending on your answers to the NXP key generation script.
-
-| Variable | Description | Default value |
-| :------- | :---------- | :------------ |
-| `TDX_IMX_HAB_ENABLE` | Enable/disable HAB/AHAB support; allowed values: `0` or `1`. | `1` |
-| `TDX_IMX_HAB_CST_DIR` | Location of the CST tool. | `${TOPDIR}/keys/cst` |
-| `TDX_IMX_HAB_CST_CERTS_DIR` | Location of the certificates directory. The associated private keys must be located in a directory called `keys` at the same level as the `crts` directory (this is a requirement for the CST tool to work properly). | `${TDX_IMX_HAB_CST_DIR}/crts` |
-| `TDX_IMX_HAB_CST_CRYPTO` | Type of cryptographic keys in use; allowed values: `rsa` or `ecdsa`. This should be set to `ecdsa` if (and only if) you selected "Elliptic Curve Cryptography" when generating the keys/certificates with the CST tool. | `rsa` |
-| `TDX_IMX_HAB_CST_KEY_SIZE` | For **RSA** keys, this would be the key length (in bits) as entered into the CST tool. For **ECDSA**, this would be a string determined from the generated certificate file name; for example, for a file named `SRK1_sha256_secp384r1_v3_ca_crt.pem` (found in the certificates directory) the present variable would be set to `secp384r1`. | `2048` |
-| `TDX_IMX_HAB_CST_DIG_ALGO` | Digest algorithm as entered into the CST tool. | `sha256` |
-| `TDX_IMX_HAB_CST_SRK_CA` | Whether or not the SRK certificates have the CA flag set as entered into the CST tool; allowed values: `0` or `1`. | `1` |
-
-The complete list of variables can be found in the `imx-hab.bbclass` file.
-
-### Known issues
-
-- On devices based on the NXP i.MX6 and i.MX7 SoCs, `TDX_IMX_HAB_CST_SRK_CA` must be set to `1` and the SRK certificates must be generated with the CA flag set. Build errors will happen if the variable is set to `0` because the signing logic currently unconditionally tries to use the CSF and IMG certificates which are not generated by CST when the CA flag is not set.
-
-### Closing the device
-
-If HAB/AHAB is enabled, in the end of the build, a file with the commands to fuse the SoC (`fuse-cmds.txt`) will be generated in the images directory. The commands in this file should be executed in the U-Boot command line interface.
-
-Read the warning messages carefully and be aware that the commands will write to One-Time Programmable e-fuses, and once you write them, you can't go back! You can check for HAB events with the command `hab_status` for HAB or `ahab_status` for AHAB. It is recommended to read NXP documentation about HAB/AHAB before writing to the e-fuses. This is an output example of the `fuse-cmds.txt` file:
-
-```
-$ cat deploy/images/verdin-imx8mp/fuse-cmds.txt
-# These are One-Time Programmable e-fuses. Once you write them you can't
-# go back, so get it right the first time!
-fuse prog -y 6 0 0x8AE322B2
-fuse prog -y 6 1 0xDF2939A3
-fuse prog -y 6 2 0x9DA80323
-fuse prog -y 6 3 0x3B024EF2
-fuse prog -y 7 0 0xA53091
-fuse prog -y 7 1 0x55304E7A
-fuse prog -y 7 2 0xFB8FF259
-fuse prog -y 7 3 0x9CE57582
-
-# After the device successfully boots a signed image without generating
-# any HAB events, it is safe to secure, or 'close', the device. This is
-# the last step in the process. Once the fuse is blown, the chip does
-# not load an image that has not been signed using the correct PKI tree.
-# Be careful! This is again a One-Time Programmable e-fuse. Once you
-# write it you can't go back, so get it right the first time. If
-# anything in the previous steps wasn't done correctly, after writing
-# this bit, the SOM will not boot anymore!
-fuse prog -y 1 3 0x02000000
-```
+For details on the bootloader signature checking implementation for SoMs that use TI K3-based platforms (i.e. AM62), see the `README-k3.md` file.
 
 ## U-Boot hardening
 
@@ -118,6 +70,8 @@ The hardening features above are controlled by the following variables:
 | :------- | :---------- | :------------ |
 | `TDX_UBOOT_HARDENING_ENABLE` | Enable hardening features as a whole | `1` if both `TDX_IMX_HAB_ENABLE` and `UBOOT_SIGN_ENABLE` are set or 0 otherwise |
 | `TDX_SECBOOT_REQUIRED_BOOTARGS` | Expected value for the fixed part of the kernel command line | Different value for each machine (suitable for Torizon OS) |
+
+Obs.: Currently, U-Boot hardening is not enabled on Verdin AM62.
 
 The behavior of the different hardening features can be set via the control FDT (see [Devicetree Control in U-Boot](https://u-boot.readthedocs.io/en/stable/develop/devicetree/control.html)). Setting the control FDT at build time can be achieved by adding extra device-tree [.dtsi fragments](https://u-boot.readthedocs.io/en/stable/develop/devicetree/control.html#external-dtsi-fragments) to U-Boot and setting the Kconfig variable `CONFIG_DEVICE_TREE_INCLUDES` appropriately; with Yocto/OE this would normally involve adding small patches to U-Boot and appending changes to its recipe but the details are outside the scope of the present document.
 
@@ -149,7 +103,7 @@ The command categories are currently only available as part of a [patch](./recip
 
 When the `tdx-signed` class is inherited, generating and signing a FIT image is enabled by default. Set `UBOOT_SIGN_ENABLE` to `0` to disable it.
 
-This features uses the default FIT image signing support provided by the `uboot-sign` and `kernel-fitimage` classes from OpenEmbedded Core. See the [Yocto Project documentation](https://docs.yoctoproject.org/ref-manual/classes.html#kernel-fitimage) for more details.
+This feature uses the default FIT image signing support provided by the `uboot-sign` and `kernel-fitimage` classes from OpenEmbedded Core. See the [Yocto Project documentation](https://docs.yoctoproject.org/ref-manual/classes.html#kernel-fitimage) for more details.
 
 A few variables can be used to configure this feature, including:
 
@@ -165,8 +119,6 @@ The complete list of variables can be found in the `tdx-signed-fit-image.inc` fi
 
 # License
 
-All metadata is MIT licensed unless otherwise stated. Source code and
-binaries included in tree for individual recipes is under the LICENSE
-stated in each recipe (.bb file) unless otherwise stated.
+All metadata is MIT licensed unless otherwise stated. Source code and binaries included in tree for individual recipes are under the LICENSE stated in each recipe (.bb file) unless otherwise stated.
 
 This README document is Copyright (C) 2023 Toradex AG.
