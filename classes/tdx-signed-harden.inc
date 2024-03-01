@@ -26,15 +26,18 @@ TDX_UBOOT_HARDENING_ENABLE ?= "${@'1' if bb.utils.to_boolean(d.getVar('TDX_IMX_H
 # "tdx-signed" or "torizon-signed"; the former for booting the BSP reference
 # image and the latter for Torizon OS.
 #
-# TODO: Use variable OSTREE_KERNEL_ARGS provided by layer meta-toradex-torizon
-# to set TDX_SECBOOT_REQUIRED_BOOTARGS for Torizon OS.
+# NOTE: TDX_SECBOOT_REQUIRED_BOOTARGS_COMMON should be kept in sync with
+#       OSTREE_KERNEL_ARGS from layer meta-toradex-torizon (this is not done
+#       here because meta-toradex-security does not depend on that layer).
 #
 TDX_SECBOOT_REQUIRED_BOOTARGS ?= ""
+TDX_SECBOOT_REQUIRED_BOOTARGS_COMMON = "quiet logo.nologo vt.global_cursor_default=0 plymouth.ignore-serial-consoles splash fbcon=map:3"
+TDX_SECBOOT_REQUIRED_BOOTARGS_COMMON:append:cfs-support = " systemd.gpt_auto=0"
 
-TDX_SECBOOT_REQUIRED_BOOTARGS:imx-generic-bsp = "root=LABEL=otaroot rootfstype=ext4 quiet logo.nologo vt.global_cursor_default=0 plymouth.ignore-serial-consoles splash fbcon=map:3"
-TDX_SECBOOT_REQUIRED_BOOTARGS:apalis-imx6 = "enable_wait_mode=off vmalloc=400M root=LABEL=otaroot rootfstype=ext4 quiet logo.nologo vt.global_cursor_default=0 plymouth.ignore-serial-consoles splash fbcon=map:3"
-TDX_SECBOOT_REQUIRED_BOOTARGS:colibri-imx6 = "enable_wait_mode=off galcore.contiguousSize=50331648 root=LABEL=otaroot rootfstype=ext4 quiet logo.nologo vt.global_cursor_default=0 plymouth.ignore-serial-consoles splash fbcon=map:3"
-TDX_SECBOOT_REQUIRED_BOOTARGS:colibri-imx6ull-emmc = "user_debug=30 root=LABEL=otaroot rootfstype=ext4 quiet logo.nologo vt.global_cursor_default=0 plymouth.ignore-serial-consoles splash fbcon=map:3"
+TDX_SECBOOT_REQUIRED_BOOTARGS:imx-generic-bsp = "root=LABEL=otaroot rootfstype=ext4 ${TDX_SECBOOT_REQUIRED_BOOTARGS_COMMON}"
+TDX_SECBOOT_REQUIRED_BOOTARGS:apalis-imx6 = "enable_wait_mode=off vmalloc=400M root=LABEL=otaroot rootfstype=ext4 ${TDX_SECBOOT_REQUIRED_BOOTARGS_COMMON}"
+TDX_SECBOOT_REQUIRED_BOOTARGS:colibri-imx6 = "enable_wait_mode=off galcore.contiguousSize=50331648 root=LABEL=otaroot rootfstype=ext4 ${TDX_SECBOOT_REQUIRED_BOOTARGS_COMMON}"
+TDX_SECBOOT_REQUIRED_BOOTARGS:colibri-imx6ull-emmc = "user_debug=30 root=LABEL=otaroot rootfstype=ext4 ${TDX_SECBOOT_REQUIRED_BOOTARGS_COMMON}"
 
 TDX_SECBOOT_REQUIRED_BOOTARGS:verdin-am62 = ""
 TDX_SECBOOT_REQUIRED_BOOTARGS:qemuarm64 = ""
