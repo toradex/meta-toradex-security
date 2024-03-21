@@ -6,16 +6,38 @@ For more information on available Toradex SoMs please visit:
 
 https://www.toradex.com/computer-on-modules
 
+# Layer dependencies
+
+This layer depends on:
+
+```
+URI: git://git.openembedded.org/openembedded-core
+layers: meta
+branch: kirkstone
+revision: HEAD
+
+URI: git://git.yoctoproject.org/meta-security
+branch: kirkstone
+revision: HEAD
+
+URI: git://git.toradex.com/meta-toradex-nxp.git
+branch: kirkstone
+revision: HEAD
+
+URI: git://git.toradex.com/meta-toradex-ti.git
+branch: kirkstone
+revision: HEAD
+```
+
 # Supported features and SoMs
 
 This layer supports the following security features:
 
 - Secure boot
-
-The level of support of the above features is:
-
-- BSP reference images: tested during development but not in Toradex's CI environment, integration effort is expected.
-- Torizon OS (formerly named TorizonCore): tested and integrated.
+  - Bootloader signature checking.
+  - U-Boot hardening.
+  - FIT image signature checking (kernel, DTBs and ramdisk).
+  - Rootfs signature checking via `dm-verity`.
 
 The features are currently supported on the following SoMs:
 
@@ -33,17 +55,31 @@ This layer only works on Embedded Linux 6.3.0 and newer releases.
 
 # Secure boot
 
-To enable secure boot, the `tdx-signed` class needs to be inherited in a configuration file.
-
-```
-INHERIT += "tdx-signed"
-```
-
-When the `tdx-signed` class is inherited, the following features will be enabled (details on the level of support and how to configure might vary depending on the SoM):
+The present layer offers the following features related to secure boot (details on the level of support and how to configure might vary depending on the SoM):
 
 - **Bootloader signature checking**: bootloader images are signed at build time and their signature is verified at runtime by the SoC's ROM code.
 - **U-Boot hardening**: a few patches are applied to the U-Boot bootloader to make it harder for an attacker to bypass the secure boot process.
 - **FIT image signature checking**: a FIT image with the kernel and its artifacts (device trees, ramdisk, etc) is signed at build time and its signature is verified at runtime by the bootloader.
+- **Rootfs signature checking**: the rootfs image is generated using the [dm-verity](https://docs.kernel.org/admin-guide/device-mapper/verity.html) kernel feature and its root hash is added to the ramdisk image. The ramdisk will only mount the rootfs if the root hash matches the `dm-verity` image. Since the ramdisk is signed and its signature is checked by the bootloader, this ensures the integrity and authenticity of the rootfs image.
+
+The features actually enabled depend on the class chosen. The options are:
+
+- `tdxref-signed`: all features listed above are enabled (the level of support might vary depending on the SoM, so check the detailed documentation in the following sessions if you need more details).
+- `tdx-signed`: all features are enabled except the "Rootfs signature checking". This class may be more suitable than `tdxref-signed` if the rootfs protection via `dm-verity` is not desired (for example, because it's not compatible with the used distro or because the rootfs is protected by other means).
+
+To use the selected class, inherit from it globally by adding the following to an OE configuration file (e.g. your `local.conf`):
+
+```
+INHERIT += "<chosen-class>"
+```
+
+For example, to enable all features, including rootfs signature checking:
+
+```
+INHERIT += "tdxref-signed"
+```
+
+The following sessions describe in detail each of these features.
 
 ## Bootloader signature checking
 
@@ -99,7 +135,7 @@ The command categories are currently only available as part of a [patch](./recip
 
 ## Configuring FIT image signing
 
-When the `tdx-signed` class is inherited, generating and signing a FIT image is enabled by default. Set `UBOOT_SIGN_ENABLE` to `0` to disable it.
+When the `tdx-signed` or `tdxref-signed` class is inherited, generating and signing a FIT image is enabled by default. Set `UBOOT_SIGN_ENABLE` to `0` to disable it.
 
 This feature uses the default FIT image signing support provided by the `uboot-sign` and `kernel-fitimage` classes from OpenEmbedded Core. See the [Yocto Project documentation](https://docs.yoctoproject.org/ref-manual/classes.html#kernel-fitimage) for more details.
 
@@ -114,6 +150,18 @@ A few variables can be used to configure this feature, including:
 | `UBOOT_SIGN_IMG_KEYNAME` | The name of the key used for signing individual images | `dev2` |
 
 The complete list of variables can be found in the `tdx-signed-fit-image.inc` file.
+
+## Configuring rootfs image signing
+
+When the `tdxref-signed` class is inherited, the rootfs image will be generated using the `dm-verity` kernel feature.
+
+The variable `DM_VERITY_IMAGE` must be configured with the name of the image recipe you are building. For example, if you are building an image recipe called `my-custom-image`:
+
+```
+DM_VERITY_IMAGE = "my-custom-image"
+```
+
+In case you don't want to boot a signed rootfs image, then instead of inheriting `tdxref-signed`, you should inherit `tdx-signed`. When inheriting `tdx-signed` the bootloader and the FIT image will be signed, but the rootfs image signing process with dm-verity will be skipped.
 
 # License
 
