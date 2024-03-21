@@ -117,4 +117,6 @@ OTP Key Writer is a single firmware image that has three components:
   
 Also, the VPP pin from the SoC requires 1.8v while programming OTP eFuses and should be floating when not programming. That means the hardware needs to be designed in a way that the state of the VPP pin can be controlled by the OTP Key Writer firmware (e.g. via GPIO pin).
 
-Documentation and sample code are provided by Texas Instruments, but only under NDA. So it is recommended to get in touch with a TI Sales representative to get access to it.
+The [OTP Keywriter Tutorial](https://dev.ti.com/tirex/explore/node?node=A__AagJ-8QGXM582KzTgxFZbA__AM62-ACADEMY__uiYMDcq__LATEST) provided by TI might help to understand how to implement the OTP KeyWriter software.
+
+Additional documentation and sample code are provided by Texas Instruments, but only under NDA. It is recommended to get in touch with a TI Sales representative to get access to it.
