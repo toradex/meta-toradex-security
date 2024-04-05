@@ -1,0 +1,12 @@
+[Unit]
+Description=Encryption handler for Toradex modules
+Before=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/tdx-enc.sh start
+ExecStop=/usr/sbin/tdx-enc.sh stop
+RemainAfterExit=yes
+
+[Install]
+WantedBy=local-fs.target
