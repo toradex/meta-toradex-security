@@ -5,6 +5,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 
 SRC_URI = "\
     file://tdx-enc-cleartext.sh \
+    file://tdx-enc-caam.sh \
     file://tdx-enc-handler.service \
 "
 
@@ -12,6 +13,12 @@ RDEPENDS:${PN} = "\
     openssl-bin \
     cryptsetup \
     e2fsprogs-mke2fs \
+"
+
+RDEPENDS:${PN}:append:imx-generic-bsp = "\
+    keyctl-caam \
+    keyutils \
+    util-linux \
 "
 
 inherit systemd
@@ -25,6 +32,7 @@ do_install() {
     sed -i 's|@@TDX_ENC_KEY_FILE@@|${TDX_ENC_KEY_FILE}|g' ${D}${sbindir}/tdx-enc.sh
     sed -i 's|@@TDX_ENC_STORAGE_LOCATION@@|${TDX_ENC_STORAGE_LOCATION}|g' ${D}${sbindir}/tdx-enc.sh
     sed -i 's|@@TDX_ENC_STORAGE_MOUNTPOINT@@|${TDX_ENC_STORAGE_MOUNTPOINT}|g' ${D}${sbindir}/tdx-enc.sh
+    sed -i 's|@@TDX_ENC_CAAM_KEYBLOB_DIR@@|${TDX_ENC_CAAM_KEYBLOB_DIR}|g' ${D}${sbindir}/tdx-enc.sh
 
     install -d ${D}${systemd_system_unitdir}
     install -m 0644 ${WORKDIR}/tdx-enc-handler.service ${D}${systemd_system_unitdir}
