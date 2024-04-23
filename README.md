@@ -102,7 +102,7 @@ The hardening features above are controlled by the following variables:
 
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
-| `TDX_UBOOT_HARDENING_ENABLE` | Enable hardening features as a whole | `1` if both `TDX_IMX_HAB_ENABLE` and `UBOOT_SIGN_ENABLE` are set or 0 otherwise |
+| `TDX_UBOOT_HARDENING_ENABLE` | Enable hardening features as a whole | `1` if building a Torizon OS image with both `TDX_IMX_HAB_ENABLE` and `UBOOT_SIGN_ENABLE` set; `0` otherwise |
 | `TDX_SECBOOT_REQUIRED_BOOTARGS` | Expected value for the fixed part of the kernel command line | Different value for each machine (suitable for Torizon OS) |
 
 Obs.: Currently, U-Boot hardening is not enabled on Verdin AM62.
