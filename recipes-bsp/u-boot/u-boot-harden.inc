@@ -23,7 +23,11 @@ SRC_URI:append:use-mainline-bsp = "\
 "
 
 do_compile:prepend() {
-    if [ "${TDX_IMX_HAB_ENABLE}" = "0" -a "${TDX_UBOOT_HARDENING_ENABLE}" = "1" ]; then
+    if [ "${TDX_IMX_HAB_ENABLE}" = "0" ] && [ "${TDX_UBOOT_HARDENING_ENABLE}" = "1" ]; then
         bbfatal 'The combination TDX_IMX_HAB_ENABLE = "0" and TDX_UBOOT_HARDENING_ENABLE = "1" is not allowed: the whitelisting feature (part of the hardening) currently relies on HAB/AHAB.'
+    fi
+    if [ "${TDX_UBOOT_HARDENING_ENABLE}" = "1" ] && \
+       [ "${@'1' if 'torizon' in d.getVar('OVERRIDES').split(':') else '0'}" != "1" ]; then
+        bbfatal 'U-Boot hardening feature (enabled by TDX_UBOOT_HARDENING_ENABLE=1) is currently tested with Torizon OS only and is not expected to work with BSP images.'
     fi
 }
