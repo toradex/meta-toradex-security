@@ -9,10 +9,23 @@
 # combination UBOOT_SIGN_ENABLE="0" TDX_UBOOT_HARDENING_ENABLE="1" is not very
 # helpful and can prevent the loading of non-FIT images.
 #
-# Because of the above, we enable the hardening only if both TDX_IMX_HAB_ENABLE
-# and UBOOT_SIGN_ENABLE are set, by default.
+# Moreover, currently the hardening is tested only with Torizon OS and it's
+# not expected to work out of the box with BSP images.
 #
-TDX_UBOOT_HARDENING_ENABLE ?= "${@'1' if bb.utils.to_boolean(d.getVar('TDX_IMX_HAB_ENABLE')) and bb.utils.to_boolean(d.getVar('UBOOT_SIGN_ENABLE')) else '0'}"
+# Because of the above, we enable the hardening only when building Torizon OS
+# images provided that both TDX_IMX_HAB_ENABLE and UBOOT_SIGN_ENABLE are set, by
+# default.
+#
+def default_tdx_uboot_hardening_enable(d):
+    # TODO: Remove this condition once support for BSP images is added.
+    if "torizon" not in d.getVar("OVERRIDES").split(":"):
+        return False
+    if (bb.utils.to_boolean(d.getVar('TDX_IMX_HAB_ENABLE')) and
+        bb.utils.to_boolean(d.getVar('UBOOT_SIGN_ENABLE'))):
+        return True
+    return False
+
+TDX_UBOOT_HARDENING_ENABLE ?= "${@'1' if default_tdx_uboot_hardening_enable(d) else '0'}"
 
 # Configure one of the hardening features: the "bootargs protection"; with this
 # protection, the fixed part of the kernel command line (boot arguments) are
