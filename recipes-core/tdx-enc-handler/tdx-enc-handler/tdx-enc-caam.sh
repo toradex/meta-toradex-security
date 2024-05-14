@@ -61,6 +61,20 @@ tdx_enc_key_gen() {
     fi
 }
 
+# backup original data in partition (if not encrypted)
+tdx_enc_backup_data() {
+    mkdir -p "${TDX_ENC_STORAGE_MOUNTPOINT}"
+    if mount -t ext4 ${TDX_ENC_STORAGE_LOCATION} "${TDX_ENC_STORAGE_MOUNTPOINT}"; then
+        tdx_enc_log "Backing up original content..."
+        
+        mkdir /tmp/${TDX_ENC_DM_DEVICE}
+        chmod 777 /tmp/${TDX_ENC_DM_DEVICE}
+        mount -t tmpfs -o size=$(blockdev --getsz ${TDX_ENC_STORAGE_LOCATION}) ${TDX_ENC_DM_DEVICE} /tmp/${TDX_ENC_DM_DEVICE}
+        cp -a ${TDX_ENC_STORAGE_MOUNTPOINT}/. /tmp/${TDX_ENC_DM_DEVICE}/
+        umount "${TDX_ENC_STORAGE_MOUNTPOINT}"
+    fi
+}
+
 # setup partition with dm-crypt
 tdx_enc_partition_setup() {
     tdx_enc_log "Setting up partition with dm-crypt..."
@@ -94,6 +108,16 @@ tdx_enc_partition_mount() {
     fi
 }
 
+# restore data if available
+tdx_enc_restore_data() {
+    if [ -d /tmp/${TDX_ENC_DM_DEVICE} ]; then
+        tdx_enc_log "Restoring original content..."
+        cp -a /tmp/${TDX_ENC_DM_DEVICE}/. ${TDX_ENC_STORAGE_MOUNTPOINT}/
+        umount /tmp/${TDX_ENC_DM_DEVICE}/
+        rm -rf /tmp/${TDX_ENC_DM_DEVICE}
+    fi
+}
+
 # umount partition
 tdx_enc_clear_keys_keyring() {
     tdx_enc_log "Removing key from kernel keyring..."
@@ -116,8 +140,10 @@ tdx_enc_partition_remove() {
 tdx_enc_main_start() {
     tdx_enc_check
     tdx_enc_key_gen
+    tdx_enc_backup_data
     tdx_enc_partition_setup
     tdx_enc_partition_mount
+    tdx_enc_restore_data
 }
 
 # umount encrypted partition
