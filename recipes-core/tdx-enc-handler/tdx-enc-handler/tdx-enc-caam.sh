@@ -2,7 +2,7 @@
 
 # Toradex encryption handler for 'caam' key storage backend
 
-# directory to store CAAM keys and blobs
+# directory to store CAAM encrypted key
 TDX_ENC_KEYBLOB_DIR="@@TDX_ENC_CAAM_KEYBLOB_DIR@@"
 
 # storage location to be encrypted (e.g. partition)
@@ -14,8 +14,8 @@ TDX_ENC_STORAGE_MOUNTPOINT="@@TDX_ENC_STORAGE_MOUNTPOINT@@"
 # dm-crypt device to be created
 TDX_ENC_DM_DEVICE="encdata"
 
-# CAAM black key name
-TDX_ENC_KEY_NAME="dek"
+# CAAM encrypted key name
+TDX_ENC_KEY_NAME="dek.bb"
 
 # log to standard output
 tdx_enc_log() {
@@ -30,32 +30,34 @@ tdx_enc_exit_error() {
 
 # system checks
 tdx_enc_check() {
-    if ! grep -B1 -A2 tk /proc/crypto | grep -q tk-cbc-aes-caam; then
-        tdx_enc_exit_error "No support for tk-cbc-aes-caam!"
+    if ! dmsetup targets | grep crypt -q; then
+        tdx_enc_exit_error "No support for dm-crypt target!"
+    fi
+    if ! grep -q cbc-aes-caam /proc/crypto; then
+        tdx_enc_exit_error "No support for cbc-aes-caam!"
     fi
 }
 
-# check if the black key exists and create one if needed
+# check if the encrypted key exists and create one if needed
 tdx_enc_key_gen() {
-    tdx_enc_log "Checking for the black key..."
+    tdx_enc_log "Checking for the encrypted key..."
 
-    if [ ! -e ${TDX_ENC_KEYBLOB_DIR}/${TDX_ENC_KEY_NAME} ]; then
-        tdx_enc_log "Black key not found. Creating it..."
-        KEY=${TDX_ENC_KEY_NAME}
-        caam-keygen create ${KEY} ccm -s 32
-    else
-        tdx_enc_log "Black key exists. Importing it..."
-        KEY=i${TDX_ENC_KEY_NAME}
-        caam-keygen import ${TDX_ENC_KEYBLOB_DIR}/${TDX_ENC_KEY_NAME}.bb ${KEY}
-    fi
+    ENC_KEY_FILE="${TDX_ENC_KEYBLOB_DIR}/${TDX_ENC_KEY_NAME}"
 
-    if ! keyctl list @s | grep -q tdxenc; then
-        tdx_enc_log "Adding key to kernel keyring..."
-        if ! cat ${TDX_ENC_KEYBLOB_DIR}/${KEY} | keyctl padd logon tdxenc: @s; then
-            tdx_enc_exit_error "Error adding key to kernel keyring!"
+    if [ ! -e "${ENC_KEY_FILE}" ]; then
+        tdx_enc_log "Encrypted key not found. Creating it..."
+        KEY="$(keyctl add trusted tdxenc 'new 32' @s)"
+        mkdir -p "${TDX_ENC_KEYBLOB_DIR}"
+        if ! keyctl pipe "$KEY" > "${ENC_KEY_FILE}"; then
+            tdx_enc_exit_error "Error saving encrypted key!"
         fi
     else
-        tdx_enc_log "Key already in the kernel keyring."
+        tdx_enc_log "Encrypted key exists. Importing it..."
+        keyctl add trusted tdxenc "load $(cat ${ENC_KEY_FILE})" @s
+    fi
+
+    if ! keyctl list @s | grep -q "trusted: tdxenc"; then
+        tdx_enc_exit_error "Error adding key to kernel keyring!"
     fi
 }
 
@@ -79,7 +81,7 @@ tdx_enc_partition_setup() {
 
     if ! dmsetup -v create ${TDX_ENC_DM_DEVICE} \
                  --table "0 $(blockdev --getsz ${TDX_ENC_STORAGE_LOCATION}) \
-                 crypt capi:tk(cbc(aes))-plain :64:logon:tdxenc: \
+                 crypt capi:cbc(aes)-plain :32:trusted:tdxenc \
                  0 ${TDX_ENC_STORAGE_LOCATION} 0 1 sector_size:512"; then
         tdx_enc_exit_error "Error setting up dm-crypt partition!"
     fi
@@ -117,7 +119,14 @@ tdx_enc_restore_data() {
 }
 
 # umount partition
+tdx_enc_clear_keys_keyring() {
+    tdx_enc_log "Removing key from kernel keyring..."
+    keyctl clear @s
+}
+
+# umount partition
 tdx_enc_partition_umount() {
+    tdx_enc_log "Unmounting dm-crypt partition..."
     umount "${TDX_ENC_STORAGE_MOUNTPOINT}"
 }
 
@@ -141,6 +150,7 @@ tdx_enc_main_start() {
 tdx_enc_main_stop() {
     tdx_enc_partition_umount
     tdx_enc_partition_remove
+    tdx_enc_clear_keys_keyring
 }
 
 tdx_enc_main() {
