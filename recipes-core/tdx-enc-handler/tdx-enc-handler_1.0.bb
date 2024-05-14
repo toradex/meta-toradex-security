@@ -15,11 +15,11 @@ RDEPENDS:${PN} = "\
     e2fsprogs-mke2fs \
 "
 
-RDEPENDS:${PN}:append:imx-generic-bsp = "\
-    keyctl-caam \
+RDEPENDS_CAAM = "\
     keyutils \
     util-linux \
 "
+RDEPENDS:${PN}:append = "${@ '${RDEPENDS_CAAM}' if d.getVar('TDX_ENC_KEY_BACKEND') == 'caam' else ''}"
 
 inherit systemd
 

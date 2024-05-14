@@ -1,7 +1,4 @@
-SRC_URI += " \
+SRC_URI:append = "\
     file://dm-crypt.cfg \
-"
-
-SRC_URI:append:imx-generic-bsp = " \
-    file://caam.cfg \
+    file://${TDX_ENC_KEY_BACKEND}.cfg \
 "
