@@ -38,14 +38,18 @@ This layer supports the following security features:
   - U-Boot hardening.
   - FIT image signature checking (kernel, DTBs and ramdisk).
   - Rootfs signature checking via `dm-verity`.
+- Data-at-rest encryption
+  - Encryption key management via the Trusted Keys kernel subsystem
+  - Block device encryption with `dm-crypt`
 
-For more information on the level of support in each SoM, please check the correspondent documentation:
+For more information on the available features, please check the corresponding documentation:
 
 | Documentation | Description |
 | :------------ | :---------- |
 | [docs/README-secure-boot.md](docs/README-secure-boot.md) | General documentation about the secure boot feature |
 | [docs/README-secure-boot-imx.md](docs/README-secure-boot-imx.md) | Details on the secure boot implementation for NXP iMX based SoMs |
 | [docs/README-secure-boot-k3.md](docs/README-secure-boot-k3.md) | Details on the secure boot implementation for TI K3 based SoMs (e.g. AM62) |
+| [docs/README-encryption.md](docs/README-encryption.md) | General documentation about the data-at-rest encryption feature |
 
 This layer only works on Toradex Embedded Linux 6.3.0 and newer releases.
 
