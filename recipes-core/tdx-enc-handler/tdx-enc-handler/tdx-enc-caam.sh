@@ -3,7 +3,10 @@
 # Toradex encryption handler for 'caam' key storage backend
 
 # directory to store CAAM encrypted key
-TDX_ENC_KEYBLOB_DIR="@@TDX_ENC_CAAM_KEYBLOB_DIR@@"
+TDX_ENC_KEY_DIR="@@TDX_ENC_KEY_DIR@@"
+
+# key file name
+TDX_ENC_KEY_FILE="@@TDX_ENC_KEY_FILE@@"
 
 # storage location to be encrypted (e.g. partition)
 TDX_ENC_STORAGE_LOCATION="@@TDX_ENC_STORAGE_LOCATION@@"
@@ -13,9 +16,6 @@ TDX_ENC_STORAGE_MOUNTPOINT="@@TDX_ENC_STORAGE_MOUNTPOINT@@"
 
 # dm-crypt device to be created
 TDX_ENC_DM_DEVICE="encdata"
-
-# CAAM encrypted key name
-TDX_ENC_KEY_NAME="dek.bb"
 
 # log to standard output
 tdx_enc_log() {
@@ -42,12 +42,12 @@ tdx_enc_check() {
 tdx_enc_key_gen() {
     tdx_enc_log "Checking for the encrypted key..."
 
-    ENC_KEY_FILE="${TDX_ENC_KEYBLOB_DIR}/${TDX_ENC_KEY_NAME}"
+    ENC_KEY_FILE="${TDX_ENC_KEY_DIR}/${TDX_ENC_KEY_FILE}"
 
     if [ ! -e "${ENC_KEY_FILE}" ]; then
         tdx_enc_log "Encrypted key not found. Creating it..."
         KEY="$(keyctl add trusted tdxenc 'new 32' @s)"
-        mkdir -p "${TDX_ENC_KEYBLOB_DIR}"
+        mkdir -p "${TDX_ENC_KEY_DIR}"
         if ! keyctl pipe "$KEY" > "${ENC_KEY_FILE}"; then
             tdx_enc_exit_error "Error saving encrypted key!"
         fi

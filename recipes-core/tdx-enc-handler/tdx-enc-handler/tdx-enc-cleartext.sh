@@ -4,7 +4,10 @@
 # The key is generated and stored in clear text in the filesystem.
 # IMPORTANT: USE THIS ONLY FOR TESTING PURPOSES!
 
-# key file location
+# directory to store the encryption key
+TDX_ENC_KEY_DIR="@@TDX_ENC_KEY_DIR@@"
+
+# key file name
 TDX_ENC_KEY_FILE="@@TDX_ENC_KEY_FILE@@"
 
 # storage location to be encrypted (e.g. partition)
@@ -33,10 +36,13 @@ tdx_enc_exit_error() {
 # don't care about it, since the 'cleartext' backend is only
 # for testing purposes.
 tdx_enc_key_gen() {
-    tdx_enc_log "Generating encryption key..."
-    SN=$(cat /sys/firmware/devicetree/base/serial-number)
-    KEY=$(openssl enc -pbkdf2 -aes-128-ecb -nosalt -k "${SN}" -P)
-    echo "${KEY}" | cut -d= -f2 > "${TDX_ENC_KEY_FILE}"
+    if [ ! -e "${TDX_ENC_KEY_DIR}/${TDX_ENC_KEY_FILE}" ]; then
+        tdx_enc_log "Generating encryption key..."
+        SN=$(cat /sys/firmware/devicetree/base/serial-number)
+        KEY=$(openssl enc -pbkdf2 -aes-128-ecb -nosalt -k "${SN}" -P)
+        mkdir -p ${TDX_ENC_KEY_DIR}
+        echo "${KEY}" | cut -d= -f2 > "${TDX_ENC_KEY_DIR}/${TDX_ENC_KEY_FILE}"
+    fi
 }
 
 # setup partition with LUKS
@@ -46,13 +52,13 @@ tdx_enc_partition_luks_open() {
     # format LUKS partition (if needed)
     if ! cryptsetup -q luksDump "${TDX_ENC_STORAGE_LOCATION}"; then
         tdx_enc_log "Formatting partition with LUKS..."
-        cryptsetup --key-file="${TDX_ENC_KEY_FILE}" \
+        cryptsetup --key-file="${TDX_ENC_KEY_DIR}/${TDX_ENC_KEY_FILE}" \
                    --batch-mode \
                    luksFormat "${TDX_ENC_STORAGE_LOCATION}"
     fi
 
     # open LUKS partition
-    if ! cryptsetup --key-file="${TDX_ENC_KEY_FILE}" \
+    if ! cryptsetup --key-file="${TDX_ENC_KEY_DIR}/${TDX_ENC_KEY_FILE}" \
                     --batch-mode \
                     open \
                     "${TDX_ENC_STORAGE_LOCATION}" \
