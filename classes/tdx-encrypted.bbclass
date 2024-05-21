@@ -9,12 +9,11 @@ TDX_ENC_ENABLE = "1"
 TDX_ENC_KEY_BACKEND ?= ""
 TDX_ENC_KEY_BACKEND:imx-generic-bsp ?= "caam"
 
-# Location in the filesystem to store the encryption key
-# Required only for the 'cleartext' backend
-TDX_ENC_KEY_FILE ?= "/run/.tdx-enc-key"
+# directory to store the encryption key blob
+TDX_ENC_KEY_DIR ?= "/var/local/private/.keys"
 
-# Directory to store CAAM keys and blobs (only for the CAAM backend)
-TDX_ENC_CAAM_KEYBLOB_DIR ?= "/var/local/private/caam/keys/"
+# encryption key blob file name
+TDX_ENC_KEY_FILE ?= "tdx-enc-key.blob"
 
 # Type of encryption
 # This variable defines what will be encrypted
@@ -22,8 +21,8 @@ TDX_ENC_CAAM_KEYBLOB_DIR ?= "/var/local/private/caam/keys/"
 #    partition -> encrypt a full partition
 TDX_ENC_STORAGE_TYPE ?= "partition"
 
-# Location of the storage to be encrypted
-TDX_ENC_STORAGE_LOCATION ?= "/dev/sda1"
+# Partition to be encrypted (e.g. /dev/sda1)
+TDX_ENC_STORAGE_LOCATION ?= ""
 
 # Defines where the encrypted storage will be mounted
 TDX_ENC_STORAGE_MOUNTPOINT ?= "/run/encdata"
@@ -41,4 +40,8 @@ python validate_enc_parameters() {
     supported_key_backends = ['cleartext','caam']
     if key_backend not in supported_key_backends:
         bb.fatal("'%s' is invalid. Please set a valid key backend provider via TDX_ENC_KEY_BACKEND." % key_backend)
+
+    storage_location = e.data.getVar('TDX_ENC_STORAGE_LOCATION')
+    if storage_location == "":
+        bb.fatal("Please set storage to be encrypted via TDX_ENC_STORAGE_LOCATION.")
 }
