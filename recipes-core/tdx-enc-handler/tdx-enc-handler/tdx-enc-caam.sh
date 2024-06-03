@@ -17,9 +17,18 @@ TDX_ENC_STORAGE_MOUNTPOINT="@@TDX_ENC_STORAGE_MOUNTPOINT@@"
 # dm-crypt device to be created
 TDX_ENC_DM_DEVICE="encdata"
 
+# Flag to enable preservation of data on partition before encryption
+TDX_ENC_PRESERVE_DATA=@@TDX_ENC_PRESERVE_DATA@@
+
+# storage location of data backup file (if needed)
+TDX_ENC_BACKUP_FILE="/tmp/encdata.tar.bz2"
+
+# Configurable RAM use percentage
+TDX_ENC_BACKUP_STORAGE_PCT=@@TDX_ENC_BACKUP_STORAGE_PCT@@
+
 # log to standard output
 tdx_enc_log() {
-        echo "CAAM: $*"
+    echo "CAAM: $*"
 }
 
 # log error message and exit
@@ -61,6 +70,33 @@ tdx_enc_key_gen() {
     fi
 }
 
+# backup original data in partition (if not encrypted)
+tdx_enc_backup_data() {
+    if [ ${TDX_ENC_PRESERVE_DATA} -ne 1 ]; then
+        tdx_enc_log "Data preservation is not enabled"
+        return 0
+    fi
+
+    mkdir -p "${TDX_ENC_STORAGE_MOUNTPOINT}"
+    if ! mount ${TDX_ENC_STORAGE_LOCATION} "${TDX_ENC_STORAGE_MOUNTPOINT}"; then
+        return 0
+    fi
+
+    tdx_enc_log "Backing up original content..."
+    TDX_ENC_BACKUP_FILE=$(mktemp)
+    MEM_FREE=$(grep MemFree: /proc/meminfo | tr -s ' ' | cut -d ' ' -f 2)
+    BACKUP_STORAGE_LIMIT=$((MEM_FREE * TDX_ENC_BACKUP_STORAGE_PCT / 100))
+    tdx_enc_log "Backup limit determined: ${BACKUP_STORAGE_LIMIT}"
+    
+    msgs="$({ { tar -C "${TDX_ENC_STORAGE_MOUNTPOINT}" -c . || echo "ERROR" >&2; } | { bzip2 -cz || echo "ERROR" >&2; } | dd bs=1024 count=${BACKUP_STORAGE_LIMIT} of=${TDX_ENC_BACKUP_FILE}; } 2>&1)"
+    if [ "$?" -ne 0 ] || echo "${msgs}" | grep -qi 'error\|invalid'; then
+        tdx_enc_exit_error "Couldn't save original data."
+    fi
+
+    tdx_enc_log "Backup created at: ${TDX_ENC_BACKUP_FILE}"
+    umount "${TDX_ENC_STORAGE_MOUNTPOINT}"
+}
+
 # setup partition with dm-crypt
 tdx_enc_partition_setup() {
     tdx_enc_log "Setting up partition with dm-crypt..."
@@ -94,6 +130,27 @@ tdx_enc_partition_mount() {
     fi
 }
 
+# restore data if available
+tdx_enc_restore_data() {
+    if [ ${TDX_ENC_PRESERVE_DATA} -ne 1 ]; then
+        tdx_enc_log "Data preservation is not enabled"
+        return 0
+    fi
+
+    if ! [ -f ${TDX_ENC_BACKUP_FILE} ]; then
+        tdx_enc_log "No data backup to restore"
+        return 0
+    fi
+
+    tdx_enc_log "Restoring original content..."
+    msgs="$({ { bzip2 -cd ${TDX_ENC_BACKUP_FILE} || echo "ERROR" >&2; } | tar -C ${TDX_ENC_STORAGE_MOUNTPOINT} -xf -; } 2>&1)"
+    if [ "$?" -ne 0 ] || echo "${msgs}" | grep -qi 'error\|invalid'; then
+        tdx_enc_exit_error "Failed to restore backup."
+    fi
+
+    rm -rf ${TDX_ENC_BACKUP_FILE}
+}
+
 # umount partition
 tdx_enc_clear_keys_keyring() {
     tdx_enc_log "Removing key from kernel keyring..."
@@ -116,8 +173,10 @@ tdx_enc_partition_remove() {
 tdx_enc_main_start() {
     tdx_enc_check
     tdx_enc_key_gen
+    tdx_enc_backup_data
     tdx_enc_partition_setup
     tdx_enc_partition_mount
+    tdx_enc_restore_data
 }
 
 # umount encrypted partition
