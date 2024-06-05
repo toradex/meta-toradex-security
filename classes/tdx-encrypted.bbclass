@@ -27,6 +27,12 @@ TDX_ENC_STORAGE_LOCATION ?= ""
 # Defines where the encrypted storage will be mounted
 TDX_ENC_STORAGE_MOUNTPOINT ?= "/run/encdata"
 
+# Enables preservation of existing data on encrypted device
+TDX_ENC_PRESERVE_DATA ?= "0"
+
+# Configurable backup RAM use percentage
+TDX_ENC_BACKUP_STORAGE_PCT ?= "30"
+
 # tdx-enc-handler provides the scripts to handle encryption
 IMAGE_INSTALL:append = " tdx-enc-handler"
 
