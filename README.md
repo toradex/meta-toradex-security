@@ -41,6 +41,8 @@ This layer supports the following security features:
 - Data-at-rest encryption
   - Encryption key management via the Trusted Keys kernel subsystem
   - Block device encryption with `dm-crypt`
+- TEE (Trusted Execution Environment)
+  - Support for running OP-TEE
 
 For more information on the available features, please check the corresponding documentation:
 
@@ -50,6 +52,7 @@ For more information on the available features, please check the corresponding d
 | [docs/README-secure-boot-imx.md](docs/README-secure-boot-imx.md) | Details on the secure boot implementation for NXP iMX based SoMs |
 | [docs/README-secure-boot-k3.md](docs/README-secure-boot-k3.md) | Details on the secure boot implementation for TI K3 based SoMs (e.g. AM62) |
 | [docs/README-encryption.md](docs/README-encryption.md) | General documentation about the data-at-rest encryption feature |
+| [docs/README-optee.md](docs/README-optee.md) | Documentation on how to run a Trusted Execution Environment (OP-TEE) together with the Linux kernel |
 
 This layer only works on Toradex Embedded Linux 6.3.0 and newer releases.
 
