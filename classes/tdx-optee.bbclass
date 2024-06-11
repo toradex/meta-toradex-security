@@ -32,9 +32,6 @@ python validate_optee_support() {
     if machine not in supported_machines:
         bb.fatal("OP-TEE is currently not supported on '%s' machine!" % machine)
 
-    if 'tdx-signed' in d.getVar('OVERRIDES').split(':'):
-        bb.fatal("Currently, OP-TEE cannot be used together with secure boot because the OP-TEE firmware is not being signed!")
-
     if 'tdx-signed-dmverity' in d.getVar('OVERRIDES').split(':'):
         bb.fatal("Currently, OP-TEE cannot be used together with dm-verity because it needs a writable rootfs!")
 }

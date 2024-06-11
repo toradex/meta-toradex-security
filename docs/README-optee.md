@@ -47,9 +47,6 @@ There is also a complete test suite that can be used to validate OP-TEE:
 
 In case of issues, try enabling debug messages via the `TDX_OPTEE_DEBUG` variable.
 
-## Current limitations
+## Limitation
 
-There are two main limitations in the current implementation:
-
-- OP-TEE needs a read-write filesystem (by default, it writes to `/data/tee/`). When rootfs signature check is enabled via the `tdxref-signed` class, the rootfs will be read-only, and OP-TEE will not work because it will not be able to write to the filesystem. This can be worked around by mounting a writable partition to `/data`.
-- The generated OP-TEE firmware is currently not being signed, so secure boot will not work if OP-TEE is enabled.
+There is currently one limitation in the implementation. OP-TEE needs a read-write filesystem (by default, it writes to `/data/tee/`). When rootfs signature check is enabled via the `tdxref-signed` class, the rootfs will be read-only, and OP-TEE will not work because it will not be able to write to the filesystem. This can be worked around by mounting a writable partition to `/data`.
