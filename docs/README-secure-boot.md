@@ -125,3 +125,11 @@ DM_VERITY_IMAGE = "my-custom-image"
 ```
 
 In case you don't want to boot a signed rootfs image, then instead of inheriting `tdxref-signed`, you should inherit `tdx-signed`. When inheriting `tdx-signed` the bootloader and the FIT image will be signed, but the rootfs image signing process with `dm-verity` will be skipped.
+
+## Additional partition for persistent data
+
+When `tdxref-signed` is used to enable secure boot, the rootfs image is generated using the `dm-verity` kernel feature.
+
+Because `dm-verity` is read-only, you might want to create an additional partition in the eMMC to store persistent data.
+
+If that is the case, you can use the `tdx-tezi-data-partition` class. For more information, have a look at its documentation ([README-data-partition.md](README-data-partition.md)).
