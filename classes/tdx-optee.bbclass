@@ -23,6 +23,10 @@ IMAGE_INSTALL:append = "\
     ${@oe.utils.conditional('TDX_OPTEE_INSTALL_TESTS', '1', '${TDX_OPTEE_PACKAGES_TESTS}', '', d)} \
 "
 
+# enable data partition if dm-verity and tezi are both enabled
+inherit ${@ 'tdx-tezi-data-partition' if 'teziimg' in d.getVar('IMAGE_FSTYPES') and \
+            'tdx-signed-dmverity' in d.getVar('OVERRIDES').split(':') else ''}
+
 # validate optee support
 addhandler validate_optee_support
 validate_optee_support[eventmask] = "bb.event.SanityCheck"
@@ -31,7 +35,4 @@ python validate_optee_support() {
     machine = e.data.getVar('MACHINE')
     if machine not in supported_machines:
         bb.fatal("OP-TEE is currently not supported on '%s' machine!" % machine)
-
-    if 'tdx-signed-dmverity' in d.getVar('OVERRIDES').split(':'):
-        bb.fatal("Currently, OP-TEE cannot be used together with dm-verity because it needs a writable rootfs!")
 }
