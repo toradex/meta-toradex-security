@@ -63,3 +63,7 @@ Here is the complete list of variables that can be used to customize the behavio
 | TDX_ENC_STORAGE_MOUNTPOINT | Directory to mount the encrypted partition | `/run/encdata` |
 
 IMPORTANT: The script that mounts the encrypted partition runs early in the boot process, where not necessarily udev has run/settled. For that reason, it is recommended to use the name of the partition as assigned by the kernel (e.g. `/dev/sdb1`). If one wants to set a name that relies on udev rules then one must review the systemd dependencies of the service to ensure the name is available.
+
+## Encrypting a partition in the eMMC
+
+In case you want to create an additional partition in the eMMC to store encrypted data, you can use the `tdx-tezi-data-partition` class. For more information, have a look at its documentation ([README-data-partition.md](README-data-partition.md)).

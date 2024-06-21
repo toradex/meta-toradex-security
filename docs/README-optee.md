@@ -25,6 +25,14 @@ A few variables can be used to customize the behavior of this feature:
 | TDX_OPTEE_DEBUG | Enable OP-TEE debug messages to the serial console (`1` to enable or `0` to disable) | `0` |
 | TDX_OPTEE_INSTALL_TESTS | Enable the installation of OP-TEE test applications (`1` to enable or `0` to disable) | `0` |
 
+## Read-write filesystem for OP-TEE
+
+OP-TEE needs a read-write filesystem (by default, it writes to `/data/tee/`). When rootfs signature checking is enabled via the `tdxref-signed` class, the rootfs image will be generated using the `dm-verity` kernel feature, which is read-only.
+
+In this case, to provide a read-write filesystem to OP-TEE, the `tdx-tezi-data-partition` class will be automatically inherited. This class will create an additional partition in the eMMC and mount it by default at `/data`. For more information on how this class works, have a look at its documentation ([README-data-partition.md](README-data-partition.md)).
+
+In case your rootfs is read-only and you are not using a Toradex Easy Installer image, make sure the `/data` directory is mounted at a read-write partition, or OP-TEE will not work properly.
+
 ## Testing OP-TEE
 
 OP-TEE can be validated using its test applications, which can be installed in the image by adding the following line to an OE configuration file (e.g. `local.conf`):
@@ -46,7 +54,3 @@ There is also a complete test suite that can be used to validate OP-TEE:
 ```
 
 In case of issues, try enabling debug messages via the `TDX_OPTEE_DEBUG` variable.
-
-## Limitation
-
-There is currently one limitation in the implementation. OP-TEE needs a read-write filesystem (by default, it writes to `/data/tee/`). When rootfs signature check is enabled via the `tdxref-signed` class, the rootfs will be read-only, and OP-TEE will not work because it will not be able to write to the filesystem. This can be worked around by mounting a writable partition to `/data`.
