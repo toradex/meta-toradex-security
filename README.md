@@ -15,7 +15,7 @@ This layer supports the following security features:
 
 The level of support of the above features is:
 
-- TorizonCore: tested and integrated.
+- Torizon: tested and integrated.
 - BSP Layers and Reference Images: not tested, integration effort is expected.
 
 The features are currently supported on the following SoMs:
