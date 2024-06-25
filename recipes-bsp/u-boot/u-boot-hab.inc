@@ -16,127 +16,95 @@ SRC_URI:append:use-nxp-bsp = "\
     file://0001-bootm-don-t-use-HAB-to-authenticate-FIT-image.patch \
 "
 
+UBOOT_BINARY_HAB = "${UBOOT_BINARY}"
+UBOOT_BINARY_HAB:mx6dl-generic-bsp = "u-boot-ivt.img"
+UBOOT_BINARY_HAB:mx6q-generic-bsp = "u-boot-ivt.img"
+
+# Sign U-Boot binary and/or SPL.
+# This is supposed to run in the U-Boot build directory.
 sign_habv4() {
+    local soc="$1"
+    local type="$2"
+    local binary="$3"
+
     if [ ! -e "${TDX_IMX_HAB_CST_BIN}" ]; then
-        bberror "Could not find CST binary at ${TDX_IMX_HAB_CST_BIN}."
-        exit 1
+        bbfatal "Could not find CST binary at ${TDX_IMX_HAB_CST_BIN}."
     fi
 
     for f in "${TDX_IMX_HAB_CST_SRK}" "${TDX_IMX_HAB_CST_CSF_CERT}" \
-             "${TDX_IMX_HAB_CST_IMG_CERT}" "${TDX_IMX_HAB_CST_SRK_FUSE}"
-    do
+             "${TDX_IMX_HAB_CST_IMG_CERT}" "${TDX_IMX_HAB_CST_SRK_FUSE}"; do
         if [ ! -e "${f}" ]; then
-            bberror "Could not find cert file at ${f}."
-            exit 1
+            bbfatal "Could not find file '${f}' (required for HAB)."
         fi
     done
 
-    local soc="$1"
+    bbdebug 1 "Generating CSF for U-Boot"
+    # Generate CSF file:
+    TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
+    TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
+    TDX_IMX_HAB_CST_IMG_CERT="${TDX_IMX_HAB_CST_IMG_CERT}" \
+    TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
+    IMXBOOT="${UBOOT_BINARY_HAB}" \
+    HAB_LOG="${UBOOT_BINARY_HAB}.log" \
+    ${WORKDIR}/create_csf.sh -m "${soc}" -c "csf_uboot"
 
-    if [ -n "${UBOOT_CONFIG}" ]; then
-        i=0
-        j=0
-        for config in ${UBOOT_MACHINE}; do
-            i=$(expr $i + 1);
-            for type in ${UBOOT_CONFIG}; do
-                j=$(expr $j + 1);
-                if [ $j -eq $i ]; then
-		    # Enabling HAB creates a U-Boot binary with a different name than expected.
-		    # Give this binary the expected name so everything can proceed smoothly.
-                    cp ${B}/${config}/u-boot-ivt.img \
-		       ${B}/${config}/${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX}
-
-		    # Generate CSF file
-                    TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
-                    TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
-                    TDX_IMX_HAB_CST_IMG_CERT="${TDX_IMX_HAB_CST_IMG_CERT}" \
-                    TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
-                    IMXBOOT="${B}/${config}/${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX}" \
-                    HAB_LOG="${B}/${config}/u-boot-ivt.img.log" \
-                    ${WORKDIR}/create_csf.sh -m "${soc}"
-
-		    # Save unsigned image
-		    mv ${B}/${config}/${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX} \
-		       ${B}/${config}/${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX}-unsigned
-
-		    # Append CSF to image
-		    cat ${B}/${config}/${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX}-unsigned \
-		        ${WORKDIR}/csf-uboot.bin \
-			> ${B}/${config}/${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX}
-
-		    # Repeat the process for SPL if SPL was also built.
-		    if [ -n "${SPL_BINARY}" ]; then
-                        TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
-                        TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
-                        TDX_IMX_HAB_CST_IMG_CERT="${TDX_IMX_HAB_CST_IMG_CERT}" \
-                        TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
-                        IMXBOOT="${B}/${config}/${SPL_BINARY}" \
-                        HAB_LOG="${B}/${config}/${SPL_BINARY}.log" \
-                        ${WORKDIR}/create_csf.sh -m "${soc}"
-
-			mv ${B}/${config}/${SPL_BINARY} ${B}/${config}/${SPL_BINARY}-unsigned
-
-			cat ${B}/${config}/${SPL_BINARY}-unsigned ${WORKDIR}/csf-spl.bin \
-			    > ${B}/${config}/${SPL_BINARY}
-		    fi
-
-		    # Create fuse commands
-	            ${WORKDIR}/create_fuse_cmds.sh ${soc} ${TDX_IMX_HAB_CST_SRK_FUSE} \
-		                                   ${WORKDIR}/fuse-cmds.txt
-                fi
-            done
-        done
+    # Save unsigned image and generate signed version by concatenating with the CSF.
+    bbdebug 1 "Concatenating CSF binary to U-Boot"
+    if [ -n "${type}" ]; then
+        cp  "${UBOOT_BINARY_HAB}" "${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX}-unsigned"
+        cat "${UBOOT_BINARY_HAB}" "csf_uboot.bin" > "${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX}"
     else
-        # Generate CSF file
+        mv  "${UBOOT_BINARY_HAB}" "${UBOOT_BINARY}-unsigned"
+        cat "${UBOOT_BINARY}-unsigned" "csf_uboot.bin" > "${UBOOT_BINARY}"
+    fi
+
+    # Repeat the process for SPL if SPL was also built.
+    if [ -n "${SPL_BINARY}" ]; then
+        bbdebug 1 "Generating CSF for the U-Boot SPL"
         TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
         TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
         TDX_IMX_HAB_CST_IMG_CERT="${TDX_IMX_HAB_CST_IMG_CERT}" \
         TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
-	IMXBOOT="${B}/${UBOOT_BINARY}" \
-        HAB_LOG="${B}/${UBOOT_MAKE_TARGET}.log" \
-        ${WORKDIR}/create_csf.sh -m "${soc}"
+        IMXBOOT="${SPL_BINARY}" \
+        HAB_LOG="${SPL_BINARY}.log" \
+        ${WORKDIR}/create_csf.sh -m "${soc}" -c "csf_SPL"
 
-	# Save unsigned image
-	mv ${UBOOT_BINARY} ${UBOOT_BINARY}-unsigned
+        bbdebug 1 "Concatenating CSF binary to the U-Boot SPL"
+        # Save unsigned SPL and replace original with signed one:
+        mv "${SPL_BINARY}" "${SPL_BINARY}-unsigned"
+        cat "${SPL_BINARY}-unsigned" "csf_SPL.bin" > "${SPL_BINARY}"
 
-	# Append CSF to image
-	cat ${UBOOT_BINARY}-unsigned ${WORKDIR}/csf-uboot.bin > ${UBOOT_BINARY}
-
-	# Create fuse commands
-	${WORKDIR}/create_fuse_cmds.sh ${soc} ${TDX_IMX_HAB_CST_SRK_FUSE} ${WORKDIR}/fuse-cmds.txt
+        # TODO: Regenerate u-boot-with-spl.imx
     fi
+
+    # Create fuse commands
+    ${WORKDIR}/create_fuse_cmds.sh "${soc}" \
+                                   "${TDX_IMX_HAB_CST_SRK_FUSE}" \
+                                   "${WORKDIR}/fuse-cmds.txt"
 }
 
-do_compile:append:mx6ull-generic-bsp() {
-    # Only sign here if FIT image signing is disabled.
-    # Otherwise we sign later instead (see u-boot-fit-signature.inc).
-    if [ "${UBOOT_SIGN_ENABLE}" != "1" ]; then
-        sign_habv4 "IMX6ULL"
-    fi
+uboot_assemble_fitimage_helper:append:mx6dl-generic-bsp() {
+    type="$1"
+    binary="$2"
+    sign_habv4 "IMX6" "${type}" "${binary}"
 }
 
-do_compile:append:mx7-generic-bsp() {
-    # Only sign here if FIT image signing is disabled.
-    # Otherwise we sign later instead (see u-boot-fit-signature.inc).
-    if [ "${UBOOT_SIGN_ENABLE}" != "1" ]; then
-        sign_habv4 "IMX7"
-    fi
+uboot_assemble_fitimage_helper:append:mx6q-generic-bsp() {
+    type="$1"
+    binary="$2"
+    sign_habv4 "IMX6" "${type}" "${binary}"
 }
 
-do_compile:append:mx6q-generic-bsp() {
-    # Only sign here if FIT image signing is disabled.
-    # Otherwise we sign later instead (see u-boot-fit-signature.inc).
-    if [ "${UBOOT_SIGN_ENABLE}" != "1" ]; then
-        sign_habv4 "IMX6"
-    fi
+uboot_assemble_fitimage_helper:append:mx6ull-generic-bsp() {
+    type="$1"
+    binary="$2"
+    sign_habv4 "IMX6ULL" "${type}" "${binary}"
 }
 
-do_compile:append:mx6dl-generic-bsp() {
-    # Only sign here if FIT image signing is disabled.
-    # Otherwise we sign later instead (see u-boot-fit-signature.inc).
-    if [ "${UBOOT_SIGN_ENABLE}" != "1" ]; then
-        sign_habv4 "IMX6"
-    fi
+uboot_assemble_fitimage_helper:append:mx7-generic-bsp() {
+    type="$1"
+    binary="$2"
+    sign_habv4 "IMX7" "${type}" "${binary}"
 }
 
 do_deploy:append() {

@@ -23,6 +23,7 @@ help() {
     echo
     echo " required arguments:"
     echo "    -m --machine              target SoC (i.e IMX6, IMX7, IMX6ULL)"
+    echo "    -c --csf                  CSF basename (outputs will be <basename>.{csf,bin,log})"
     echo
     echo " optional:"
     echo "    -h --help            display this Help message"
@@ -38,6 +39,11 @@ parse_args() {
             ;;
             -m|--machine)
                 MACHINE="$2"
+                shift # past argument
+                shift # past value
+            ;;
+            -c|--csf)
+                CSF="$2"
                 shift # past argument
                 shift # past value
             ;;
@@ -104,9 +110,9 @@ parse_args "$@"
 echo $0 "$@"
 
 # Verify required variables
-if [ -z "${MACHINE}" ]; then
-    help "target argument required"
-fi
+[ -n "${MACHINE}" ] || help "machine name not specified"
+[ -n "${CSF}" ]     || help "CSF basename not specified"
+
 set_template_file
 
 verify_env "${TDX_IMX_HAB_CST_SRK}" "TDX_IMX_HAB_CST_SRK"
@@ -115,15 +121,5 @@ verify_env "${TDX_IMX_HAB_CST_IMG_CERT}" "TDX_IMX_HAB_CST_IMG_CERT"
 verify_env "${TDX_IMX_HAB_CST_BIN}" "TDX_IMX_HAB_CST_BIN"
 verify_env "${IMXBOOT}" "IMXBOOT"
 verify_env "${HAB_LOG}" "HAB_LOG"
-
-# If this file already exists then we're processing an SPL.
-# Give it a different name to avoid confusion.
-if [ -e "${DIR_SCRIPT}/csf-uboot.bin" ]; then
-    readonly CSF="csf-spl"
-else
-    readonly CSF="csf-uboot"
-fi
-
-cd ${DIR_SCRIPT}
 
 generate_csf
