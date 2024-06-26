@@ -27,7 +27,7 @@ do_compile:prepend() {
         bbfatal 'The combination TDX_IMX_HAB_ENABLE = "0" and TDX_UBOOT_HARDENING_ENABLE = "1" is not allowed: the whitelisting feature (part of the hardening) currently relies on HAB/AHAB.'
     fi
     if [ "${TDX_UBOOT_HARDENING_ENABLE}" = "1" ] && \
-       [ "${@'1' if 'torizon' in d.getVar('OVERRIDES').split(':') else '0'}" != "1" ]; then
+       [ "${@'1' if any(_d in d.getVar('OVERRIDES').split(':') for _d in ['torizon', 'torizon-upstream']) else '0'}" != "1" ]; then
         bbfatal 'U-Boot hardening feature (enabled by TDX_UBOOT_HARDENING_ENABLE=1) is currently tested with Torizon OS only and is not expected to work with BSP images.'
     fi
 }
