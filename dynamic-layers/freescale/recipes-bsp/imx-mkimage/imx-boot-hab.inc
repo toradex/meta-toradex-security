@@ -120,6 +120,10 @@ sign_common() {
                     UBOOT_DTB_NAME_EXTRA="${dtb_name}"
                 fi
                 BOOT_CONFIG_MACHINE_EXTRA="${BOOT_NAME}-${MACHINE}-${UBOOT_CONFIG_EXTRA}.bin"
+		UBOOT_NAME_EXTRA="u-boot-${MACHINE}.bin-${UBOOT_CONFIG_EXTRA}"
+
+		# Copy again artifacts for current U-Boot config to BOOT_STAGING
+		compile_${SOC_FAMILY}
 
 		case "$helper_type" in
 		    "habv4") sign_habv4_helper ;;
