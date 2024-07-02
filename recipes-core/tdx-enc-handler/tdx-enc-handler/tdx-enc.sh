@@ -53,6 +53,10 @@ tdx_enc_exit_error() {
 tdx_enc_prepare_generic() {
     tdx_enc_log "Preparing and checking system (generic)..."
 
+    if ! modprobe dm-crypt; then
+        tdx_enc_exit_error "Error loading dm-crypt module!"
+    fi
+
     if ! dmsetup targets | grep crypt -q; then
         tdx_enc_exit_error "No support for dm-crypt target!"
     fi
@@ -66,6 +70,10 @@ tdx_enc_prepare_cleartext() {
 # CAAM: prepare system
 tdx_enc_prepare_caam() {
     tdx_enc_log "Preparing and checking system (caam)..."
+
+    if ! modprobe trusted source=caam; then
+        tdx_enc_exit_error "Error loading trusted module!"
+    fi
 
     if ! grep -q cbc-aes-caam /proc/crypto; then
         tdx_enc_exit_error "No support for cbc-aes-caam!"
