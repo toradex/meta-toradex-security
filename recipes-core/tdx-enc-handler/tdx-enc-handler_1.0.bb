@@ -6,6 +6,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 SRC_URI = "\
     file://tdx-enc.sh \
     file://tdx-enc-handler.service \
+    file://99-tpm.rules \
 "
 
 RDEPENDS:${PN} = "\
@@ -15,6 +16,12 @@ RDEPENDS:${PN} = "\
     keyutils \
     util-linux \
 "
+
+RDEPENDS_TPM = "\
+    tpm2-tools \
+"
+
+RDEPENDS:${PN}:append = "${@ '${RDEPENDS_TPM}' if d.getVar('TDX_ENC_KEY_BACKEND') == 'tpm' else ''}"
 
 inherit systemd
 
@@ -34,4 +41,10 @@ do_install() {
 
     install -d ${D}${systemd_system_unitdir}
     install -m 0644 ${WORKDIR}/tdx-enc-handler.service ${D}${systemd_system_unitdir}
+
+    if [ ${TDX_ENC_KEY_BACKEND} = "tpm" ]; then
+        mkdir -p ${D}${sysconfdir}/udev/rules.d/
+        install -m 0644 ${WORKDIR}/99-tpm.rules ${D}${sysconfdir}/udev/rules.d/99-tpm.rules
+        sed -i '/^After=/a Requires=dev-tpm0.device\nAfter=dev-tpm0.device' ${D}${systemd_system_unitdir}/tdx-enc-handler.service
+    fi
 }

@@ -1,0 +1,54 @@
+From 1e0c55f65c2fd4124f70131028612285e60941d9 Mon Sep 17 00:00:00 2001
+From: Sergio Prado <sergio.prado@e-labworks.com>
+Date: Wed, 3 Jul 2024 12:07:18 +0000
+Subject: [PATCH] KEYS: trusted: revert changes introduced by NXP
+
+NXP introduced some changes on its downstream kernel to add a new cmd
+line option to the trusted keys subsystem (see commit 4fe113ae90958).
+
+These changes break the logic that parses options passed to the Trusted
+Keys subsystem, and because of it, using a TPM as a trust source doesn't
+work properly.
+
+So let's revert this change, which by the way is not required at all for
+our use cases.
+
+Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
+---
+ security/keys/trusted-keys/trusted_core.c | 16 ----------------
+ 1 file changed, 16 deletions(-)
+
+diff --git a/security/keys/trusted-keys/trusted_core.c b/security/keys/trusted-keys/trusted_core.c
+index 58921c1d0522..665938312b84 100644
+--- a/security/keys/trusted-keys/trusted_core.c
++++ b/security/keys/trusted-keys/trusted_core.c
+@@ -99,13 +97,6 @@ static int datablob_parse(char **datablob, struct trusted_key_payload *p)
+ 		if (ret < 0 || keylen < MIN_KEY_SIZE || keylen > MAX_KEY_SIZE)
+ 			return -EINVAL;
+ 		p->key_len = keylen;
+-		do {
+-			/* Second argument onwards,
+-			 * determine if tied to HW */
+-			c = strsep(datablob, " \t");
+-			if ((c != NULL) && (strcmp(c, "hw") == 0))
+-				p->is_hw_bound = HW_BOUND_KEY;
+-		} while (c != NULL);
+ 		ret = Opt_new;
+ 		break;
+ 	case Opt_load:
+@@ -119,13 +110,6 @@ static int datablob_parse(char **datablob, struct trusted_key_payload *p)
+ 		ret = hex2bin(p->blob, c, p->blob_len);
+ 		if (ret < 0)
+ 			return -EINVAL;
+-		do {
+-			/* Second argument onwards,
+-			 * determine if tied to HW */
+-			c = strsep(datablob, " \t");
+-			if ((c != NULL) && (strcmp(c, "hw") == 0))
+-				p->is_hw_bound = HW_BOUND_KEY;
+-		} while (c != NULL);
+ 		ret = Opt_load;
+ 		break;
+ 	case Opt_update:
+-- 
+2.34.1

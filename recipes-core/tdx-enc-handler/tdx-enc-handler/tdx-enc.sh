@@ -80,6 +80,23 @@ tdx_enc_prepare_caam() {
     fi
 }
 
+# TPM: prepare system
+tdx_enc_prepare_tpm() {
+    tdx_enc_log "Preparing and checking system (tpm)..."
+
+    if ! modprobe trusted source=tpm; then
+        tdx_enc_exit_error "Error loading trusted module!"
+    fi
+
+    if [ ! -c /dev/tpm0 ]; then
+        tdx_enc_exit_error "TPM device node (/dev/tpm0) not found!"
+    fi
+
+    if ! echo "deadbeef" | tpm2_hash >/dev/null; then
+        tdx_enc_exit_error "Hash calculation via tpm2_hash failed. TPM device might not be functional!"
+    fi
+}
+
 # configure key in kernel keyring
 tdx_enc_keyring_configure() {
     TDX_ENC_KEY_KEYRING_TYPE="$1"
@@ -123,6 +140,29 @@ tdx_enc_key_gen_cleartext() {
 tdx_enc_key_gen_caam() {
     tdx_enc_log "Setting up encryption key for CAAM backend..."
     tdx_enc_keyring_configure "trusted" "${TDX_ENC_KEY_KEYRING_NAME}" "new 32" "load \$(cat ${TDX_ENC_KEY_FULLPATH})"
+}
+
+# TPM: generate/load key
+tdx_enc_key_gen_tpm() {
+    tdx_enc_log "Setting up encryption key for TPM backend..."
+
+    if [ ! -e "${TDX_ENC_KEY_FULLPATH}" ]; then
+
+        # create a private RSA key in the TPM
+        if ! tpm2_createprimary -C o -G rsa2048 -c /tmp/key.ctxt; then
+            tdx_enc_exit_error "Error creating a private RSA key in the TPM!"
+        fi
+
+        # make the key persistent
+        TPMKEYHANDLE=$(tpm2_evictcontrol -C o -c /tmp/key.ctxt | grep persistent-handle | cut -d' ' -f 2)
+        if [ -z "$TPMKEYHANDLE" ]; then
+            tdx_enc_exit_error "Error making the TPM key persistent!"
+        fi
+    fi
+
+    tdx_enc_keyring_configure "trusted" "${TDX_ENC_KEY_KEYRING_NAME}" \
+                              "new 32 keyhandle=$TPMKEYHANDLE" \
+                              "load \$(cat ${TDX_ENC_KEY_FULLPATH})"
 }
 
 # backup original data in partition (if not encrypted)
