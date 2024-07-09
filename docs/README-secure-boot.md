@@ -54,6 +54,8 @@ For details on the bootloader signature checking implementation for SoMs that us
 
 ## U-Boot hardening
 
+**Important**: Currently, due to incompatibility with newer Toradex Embedded Linux BSP releases, the U-Boot hardening feature is not supported and is disabled by default (see [Issue #20](https://github.com/toradex/meta-toradex-security/issues/20)). This will be fixed in a future release of this layer.
+
 Toradex is implementing various changes to U-Boot (currently as a series of patches) with the purpose of hardening it for secure boot. The hardening includes the following features:
 
 - **Command whitelisting**: this part of the hardening is responsible for limiting the set of commands available to boot scripts once the device is in closed state - by default, only a small set of commands remain available in that state (mostly those strictly required for booting a secure boot image) alongside a few others considered strictly secure and potentially useful for future boot scripts.
