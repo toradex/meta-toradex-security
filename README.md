@@ -55,7 +55,7 @@ For more information on the available features, please check the corresponding d
 | [docs/README-optee.md](docs/README-optee.md) | Documentation on how to run a Trusted Execution Environment (OP-TEE) together with the Linux kernel |
 | [docs/README-data-partition.md](docs/README-data-partition.md) | Documentation on how to create an additional partition for storing persistent data |
 
-This layer only works on Toradex Embedded Linux 6.3.0 and newer releases.
+This layer only works on Toradex Embedded Linux BSP 6.3.0 and newer releases.
 
 # License
 
