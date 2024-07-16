@@ -1,7 +1,7 @@
-From b522b7c02a69abd67ff6594924bd2a445f63d45c Mon Sep 17 00:00:00 2001
+From 8a2aa56d770e6d381ec0ed150a0c55be9144f3b2 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Wed, 13 Sep 2023 15:22:25 -0300
-Subject: [PATCH 5/5] toradex: integrate CLI access protection (downstream)
+Subject: [PATCH 5/8] toradex: integrate CLI access protection (downstream)
 
 Integrate the protection in U-Boot to prevent access to its CLI once
 the device is closed; this is part of the hardening for Secure Boot.
@@ -11,13 +11,13 @@ Upstream-Status: Inappropriate [TorizonCore specific]
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  Kconfig              |  7 ++++++
- common/main.c        |  4 ++++
- common/tdx-harden.c  | 53 ++++++++++++++++++++++++++++++++++++++++++++
- include/tdx-harden.h |  5 ++++-
- 4 files changed, 68 insertions(+), 1 deletion(-)
+ common/main.c        |  5 ++++
+ common/tdx-harden.c  | 55 ++++++++++++++++++++++++++++++++++++++++++++
+ include/tdx-harden.h |  5 +++-
+ 4 files changed, 71 insertions(+), 1 deletion(-)
 
 diff --git a/Kconfig b/Kconfig
-index a1c76f1cf0..0dbb1f87a8 100644
+index a1c76f1cf06..0dbb1f87a89 100644
 --- a/Kconfig
 +++ b/Kconfig
 @@ -509,6 +509,7 @@ config TDX_SECBOOT_HARDENING
@@ -39,10 +39,18 @@ index a1c76f1cf0..0dbb1f87a8 100644
 +	  Enable the protection where the CLI is disabled when the device
 +	  is in closed state.
 diff --git a/common/main.c b/common/main.c
-index 3f5214fd44..14d1ffb936 100644
+index 3f5214fd44b..3662c0361e7 100644
 --- a/common/main.c
 +++ b/common/main.c
-@@ -58,6 +58,10 @@ void main_loop(void)
+@@ -17,6 +17,7 @@
+ #include <net.h>
+ #include <version_string.h>
+ #include <efi_loader.h>
++#include <tdx-harden.h>
+ 
+ static void run_preboot_environment_command(void)
+ {
+@@ -58,6 +59,10 @@ void main_loop(void)
  		efi_launch_capsules();
  
  	s = bootdelay_process();
@@ -54,7 +62,7 @@ index 3f5214fd44..14d1ffb936 100644
  		cli_secure_boot_cmd(s);
  
 diff --git a/common/tdx-harden.c b/common/tdx-harden.c
-index fb8aaa5eed..e3711dce8f 100644
+index fb8aaa5eed0..1134b6ce596 100644
 --- a/common/tdx-harden.c
 +++ b/common/tdx-harden.c
 @@ -6,6 +6,7 @@
@@ -65,10 +73,11 @@ index fb8aaa5eed..e3711dce8f 100644
  #include <log.h>
  #include <fdt_support.h>
  #include <asm/global_data.h>
-@@ -160,6 +161,53 @@ int tdx_secboot_dev_is_open(void)
+@@ -160,6 +161,55 @@ int tdx_secboot_dev_is_open(void)
  	return dev_open;
  }
  
++#ifdef CONFIG_TDX_CLI_PROTECTION
 +/**
 + * tdx_cli_access_enabled - Determine if U-Boot CLI access is to be enabled
 + * Return: 1 if CLI access is to be enabled or 0 otherwise.
@@ -112,14 +121,15 @@ index fb8aaa5eed..e3711dce8f 100644
 +	disable_ctrlc(1);
 +	rc = run_command_list(cmd, -1, 0);
 +
-+	panic("## Error: \"%s\" returned (code %d) and CLI access is "
++	panic("## ERROR: \"%s\" returned (code %d) and CLI access is "
 +	      "disabled\n", cmd, rc);
 +}
++#endif
 +
  static int hardening_info(void)
  {
  	int hdn_enabled = tdx_hardening_enabled();
-@@ -258,3 +306,8 @@ U_BOOT_CMD(hardening, 5, 0, do_hardening,
+@@ -258,3 +308,8 @@ U_BOOT_CMD(hardening, 5, 0, do_hardening,
   * U-Boot configuration is wrong. */
  #error Toradex hardening assumes CONFIG_LMB is set
  #endif
@@ -129,7 +139,7 @@ index fb8aaa5eed..e3711dce8f 100644
 +#error Toradex hardening assumes CONFIG_UPDATE_TFTP is not set
 +#endif
 diff --git a/include/tdx-harden.h b/include/tdx-harden.h
-index dfdaa69d3a..50e850ba2a 100644
+index dfdaa69d3a4..50e850ba2af 100644
 --- a/include/tdx-harden.h
 +++ b/include/tdx-harden.h
 @@ -12,6 +12,8 @@

@@ -1,0 +1,96 @@
+From 5e3fc59dab6f6cfc1250075d73d65bdbca9e3545 Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Mon, 28 Aug 2023 13:29:34 -0300
+Subject: [PATCH 3/8] toradex: integrate command whitelisting (upstream)
+
+Integrate the command whitelisting feature which is part of the Secure
+Boot hardening on U-Boot made by Toradex. The feature allows categories
+of commands to be enabled/disabled depending on whether the device is
+in open/closed state related to HAB/AHAB; the selection of allowed and
+denied categories is taken from the control DTB having also hard-coded
+sane defaults.
+
+Upstream-Status: Inappropriate [TorizonCore specific]
+
+Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+---
+ Kconfig          | 28 ++++++++++++++++++++++++++++
+ common/Makefile  |  2 ++
+ common/command.c |  5 +++++
+ 3 files changed, 35 insertions(+)
+
+diff --git a/Kconfig b/Kconfig
+index f7e3c332f07..bd3f9c9e95f 100644
+--- a/Kconfig
++++ b/Kconfig
+@@ -581,3 +581,31 @@ source "lib/Kconfig"
+ source "test/Kconfig"
+ 
+ source "tools/Kconfig"
++
++config TDX_SECBOOT_HARDENING
++	bool "Toradex Secure Boot hardening"
++	select TDX_CMD_WHITELIST
++	help
++	  This causes the Secure Boot hardening features added by Toradex
++	  to be built into U-Boot, including:
++
++	  - Command white-listing.
++	  - Protection against execution of unsigned software by "bootm".
++	  - CLI access prevention (when device is closed).
++	  - Kernel command line protection.
++
++	  Whether these features are active or not will depend on the runtime
++	  configuration stored in the control DTB.
++
++config TDX_SECBOOT_HARDENING_DBG
++	bool "Toradex Secure Boot hardening debugging support"
++	depends on TDX_SECBOOT_HARDENING
++	default n
++	help
++	  Add some extra commands to help debug the U-Boot hardening changes
++	  made by Toradex. This should never be enabled in production!
++
++config TDX_CMD_WHITELIST
++	bool
++	help
++	  Enable the command white-listing feature provided by Toradex.
+diff --git a/common/Makefile b/common/Makefile
+index 75c24e32492..5a366888909 100644
+--- a/common/Makefile
++++ b/common/Makefile
+@@ -22,6 +22,8 @@ obj-$(CONFIG_$(SPL_TPL_)OF_LIBFDT) += fdt_support.o
+ obj-$(CONFIG_MII) += miiphyutil.o
+ obj-$(CONFIG_CMD_MII) += miiphyutil.o
+ obj-$(CONFIG_PHYLIB) += miiphyutil.o
++obj-$(CONFIG_TDX_SECBOOT_HARDENING) += tdx-harden.o
++obj-$(CONFIG_TDX_CMD_WHITELIST) += whitelist.o
+ 
+ ifdef CONFIG_USB
+ obj-y += usb.o usb_hub.o
+diff --git a/common/command.c b/common/command.c
+index 41c91c6d8c8..b35cb3acd41 100644
+--- a/common/command.c
++++ b/common/command.c
+@@ -16,6 +16,7 @@
+ #include <log.h>
+ #include <asm/global_data.h>
+ #include <linux/ctype.h>
++#include <tdx-harden.h>
+ 
+ DECLARE_GLOBAL_DATA_PTR;
+ 
+@@ -577,6 +578,10 @@ static int cmd_call(struct cmd_tbl *cmdtp, int flag, int argc,
+ {
+ 	int result;
+ 
++#ifdef CONFIG_TDX_CMD_WHITELIST
++	if (!cmd_allowed_by_whitelist(cmdtp, argc, argv))
++		return CMD_RET_FAILURE;
++#endif
+ 	result = cmdtp->cmd_rep(cmdtp, flag, argc, argv, repeatable);
+ 	if (result)
+ 		debug("Command failed, result=%d\n", result);
+-- 
+2.25.1
+

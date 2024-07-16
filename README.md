@@ -1,145 +1,64 @@
 # OpenEmbedded layer with security-related metadata for Toradex SoMs
 
-This layer contains metadata to enable security features when building a
-Linux system with Toradex SoMs.
+This layer contains metadata to enable security features when building a Linux system for Toradex SoMs.
 
-For more information on available Toradex SoMs please visit:
+For more information on available Toradex SoMs, please visit:
 
 https://www.toradex.com/computer-on-modules
+
+# Layer dependencies
+
+This layer depends on:
+
+```
+URI: git://git.openembedded.org/openembedded-core
+layers: meta
+branch: kirkstone
+revision: HEAD
+
+URI: git://git.yoctoproject.org/meta-security
+branch: kirkstone
+revision: HEAD
+
+URI: git://git.toradex.com/meta-toradex-nxp.git
+branch: kirkstone
+revision: HEAD
+
+URI: git://git.toradex.com/meta-toradex-ti.git
+branch: kirkstone
+revision: HEAD
+```
 
 # Supported features and SoMs
 
 This layer supports the following security features:
 
 - Secure boot
+  - Bootloader signature checking.
+  - U-Boot hardening.
+  - FIT image signature checking (kernel, DTBs and ramdisk).
+  - Rootfs signature checking via `dm-verity`.
+- Data-at-rest encryption
+  - Encryption key management via the Trusted Keys kernel subsystem
+  - Block device encryption with `dm-crypt`
+- TEE (Trusted Execution Environment)
+  - Support for running OP-TEE
 
-The level of support of the above features is:
+For more information on the available features, please check the corresponding documentation:
 
-- Torizon: tested and integrated.
-- BSP Layers and Reference Images: not tested, integration effort is expected.
+| Documentation | Description |
+| :------------ | :---------- |
+| [docs/README-secure-boot.md](docs/README-secure-boot.md) | General documentation about the secure boot feature |
+| [docs/README-secure-boot-imx.md](docs/README-secure-boot-imx.md) | Details on the secure boot implementation for NXP iMX based SoMs |
+| [docs/README-secure-boot-k3.md](docs/README-secure-boot-k3.md) | Details on the secure boot implementation for TI K3 based SoMs (e.g. AM62) |
+| [docs/README-encryption.md](docs/README-encryption.md) | General documentation about the data-at-rest encryption feature |
+| [docs/README-optee.md](docs/README-optee.md) | Documentation on how to run a Trusted Execution Environment (OP-TEE) together with the Linux kernel |
+| [docs/README-data-partition.md](docs/README-data-partition.md) | Documentation on how to create an additional partition for storing persistent data |
 
-The features are currently supported on the following SoMs:
-
-- Verdin iMX8MM
-- Verdin iMX8MP
-- Apalis iMX8
-- Colibri iMX8X
-- Colibri iMX6ULL (1GB eMMC variant only)
-- Colibri iMX7D (1GB eMMC variant only)
-
-This layer only works on Embedded Linux 6.3.0 and newer releases.
-
-> ⚠️ **_NOTE_**: The main branch is not intended for consumer use. It is not as well maintained as the current yocto branch, and its focus is for our internal CI.
-
-# Secure boot
-
-To enable secure boot, the `tdx-signed` class needs to be inherited in a configuration file.
-
-```
-INHERIT += "tdx-signed"
-```
-
-When secure boot is enabled:
-
-- The bootloader image is signed at build time and its signature is verified at runtime using iMX HAB/AHAB.
-- A FIT image with the kernel and its artifacts (device trees, ramdisk, etc) is signed at build time and its signature is verified at runtime by the bootloader.
-
-## Configuring HAB/AHAB support
-
-When the `tdx-signed` class is inherited, signing bootloader images via HAB/AHAB is enabled by default. Set `TDX_IMX_HAB_ENABLE` to `0` to disable it.
-
-Before using this feature, it is required to:
-
-1. Download NXP CST tool from https://www.nxp.com/webapp/sps/download/license.jsp?colCode=IMX_CST_TOOL_NEW.
-2. Follow the NXP documentation to generate the keys, certificates, SRK tables and Efuse Hash (the documentation can be found inside the CST tool in `docs/CST_UG.pdf`).
-
-After that, `TDX_IMX_HAB_CST_DIR` and `TDX_IMX_HAB_CST_CERTS_DIR` variables can be used to configure the location of the CST tool and generated certificates. Example:
-
-```
-TDX_IMX_HAB_CST_DIR = "/opt/cst"
-TDX_IMX_HAB_CST_CERTS_DIR = "/opt/cst/crts"
-```
-
-Obs.: The private keys must be located in a directory called `keys` at the same level as the `crts` directory. This is a requirement for the CST tool to work properly.
-
-Summary of the variables that can be used to configure HAB/AHAB support:
-
-| Variable | Description | Default value |
-| :------- | :---------- | :------------ |
-| `TDX_IMX_HAB_ENABLE` | Enable/disable HAB/AHAB support | `1` |
-| `TDX_IMX_HAB_CST_KEY_SIZE` | Size of the generated keys | `2048` |
-| `TDX_IMX_HAB_CST_DIG_ALGO` | Digest algorithm | `sha256` |
-| `TDX_IMX_HAB_CST_DIR` | Location of the CST tool | `${TOPDIR}/keys/cst` |
-| `TDX_IMX_HAB_CST_CERTS_DIR` | Location of the certificates directory | `${TDX_IMX_HAB_CST_DIR}/crts` |
-
-The complete list of variables can be found in the `imx-hab.bbclass` file.
-
-### Closing the device
-
-If HAB/AHAB is enabled, in the end of the build, a file with the commands to fuse the SoC (`fuse-cmds.txt`) will be generated in the images directory. The commands in this file should be executed in the U-Boot command line interface.
-
-Read the warning messages carefully and be aware that the commands will write to One-Time Programmable e-fuses, and once you write them, you can't go back! You can check for HAB events with the command `hab_status` for HAB or `ahab_status` for AHAB. It is recommended to read NXP documentation about HAB/AHAB before writing to the e-fuses. This is an output example of the `fuse-cmds.txt` file:
-
-```
-$ cat deploy/images/verdin-imx8mp/fuse-cmds.txt
-# These are One-Time Programmable e-fuses. Once you write them you can't
-# go back, so get it right the first time!
-fuse prog -y 6 0 0x8AE322B2
-fuse prog -y 6 1 0xDF2939A3
-fuse prog -y 6 2 0x9DA80323
-fuse prog -y 6 3 0x3B024EF2
-fuse prog -y 7 0 0xA53091
-fuse prog -y 7 1 0x55304E7A
-fuse prog -y 7 2 0xFB8FF259
-fuse prog -y 7 3 0x9CE57582
-
-# After the device successfully boots a signed image without generating
-# any HAB events, it is safe to secure, or 'close', the device. This is
-# the last step in the process. Once the fuse is blown, the chip does
-# not load an image that has not been signed using the correct PKI tree.
-# Be careful! This is again a One-Time Programmable e-fuse. Once you
-# write it you can't go back, so get it right the first time. If
-# anything in the previous steps wasn't done correctly, after writing
-# this bit, the SOM will not boot anymore!
-fuse prog -y 1 3 0x02000000
-```
-
-## U-Boot hardening
-
-Toradex is implementing various changes to U-Boot (currently as a series of patches) with the purpose of hardening it for secure boot. The hardening includes the following features:
-
-- Command whitelisting<sup>(1)</sup>;
-- Protection against execution of unsigned software by `bootm`<sup>(1)</sup>;
-- CLI access prevention<sup>(1)</sup>.
-
-<sup>(1)</sup> Implemented on the i.MX8 family of system-on-chips.
-
-By default, when HAB/AHAB is enabled (`TDX_IMX_HAB_ENABLE` is set to `1`) the hardening is also enabled, but it can be disabled by setting `TDX_UBOOT_HARDENING_ENABLE` to `0`.
-
-<!-- TODO: Describe how one can configure the whitelisting feature. -->
-<!-- TODO: Describe how one can configure the CLI access prevention feature. -->
-
-## Configuring FIT image signing
-
-When the `tdx-signed` class is inherited, generating and signing a FIT image is enabled by default. Set `UBOOT_SIGN_ENABLE` to `0` to disable it.
-
-This features uses the default FIT image signing support provided by the `uboot-sign` and `kernel-fitimage` classes from OpenEmbedded Core. See the [Yocto Project documentation](https://docs.yoctoproject.org/ref-manual/classes.html#kernel-fitimage) for more details.
-
-A few variables can be used to configure this feature, including:
-
-| Variable | Description | Default value |
-| :------- | :---------- | :------------ |
-| UBOOT_SIGN_ENABLE | Enable signing of FIT image | `1` |
-| FIT_GENERATE_KEYS | Generate signing keys | `1` |
-| UBOOT_SIGN_KEYDIR | Location of the RSA key and certificate used for signing | `${TOPDIR}/keys/fit` |
-| UBOOT_SIGN_KEYNAME | The name of the key used for signing | `dev` |
-
-The complete list of variables can be found in the `tdx-signed-fit-image.inc` file.
+This layer only works on Toradex Embedded Linux BSP 6.3.0 and newer releases.
 
 # License
 
-All metadata is MIT licensed unless otherwise stated. Source code and
-binaries included in tree for individual recipes is under the LICENSE
-stated in each recipe (.bb file) unless otherwise stated.
+All metadata is MIT licensed unless otherwise stated. Source code and binaries included in tree for individual recipes are under the LICENSE stated in each recipe (.bb file) unless otherwise stated.
 
-This README document is Copyright (C) 2023 Toradex AG.
+This README document is Copyright (C) 2024 Toradex AG.

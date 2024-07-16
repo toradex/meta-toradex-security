@@ -68,6 +68,9 @@ set_template_file() {
 	"IMX7")
 	    TEMPLATE_FILE="imx7_template.csf"
 	    ;;
+	"IMX6")
+            TEMPLATE_FILE="imx6_template.csf"
+	    ;;
         *)
 	    echo "Invalid SoC!"
 	    return 1
@@ -113,7 +116,13 @@ verify_env "${TDX_IMX_HAB_CST_BIN}" "TDX_IMX_HAB_CST_BIN"
 verify_env "${IMXBOOT}" "IMXBOOT"
 verify_env "${HAB_LOG}" "HAB_LOG"
 
-readonly CSF="csf-uboot"
+# If this file already exists then we're processing an SPL.
+# Give it a different name to avoid confusion.
+if [ -e "${DIR_SCRIPT}/csf-uboot.bin" ]; then
+    readonly CSF="csf-spl"
+else
+    readonly CSF="csf-uboot"
+fi
 
 cd ${DIR_SCRIPT}
 

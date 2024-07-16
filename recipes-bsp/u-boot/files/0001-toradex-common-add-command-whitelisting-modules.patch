@@ -1,7 +1,7 @@
-From f383146ad438536ba45e6ca846cd8048ddc8ce2b Mon Sep 17 00:00:00 2001
+From 90474be140b1898670bd6e23e27cca6be4deb57c Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:28:50 -0300
-Subject: [PATCH 1/5] toradex: common: add command whitelisting modules
+Subject: [PATCH 1/8] toradex: common: add command whitelisting modules
 
 Add modules implementing the command whitelisting feature to be
 integrated into U-Boot on a separate commit.
@@ -11,10 +11,10 @@ Upstream-Status: Inappropriate [TorizonCore specific]
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  common/tdx-harden.c                           | 260 ++++++
- common/whitelist.c                            | 795 ++++++++++++++++++
- .../dt-bindings/secure-boot/cmd-categories.h  |  94 +++
+ common/whitelist.c                            | 815 ++++++++++++++++++
+ .../dt-bindings/secure-boot/cmd-categories.h  | 101 +++
  include/tdx-harden.h                          |  42 +
- 4 files changed, 1191 insertions(+)
+ 4 files changed, 1218 insertions(+)
  create mode 100644 common/tdx-harden.c
  create mode 100644 common/whitelist.c
  create mode 100644 include/dt-bindings/secure-boot/cmd-categories.h
@@ -22,7 +22,7 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 
 diff --git a/common/tdx-harden.c b/common/tdx-harden.c
 new file mode 100644
-index 0000000000..fb8aaa5eed
+index 00000000000..fb8aaa5eed0
 --- /dev/null
 +++ b/common/tdx-harden.c
 @@ -0,0 +1,260 @@
@@ -288,10 +288,10 @@ index 0000000000..fb8aaa5eed
 +#endif
 diff --git a/common/whitelist.c b/common/whitelist.c
 new file mode 100644
-index 0000000000..c56278f9b9
+index 00000000000..a60f62d5863
 --- /dev/null
 +++ b/common/whitelist.c
-@@ -0,0 +1,795 @@
+@@ -0,0 +1,815 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2023 Toradex
@@ -402,12 +402,16 @@ index 0000000000..c56278f9b9
 +	{ { "bdinfo" }, { CMD_CAT_DIAG } },
 +	{ { "blkcache", "show" }, { CMD_CAT_BLKCACHE_DIAG } },
 +	{ { "blkcache", "configure", ALL }, { CMD_CAT_BLKCACHE_CONTROL } },
++	{ { "bmode", ALL }, { CMD_CAT_BMODE } },
 +	{ { "boot" }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
 +	{ { "bootaux", ALL }, { CMD_CAT_AUXCORE } },
 +	{ { "bootcount", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
 +	{ { "bootd" }, { CMD_CAT_SAFE } },
 +	{ { "bootefi", ALL }, { CMD_CAT_EXEC } },
 +	{ { "bootelf", ALL }, { CMD_CAT_EXEC } },
++#ifdef CONFIG_CMD_BOOTFLOW
++	{ { "bootflow", ALL }, { CMD_CAT_BOOTFLOW } },
++#endif
 +	{ { "booti", ALL }, { CMD_CAT_EXEC } },
 +	{ { "bootm", ALL }, { CMD_CAT_EXEC, CMD_CAT_NEEDED } },
 +	{ { "bootp", ALL }, { CMD_CAT_EXEC, CMD_CAT_MEM_WRITE } },
@@ -424,6 +428,9 @@ index 0000000000..c56278f9b9
 +	{ { "cpu", ALL }, { CMD_CAT_DIAG } },
 +	{ { "crc32", ALL }, { CMD_CAT_MEM_READ, CMD_CAT_MEM_WRITE } },
 +	{ { "dcache", ALL }, { CMD_CAT_DCACHE_CONTROL } },
++#ifdef CONFIG_CMD_DEKBLOB
++	{ { "dek_blob", ALL }, { CMD_CAT_DEKBLOB } },
++#endif
 +	{ { "dhcp", ALL }, { CMD_CAT_EXEC, CMD_CAT_MEM_WRITE } },
 +	{ { "dm", "tree", ALL }, { CMD_CAT_DM_DIAG } },
 +	{ { "dm", "uclass", ALL }, { CMD_CAT_DM_DIAG } },
@@ -443,6 +450,9 @@ index 0000000000..c56278f9b9
 +	{ { "ext4size", ALL }, { CMD_CAT_FS_DIAG } },
 +	{ { "ext4write", ALL }, { CMD_CAT_FS_WRITE } },
 +	{ { "false", ALL }, { CMD_CAT_SAFE } },
++#ifdef CONFIG_CMD_FASTBOOT
++	{ { "fastboot", ALL }, { CMD_CAT_FASTBOOT } },
++#endif
 +	{ { "fatinfo", ALL }, { CMD_CAT_FS_DIAG } },
 +	{ { "fatload", ALL }, { CMD_CAT_FS_READ, CMD_CAT_MEM_WRITE_SAFE } },
 +	{ { "fatls", ALL }, { CMD_CAT_FS_DIAG } },
@@ -470,6 +480,9 @@ index 0000000000..c56278f9b9
 +	{ { "fdt", "rsvmem", "delete", ALL }, { CMD_CAT_FDT_CONTROL } },
 +	{ { "fdt", "chosen", ALL }, { CMD_CAT_FDT_CONTROL } },
 +	{ { "fdt", "checksign", ALL }, { CMD_CAT_FDT_DIAG } },
++#ifdef CONFIG_CMD_FLASH
++	{ { "flinfo", ALL }, { CMD_CAT_FLASH_DIAG } },
++#endif
 +	{ { "fstype", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
 +	{ { "fstypes", ALL }, { CMD_CAT_SAFE } },
 +	{ { "fuse", "read", ALL }, { CMD_CAT_FUSE_READ } },
@@ -604,6 +617,9 @@ index 0000000000..c56278f9b9
 +	{ { "pmic", "write", ALL }, { CMD_CAT_PMIC_WRITE } },
 +#endif /* CONFIG_CMD_PMIC */
 +	{ { "printenv", ALL }, { CMD_CAT_SAFE } },
++#ifdef CONFIG_CMD_FLASH
++	{ { "protect", ALL }, { CMD_CAT_FLASH_CONTROL } },
++#endif
 +	{ { "pxe", ALL }, { CMD_CAT_EXEC, CMD_CAT_MEM_WRITE } },
 +	{ { "random", ALL }, { CMD_CAT_MEM_WRITE } },
 +	{ { "read", ALL }, { CMD_CAT_FS_READ, CMD_CAT_MEM_WRITE } },
@@ -621,6 +637,9 @@ index 0000000000..c56278f9b9
 +	{ { "save", ALL }, { CMD_CAT_FS_WRITE, CMD_CAT_MEM_READ } },
 +	{ { "saveenv", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
 +	{ { "scu_rm", ALL }, { CMD_CAT_SCU_PART } },
++#ifdef CONFIG_CMD_USB_SDP
++	{ { "sdp", ALL }, { CMD_CAT_GADGETSDP } },
++#endif
 +	{ { "select_dt_from_module_version", ALL },
 +	  { CMD_CAT_TDX_AUTOSEL_DT, CMD_CAT_SAFE  } },
 +	{ { "set_fips_mode", ALL }, { CMD_CAT_SNVS_CONTROL } },
@@ -662,6 +681,7 @@ index 0000000000..c56278f9b9
 +	{ { "usbboot", ALL }, { CMD_CAT_EXEC } },
 +#endif /* CONFIG_CMD_USB */
 +	{ { "uuid", ALL }, { CMD_CAT_SAFE } },
++	{ { "version", ALL }, { CMD_CAT_DIAG } },
 +};
 +
 +#define CMD_WHITELIST_LEN (sizeof(cmd_whitelist) / sizeof(cmd_whitelist[0]))
@@ -1089,10 +1109,10 @@ index 0000000000..c56278f9b9
 +}
 diff --git a/include/dt-bindings/secure-boot/cmd-categories.h b/include/dt-bindings/secure-boot/cmd-categories.h
 new file mode 100644
-index 0000000000..0094eff2a8
+index 00000000000..002f118499e
 --- /dev/null
 +++ b/include/dt-bindings/secure-boot/cmd-categories.h
-@@ -0,0 +1,94 @@
+@@ -0,0 +1,101 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * This header provides constants for command categories used with the whitelist
@@ -1115,22 +1135,29 @@ index 0000000000..0094eff2a8
 +#define CMD_CAT_AUXCORE			30
 +#define CMD_CAT_BLKCACHE_CONTROL	40
 +#define CMD_CAT_BLKCACHE_DIAG		41
++#define CMD_CAT_BMODE			44
++#define CMD_CAT_BOOTFLOW		45
 +#define CMD_CAT_BOOTROM			50
 +#define CMD_CAT_CFGBLOCK_DIAG		60
 +#define CMD_CAT_CFGBLOCK_WRITE		61
 +#define CMD_CAT_CLK_CONTROL		70
 +#define CMD_CAT_CLK_DIAG		71
 +#define CMD_CAT_DCACHE_CONTROL		80
++#define CMD_CAT_DEKBLOB			85
 +#define CMD_CAT_DIAG			90
 +#define CMD_CAT_DM_DIAG			100
 +#define CMD_CAT_EXEC			110
++#define CMD_CAT_FASTBOOT		115
 +#define CMD_CAT_FDT_CONTROL		120
 +#define CMD_CAT_FDT_DIAG		121
++#define CMD_CAT_FLASH_CONTROL		125
++#define CMD_CAT_FLASH_DIAG		126
 +#define CMD_CAT_FS_DIAG			130
 +#define CMD_CAT_FS_READ			131
 +#define CMD_CAT_FS_WRITE		132
 +#define CMD_CAT_FUSE_READ		140
 +#define CMD_CAT_FUSE_WRITE		141
++#define CMD_CAT_GADGETSDP		145
 +#define CMD_CAT_GPT_DIAG		150
 +#define CMD_CAT_GPT_READ		151
 +#define CMD_CAT_GPT_WRITE		152
@@ -1189,7 +1216,7 @@ index 0000000000..0094eff2a8
 +#endif
 diff --git a/include/tdx-harden.h b/include/tdx-harden.h
 new file mode 100644
-index 0000000000..dfdaa69d3a
+index 00000000000..dfdaa69d3a4
 --- /dev/null
 +++ b/include/tdx-harden.h
 @@ -0,0 +1,42 @@

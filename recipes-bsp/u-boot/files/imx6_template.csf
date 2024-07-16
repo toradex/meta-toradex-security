@@ -1,5 +1,5 @@
 [Header]
-    Version = 4.3
+    Version = 4.2
     Hash Algorithm = sha256
     Engine = CAAM
     Engine Configuration = 0
@@ -34,4 +34,4 @@
     # Key slot index used to authenticate the image data
     Verification index = 2
     # Authenticate Start Address, Offset, Length and file
-    Blocks = 0x7e0fc0 0x1a000 0x2a600 "flash.bin"
+    Blocks = 0x7e0fc0 0x1a000 0x2a600 "u-boot-ivt.img"
