@@ -12,9 +12,12 @@ SRC_URI:append = "\
     file://imx6_template.csf \
 "
 
-SRC_URI:append:use-nxp-bsp = "\
+TDX_UBOOT_HAB_PATCHES_DOWNSTREAM = "\
     file://0001-bootm-don-t-use-HAB-to-authenticate-FIT-image.patch \
 "
+
+SRC_URI:append:apalis-imx8 = "${TDX_UBOOT_HAB_PATCHES_DOWNSTREAM}"
+SRC_URI:append:colibri-imx8x = "${TDX_UBOOT_HAB_PATCHES_DOWNSTREAM}"
 
 UBOOT_BINARY_HAB = "${UBOOT_BINARY}"
 UBOOT_BINARY_HAB:mx6dl-generic-bsp = "u-boot-ivt.img"
