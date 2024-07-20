@@ -1,5 +1,4 @@
-SRC_URI:append:use-nxp-bsp = "\
-    file://u-boot-harden.cfg \
+TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM = "\
     file://0001-toradex-common-add-command-whitelisting-modules.patch \
     file://0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch \
     file://0003-toradex-integrate-command-whitelisting-downstream.patch \
@@ -10,8 +9,7 @@ SRC_URI:append:use-nxp-bsp = "\
     file://0008-toradex-integrate-bootargs-protection-downstream.patch \
 "
 
-SRC_URI:append:use-mainline-bsp = "\
-    file://u-boot-harden.cfg \
+TDX_UBOOT_HARDENING_PATCHES_UPSTREAM = "\
     file://0001-toradex-common-add-command-whitelisting-modules.patch \
     file://0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch \
     file://0003-toradex-integrate-command-whitelisting-upstream.patch \
@@ -19,6 +17,15 @@ SRC_URI:append:use-mainline-bsp = "\
     file://0005-toradex-integrate-CLI-access-protection-upstream.patch \
     file://0007-toradex-add-implementation-of-bootargs-protection.patch \
     file://0008-toradex-integrate-bootargs-protection-upstream.patch \
+"
+
+TDX_UBOOT_HARDENING_PATCHES = "${TDX_UBOOT_HARDENING_PATCHES_UPSTREAM}"
+TDX_UBOOT_HARDENING_PATCHES:apalis-imx8 = "${TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM}"
+TDX_UBOOT_HARDENING_PATCHES:colibri-imx8x = "${TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM}"
+
+SRC_URI:append = "\
+    file://u-boot-harden.cfg \
+    ${TDX_UBOOT_HARDENING_PATCHES} \
 "
 
 do_compile:prepend() {
