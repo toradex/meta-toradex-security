@@ -1,21 +1,21 @@
-From 4592df88c8d43ee9a2972bdf8f8ac7094b44a390 Mon Sep 17 00:00:00 2001
+From d9c08b2ffe922bd50b5007765059f1690f9013ef Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Thu, 26 Oct 2023 12:40:46 -0300
-Subject: [PATCH 8/8] toradex: integrate bootargs protection (upstream)
+Subject: [PATCH 7/7] toradex: integrate bootargs protection (upstream)
 
 Upstream-Status: Inappropriate [TorizonCore specific]
 
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
- Kconfig              | 10 ++++++++++
- common/fdt_support.c | 20 ++++++++++++++++++++
+ Kconfig            | 10 ++++++++++
+ boot/fdt_support.c | 20 ++++++++++++++++++++
  2 files changed, 30 insertions(+)
 
 diff --git a/Kconfig b/Kconfig
-index d3587ee4d1f..d8831bfc0fe 100644
+index 59591a7a52..4a4b100568 100644
 --- a/Kconfig
 +++ b/Kconfig
-@@ -587,6 +587,7 @@ config TDX_SECBOOT_HARDENING
+@@ -762,6 +762,7 @@ config TDX_SECBOOT_HARDENING
  	select TDX_CMD_WHITELIST
  	select TDX_BOOTM_PROTECTION
  	select TDX_CLI_PROTECTION
@@ -23,7 +23,7 @@ index d3587ee4d1f..d8831bfc0fe 100644
  	help
  	  This causes the Secure Boot hardening features added by Toradex
  	  to be built into U-Boot, including:
-@@ -623,3 +624,12 @@ config TDX_CLI_PROTECTION
+@@ -798,3 +799,12 @@ config TDX_CLI_PROTECTION
  	help
  	  Enable the protection where the CLI is disabled when the device
  	  is in closed state.
@@ -36,13 +36,13 @@ index d3587ee4d1f..d8831bfc0fe 100644
 +	  against information in the device-tree provided to the bootm
 +	  command. Since the device-tree is supposed to come from a signed
 +	  FIT image, it is expected to be a trustworthy source of information.
-diff --git a/common/fdt_support.c b/common/fdt_support.c
-index 8c18af2ce15..c81c2de139c 100644
---- a/common/fdt_support.c
-+++ b/common/fdt_support.c
-@@ -21,6 +21,10 @@
- #include <fdtdec.h>
- #include <version.h>
+diff --git a/boot/fdt_support.c b/boot/fdt_support.c
+index 2bd80a9dfb..717709e059 100644
+--- a/boot/fdt_support.c
++++ b/boot/fdt_support.c
+@@ -27,6 +27,10 @@
+ 
+ DECLARE_GLOBAL_DATA_PTR;
  
 +#ifdef CONFIG_TDX_BOOTARGS_PROTECTION
 +#include <tdx-harden.h>
@@ -51,7 +51,7 @@ index 8c18af2ce15..c81c2de139c 100644
  /**
   * fdt_getprop_u32_default_node - Return a node's property or a default
   *
-@@ -296,6 +300,22 @@ int fdt_chosen(void *fdt)
+@@ -314,6 +318,22 @@ int fdt_chosen(void *fdt)
  
  	str = board_fdt_chosen_bootargs();
  
