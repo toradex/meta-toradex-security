@@ -18,7 +18,7 @@ sign_ahab_helper() {
 
         # re-generate flash.bin and save logs
         make SOC=${IMX_BOOT_SOC_TARGET} ${REV_OPTION} dtbs=${UBOOT_DTB_NAME_EXTRA} \
-	     ${target} > ${MKIMAGE_BUILD_LOG} 2>&1
+             ${target} > ${MKIMAGE_BUILD_LOG} 2>&1
 
         # sign flash.bin
         TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
@@ -35,8 +35,8 @@ sign_ahab_helper() {
 
         # create fuse commands
         ${WORKDIR}/create_fuse_cmds.sh \
-		  ${IMX_BOOT_SOC_TARGET} ${TDX_IMX_HAB_CST_SRK_FUSE} \
-		  ${WORKDIR}/fuse-cmds.txt
+                  ${IMX_BOOT_SOC_TARGET} ${TDX_IMX_HAB_CST_SRK_FUSE} \
+                  ${WORKDIR}/fuse-cmds.txt
     done
 }
 
@@ -60,8 +60,8 @@ sign_habv4_helper() {
 
         # generate HAB info
         make SOC=${IMX_BOOT_SOC_TARGET} ${REV_OPTION} dtbs=${UBOOT_DTB_NAME_EXTRA} \
-	     PRINT_FIT_HAB_OFFSET=${PRINT_FIT_HAB_OFFSET} \
-	     print_fit_hab > ${MKIMAGE_HAB_LOG} 2>&1
+             PRINT_FIT_HAB_OFFSET=${PRINT_FIT_HAB_OFFSET} \
+             print_fit_hab > ${MKIMAGE_HAB_LOG} 2>&1
 
         # generate SPL and FIT CSF files
         TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
@@ -89,8 +89,8 @@ sign_habv4_helper() {
 
         # create fuse commands
         ${WORKDIR}/create_fuse_cmds.sh \
-		  ${IMX_BOOT_SOC_TARGET} ${TDX_IMX_HAB_CST_SRK_FUSE} \
-		  ${WORKDIR}/fuse-cmds.txt
+                  ${IMX_BOOT_SOC_TARGET} ${TDX_IMX_HAB_CST_SRK_FUSE} \
+                  ${WORKDIR}/fuse-cmds.txt
     done
 }
 
@@ -120,18 +120,18 @@ sign_common() {
                     UBOOT_DTB_NAME_EXTRA="${dtb_name}"
                 fi
                 BOOT_CONFIG_MACHINE_EXTRA="${BOOT_NAME}-${MACHINE}-${UBOOT_CONFIG_EXTRA}.bin"
-		UBOOT_NAME_EXTRA="u-boot-${MACHINE}.bin-${UBOOT_CONFIG_EXTRA}"
+                UBOOT_NAME_EXTRA="u-boot-${MACHINE}.bin-${UBOOT_CONFIG_EXTRA}"
 
-		# Copy again artifacts for current U-Boot config to BOOT_STAGING
-		compile_${SOC_FAMILY}
+                # Copy again artifacts for current U-Boot config to BOOT_STAGING
+                compile_${SOC_FAMILY}
 
-		case "$helper_type" in
-		    "habv4") sign_habv4_helper ;;
-		    "ahab")  sign_ahab_helper  ;;
-		    *)
-			bbfatal "bad parameter to sign_common()"
-			exit 1;;
-		esac
+                case "$helper_type" in
+                    "habv4") sign_habv4_helper ;;
+                    "ahab")  sign_ahab_helper  ;;
+                    *)
+                        bbfatal "bad parameter to sign_common()"
+                        exit 1;;
+                esac
 
                 unset UBOOT_CONFIG_EXTRA
                 unset UBOOT_DTB_NAME_EXTRA
