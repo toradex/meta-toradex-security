@@ -48,6 +48,7 @@ TDX_SECBOOT_REQUIRED_BOOTARGS_COMMON = "quiet logo.nologo vt.global_cursor_defau
 TDX_SECBOOT_REQUIRED_BOOTARGS_COMMON:append:cfs-support = " systemd.gpt_auto=0"
 
 TDX_SECBOOT_REQUIRED_BOOTARGS:imx-generic-bsp = "root=LABEL=otaroot rootfstype=ext4 ${TDX_SECBOOT_REQUIRED_BOOTARGS_COMMON}"
+TDX_SECBOOT_REQUIRED_BOOTARGS:apalis-imx8 = "pci=nomsi root=LABEL=otaroot rootfstype=ext4 ${TDX_SECBOOT_REQUIRED_BOOTARGS_COMMON}"
 TDX_SECBOOT_REQUIRED_BOOTARGS:apalis-imx6 = "enable_wait_mode=off vmalloc=400M root=LABEL=otaroot rootfstype=ext4 ${TDX_SECBOOT_REQUIRED_BOOTARGS_COMMON}"
 TDX_SECBOOT_REQUIRED_BOOTARGS:colibri-imx6 = "enable_wait_mode=off galcore.contiguousSize=50331648 root=LABEL=otaroot rootfstype=ext4 ${TDX_SECBOOT_REQUIRED_BOOTARGS_COMMON}"
 TDX_SECBOOT_REQUIRED_BOOTARGS:colibri-imx6ull-emmc = "user_debug=30 root=LABEL=otaroot rootfstype=ext4 ${TDX_SECBOOT_REQUIRED_BOOTARGS_COMMON}"
