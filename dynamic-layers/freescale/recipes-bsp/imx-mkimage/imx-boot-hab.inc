@@ -41,6 +41,11 @@ sign_ahab_helper() {
 }
 
 sign_habv4_helper() {
+    bbwarn "Generating the bootloader container via imx-boot is deprecated;" \
+           "please review your setting of UBOOT_PROVIDES_BOOT_CONTAINER." \
+           "beware that the generated container may not work even if the build succeeds."
+
+    # TODO: Consider removing the contents of this whole function and only leaving an error message.
     MKIMAGE_BUILD_LOG=${WORKDIR}/mkimage.log
     MKIMAGE_HAB_LOG=${WORKDIR}/mkimage.hab
 
