@@ -23,9 +23,9 @@ UBOOT_BINARY_HAB = "${UBOOT_BINARY}"
 UBOOT_BINARY_HAB:mx6dl-generic-bsp = "u-boot-ivt.img"
 UBOOT_BINARY_HAB:mx6q-generic-bsp = "u-boot-ivt.img"
 
-# Sign U-Boot binary and/or SPL.
+# Sign U-Boot binary and/or SPL (this works both with i.MX6 and i.MX7).
 # This is supposed to run in the U-Boot build directory.
-sign_habv4() {
+imx6_imx7_sign_habv4() {
     local soc="$1"
     local type="$2"
     local binary="$3"
@@ -89,25 +89,25 @@ sign_habv4() {
 uboot_assemble_fitimage_helper:append:mx6dl-generic-bsp() {
     type="$1"
     binary="$2"
-    sign_habv4 "IMX6" "${type}" "${binary}"
+    imx6_imx7_sign_habv4 "IMX6" "${type}" "${binary}"
 }
 
 uboot_assemble_fitimage_helper:append:mx6q-generic-bsp() {
     type="$1"
     binary="$2"
-    sign_habv4 "IMX6" "${type}" "${binary}"
+    imx6_imx7_sign_habv4 "IMX6" "${type}" "${binary}"
 }
 
 uboot_assemble_fitimage_helper:append:mx6ull-generic-bsp() {
     type="$1"
     binary="$2"
-    sign_habv4 "IMX6ULL" "${type}" "${binary}"
+    imx6_imx7_sign_habv4 "IMX6ULL" "${type}" "${binary}"
 }
 
 uboot_assemble_fitimage_helper:append:mx7-generic-bsp() {
     type="$1"
     binary="$2"
-    sign_habv4 "IMX7" "${type}" "${binary}"
+    imx6_imx7_sign_habv4 "IMX7" "${type}" "${binary}"
 }
 
 do_deploy:append() {
