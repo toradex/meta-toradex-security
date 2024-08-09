@@ -97,6 +97,15 @@ sign_habv4_helper() {
 sign_common() {
     local helper_type="${1?Helper type expected (ahab or habv4)}"
 
+    if [ ! -e "${TDX_IMX_HAB_CST_BIN}" ]; then
+        bberror "Could not find CST binary at ${TDX_IMX_HAB_CST_BIN}."
+        exit 1
+    fi
+
+    if [ ! -e "${TDX_IMX_HAB_CST_SRK_FUSE}" ]; then
+        bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
+    fi
+
     # The basic structure of this comes from meta-freescale/imx-boot_*.bb:
     for type in ${UBOOT_CONFIG}; do
         if [ "${@d.getVarFlags('UBOOT_DTB_NAME')}" = "None" ]; then
@@ -148,42 +157,16 @@ sign_common() {
     unset type
 }
 
-sign_ahab() {
-    if [ ! -e "${TDX_IMX_HAB_CST_BIN}" ]; then
-        bberror "Could not find CST binary at ${TDX_IMX_HAB_CST_BIN}."
-        exit 1
-    fi
-
-    if [ ! -e "${TDX_IMX_HAB_CST_SRK_FUSE}" ]; then
-        bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
-    fi
-
-    sign_common ahab
-}
-
-sign_habv4() {
-    if [ ! -e "${TDX_IMX_HAB_CST_BIN}" ]; then
-        bberror "Could not find CST binary at ${TDX_IMX_HAB_CST_BIN}."
-        exit 1
-    fi
-
-    if [ ! -e "${TDX_IMX_HAB_CST_SRK_FUSE}" ]; then
-        bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
-    fi
-
+do_compile:append:mx8m-generic-bsp() {
     sign_common habv4
 }
 
-do_compile:append:mx8m-generic-bsp() {
-    sign_habv4
-}
-
 do_compile:append:mx8qm-generic-bsp() {
-    sign_ahab
+    sign_common ahab
 }
 
 do_compile:append:mx8x-generic-bsp() {
-    sign_ahab
+    sign_common ahab
 }
 
 do_deploy:append() {
