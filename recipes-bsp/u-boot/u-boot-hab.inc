@@ -5,8 +5,8 @@ DEPENDS += "util-linux-native"
 
 SRC_URI:append = "\
     file://u-boot-hab.cfg \
-    file://create_csf.sh \
     file://create_fuse_cmds.sh \
+    file://imx6_imx7_create_csf.sh \
     file://imx6ull_template.csf \
     file://imx7_template.csf \
     file://imx6_template.csf \
@@ -49,7 +49,7 @@ imx6_imx7_sign_habv4() {
     TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
     IMXBOOT="${UBOOT_BINARY_HAB}" \
     HAB_LOG="${UBOOT_BINARY_HAB}.log" \
-    ${WORKDIR}/create_csf.sh -m "${soc}" -c "csf_uboot"
+    ${WORKDIR}/imx6_imx7_create_csf.sh -m "${soc}" -c "csf_uboot"
 
     # Save unsigned image and generate signed version by concatenating with the CSF.
     bbdebug 1 "Concatenating CSF binary to U-Boot"
@@ -70,7 +70,7 @@ imx6_imx7_sign_habv4() {
         TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
         IMXBOOT="${SPL_BINARY}" \
         HAB_LOG="${SPL_BINARY}.log" \
-        ${WORKDIR}/create_csf.sh -m "${soc}" -c "csf_SPL"
+        ${WORKDIR}/imx6_imx7_create_csf.sh -m "${soc}" -c "csf_SPL"
 
         bbdebug 1 "Concatenating CSF binary to the U-Boot SPL"
         # Save unsigned SPL and replace original with signed one:
