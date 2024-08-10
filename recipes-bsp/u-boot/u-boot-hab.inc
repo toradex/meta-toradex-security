@@ -6,11 +6,16 @@ DEPENDS += "util-linux-native"
 SRC_URI:append = "\
     file://u-boot-hab.cfg \
     file://create_fuse_cmds.sh \
+"
+
+TDX_IMX6_IMX7_CSF_ARTIFACTS = "\
     file://imx6_imx7_create_csf.sh \
+    file://imx6_template.csf \
     file://imx6ull_template.csf \
     file://imx7_template.csf \
-    file://imx6_template.csf \
 "
+SRC_URI:append:mx6-generic-bsp = "${TDX_IMX6_IMX7_CSF_ARTIFACTS}"
+SRC_URI:append:mx7-generic-bsp = "${TDX_IMX6_IMX7_CSF_ARTIFACTS}"
 
 SRC_URI:append:use-nxp-bsp = "\
     file://0001-bootm-don-t-use-HAB-to-authenticate-FIT-image.patch \
