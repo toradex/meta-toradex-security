@@ -5,17 +5,21 @@ DEPENDS += "util-linux-native"
 
 SRC_URI:append = "\
     file://u-boot-hab.cfg \
-    file://create_csf.sh \
     file://create_fuse_cmds.sh \
+"
+
+TDX_IMX6_IMX7_CSF_ARTIFACTS = "\
+    file://imx6_imx7_create_csf.sh \
+    file://imx6_template.csf \
     file://imx6ull_template.csf \
     file://imx7_template.csf \
-    file://imx6_template.csf \
 "
+SRC_URI:append:mx6-generic-bsp = "${TDX_IMX6_IMX7_CSF_ARTIFACTS}"
+SRC_URI:append:mx7-generic-bsp = "${TDX_IMX6_IMX7_CSF_ARTIFACTS}"
 
 TDX_UBOOT_HAB_PATCHES_DOWNSTREAM = "\
     file://0001-bootm-don-t-use-HAB-to-authenticate-FIT-image.patch \
 "
-
 SRC_URI:append:apalis-imx8 = "${TDX_UBOOT_HAB_PATCHES_DOWNSTREAM}"
 SRC_URI:append:colibri-imx8x = "${TDX_UBOOT_HAB_PATCHES_DOWNSTREAM}"
 
@@ -23,9 +27,9 @@ UBOOT_BINARY_HAB = "${UBOOT_BINARY}"
 UBOOT_BINARY_HAB:mx6dl-generic-bsp = "u-boot-ivt.img"
 UBOOT_BINARY_HAB:mx6q-generic-bsp = "u-boot-ivt.img"
 
-# Sign U-Boot binary and/or SPL.
+# Sign U-Boot binary and/or SPL (this works both with i.MX6 and i.MX7).
 # This is supposed to run in the U-Boot build directory.
-sign_habv4() {
+imx6_imx7_sign_habv4() {
     local soc="$1"
     local type="$2"
     local binary="$3"
@@ -49,7 +53,7 @@ sign_habv4() {
     TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
     IMXBOOT="${UBOOT_BINARY_HAB}" \
     HAB_LOG="${UBOOT_BINARY_HAB}.log" \
-    ${WORKDIR}/create_csf.sh -m "${soc}" -c "csf_uboot"
+    ${WORKDIR}/imx6_imx7_create_csf.sh -m "${soc}" -c "csf_uboot"
 
     # Save unsigned image and generate signed version by concatenating with the CSF.
     bbdebug 1 "Concatenating CSF binary to U-Boot"
@@ -70,7 +74,7 @@ sign_habv4() {
         TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
         IMXBOOT="${SPL_BINARY}" \
         HAB_LOG="${SPL_BINARY}.log" \
-        ${WORKDIR}/create_csf.sh -m "${soc}" -c "csf_SPL"
+        ${WORKDIR}/imx6_imx7_create_csf.sh -m "${soc}" -c "csf_SPL"
 
         bbdebug 1 "Concatenating CSF binary to the U-Boot SPL"
         # Save unsigned SPL and replace original with signed one:
@@ -89,25 +93,25 @@ sign_habv4() {
 uboot_assemble_fitimage_helper:append:mx6dl-generic-bsp() {
     type="$1"
     binary="$2"
-    sign_habv4 "IMX6" "${type}" "${binary}"
+    imx6_imx7_sign_habv4 "IMX6" "${type}" "${binary}"
 }
 
 uboot_assemble_fitimage_helper:append:mx6q-generic-bsp() {
     type="$1"
     binary="$2"
-    sign_habv4 "IMX6" "${type}" "${binary}"
+    imx6_imx7_sign_habv4 "IMX6" "${type}" "${binary}"
 }
 
 uboot_assemble_fitimage_helper:append:mx6ull-generic-bsp() {
     type="$1"
     binary="$2"
-    sign_habv4 "IMX6ULL" "${type}" "${binary}"
+    imx6_imx7_sign_habv4 "IMX6ULL" "${type}" "${binary}"
 }
 
 uboot_assemble_fitimage_helper:append:mx7-generic-bsp() {
     type="$1"
     binary="$2"
-    sign_habv4 "IMX7" "${type}" "${binary}"
+    imx6_imx7_sign_habv4 "IMX7" "${type}" "${binary}"
 }
 
 do_deploy:append() {
