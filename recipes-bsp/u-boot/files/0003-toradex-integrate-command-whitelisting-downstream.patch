@@ -1,7 +1,7 @@
-From fcd42429f286bf8df8a9a3f30801f1a9082d6eee Mon Sep 17 00:00:00 2001
+From 64bb5b975a890f13455757183d4084f375216697 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:29:34 -0300
-Subject: [PATCH 3/8] toradex: integrate command whitelisting (downstream)
+Subject: [PATCH 3/7] toradex: integrate command whitelisting (downstream)
 
 Integrate the command whitelisting feature which is part of the Secure
 Boot hardening on U-Boot made by Toradex. The feature allows categories
@@ -20,10 +20,10 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  3 files changed, 35 insertions(+)
 
 diff --git a/Kconfig b/Kconfig
-index 2c5b7035662..ed67576e677 100644
+index 0b00696198a..badab0318d6 100644
 --- a/Kconfig
 +++ b/Kconfig
-@@ -504,3 +504,31 @@ source "lib/Kconfig"
+@@ -742,3 +742,31 @@ source "lib/Kconfig"
  source "test/Kconfig"
  
  source "tools/Kconfig"
@@ -56,31 +56,31 @@ index 2c5b7035662..ed67576e677 100644
 +	help
 +	  Enable the command white-listing feature provided by Toradex.
 diff --git a/common/Makefile b/common/Makefile
-index 3eff7196016..101a0883bc0 100644
+index a83dcbee81e..8317e002ff0 100644
 --- a/common/Makefile
 +++ b/common/Makefile
-@@ -22,6 +22,8 @@ obj-$(CONFIG_$(SPL_TPL_)OF_LIBFDT) += fdt_support.o
+@@ -24,6 +24,8 @@ obj-$(CONFIG_DISPLAY_BOARDINFO_LATE) += board_info.o
  obj-$(CONFIG_MII) += miiphyutil.o
  obj-$(CONFIG_CMD_MII) += miiphyutil.o
  obj-$(CONFIG_PHYLIB) += miiphyutil.o
 +obj-$(CONFIG_TDX_SECBOOT_HARDENING) += tdx-harden.o
 +obj-$(CONFIG_TDX_CMD_WHITELIST) += whitelist.o
  
- ifdef CONFIG_USB
- obj-y += usb.o usb_hub.o
+ obj-$(CONFIG_USB_HOST) += usb.o usb_hub.o
+ obj-$(CONFIG_USB_GADGET) += usb.o
 diff --git a/common/command.c b/common/command.c
-index 41c91c6d8c8..b35cb3acd41 100644
+index af8ffdba8f8..7268bfd9e7d 100644
 --- a/common/command.c
 +++ b/common/command.c
-@@ -16,6 +16,7 @@
- #include <log.h>
+@@ -18,6 +18,7 @@
+ #include <mapmem.h>
  #include <asm/global_data.h>
  #include <linux/ctype.h>
 +#include <tdx-harden.h>
  
  DECLARE_GLOBAL_DATA_PTR;
  
-@@ -577,6 +578,10 @@ static int cmd_call(struct cmd_tbl *cmdtp, int flag, int argc,
+@@ -578,6 +579,10 @@ static int cmd_call(struct cmd_tbl *cmdtp, int flag, int argc,
  {
  	int result;
  

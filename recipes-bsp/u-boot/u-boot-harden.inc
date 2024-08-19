@@ -4,9 +4,8 @@ TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM = "\
     file://0003-toradex-integrate-command-whitelisting-downstream.patch \
     file://0004-toradex-integrate-bootm-protection-downstream.patch \
     file://0005-toradex-integrate-CLI-access-protection-downstream.patch \
-    file://0006-arm-dts-add-missing-newline-to-eof-downstream.patch \
-    file://0007-toradex-add-implementation-of-bootargs-protection.patch \
-    file://0008-toradex-integrate-bootargs-protection-downstream.patch \
+    file://0006-toradex-add-implementation-of-bootargs-protection.patch \
+    file://0007-toradex-integrate-bootargs-protection-downstream.patch \
 "
 
 TDX_UBOOT_HARDENING_PATCHES_UPSTREAM = "\
@@ -15,8 +14,8 @@ TDX_UBOOT_HARDENING_PATCHES_UPSTREAM = "\
     file://0003-toradex-integrate-command-whitelisting-upstream.patch \
     file://0004-toradex-integrate-bootm-protection-upstream.patch \
     file://0005-toradex-integrate-CLI-access-protection-upstream.patch \
-    file://0007-toradex-add-implementation-of-bootargs-protection.patch \
-    file://0008-toradex-integrate-bootargs-protection-upstream.patch \
+    file://0006-toradex-add-implementation-of-bootargs-protection.patch \
+    file://0007-toradex-integrate-bootargs-protection-upstream.patch \
 "
 
 TDX_UBOOT_HARDENING_PATCHES = "${TDX_UBOOT_HARDENING_PATCHES_UPSTREAM}"

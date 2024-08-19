@@ -1,4 +1,4 @@
-From 67b40cac60a92545aa30ac99b25c33e7a5b0a9a2 Mon Sep 17 00:00:00 2001
+From a2f4580dd7d5759dfb79c876b6b15067e73c2747 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 6 Nov 2023 22:25:28 -0300
 Subject: [PATCH 6/7] toradex: add implementation of bootargs protection
@@ -15,7 +15,7 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  2 files changed, 204 insertions(+), 2 deletions(-)
 
 diff --git a/common/tdx-harden.c b/common/tdx-harden.c
-index 1134b6ce59..c4963c0868 100644
+index dbdb8c5e337..e5decaf634a 100644
 --- a/common/tdx-harden.c
 +++ b/common/tdx-harden.c
 @@ -3,12 +3,18 @@
@@ -243,7 +243,7 @@ index 1134b6ce59..c4963c0868 100644
  {
  	int hdn_enabled = tdx_hardening_enabled();
 diff --git a/include/tdx-harden.h b/include/tdx-harden.h
-index 50e850ba2a..1cb61aed45 100644
+index 50e850ba2af..1cb61aed45e 100644
 --- a/include/tdx-harden.h
 +++ b/include/tdx-harden.h
 @@ -26,14 +26,18 @@
