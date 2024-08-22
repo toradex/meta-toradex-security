@@ -68,9 +68,11 @@ A few additional variables are available to customize the behavior of the data-a
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
 | TDX_ENC_KEY_BACKEND | Backend used to manage the encryption key. Allowed values: `caam`, `tpm` or `cleartext`. If configured with `caam`, it will use Trusted Keys backed by the CAAM device (available on NXP iMX-based SoMs). If configured with `tpm`, it will use Trusted Keys backed by a TPM device (availability depends on the hardware). If configured with `cleartext`, the encryption key will be stored in clear text in the file system (use `cleartext` only for testing purposes!) | `caam` on iMX based SoMs, empty otherwise |
+| TDX_ENC_KEY_LOCATION | Location to store the encryption key blob. Allowed values: `filesystem` or `partition`. If configured with `filesystem`, the encryption key blob will be stored as a file in the filesystem (location defined by the `TDX_ENC_KEY_DIR` variable. If configured with `partition`, the encryption key blob will be stored in a block of the disk outside the dm-crypt partition (useful if the rootfs filesystem is read-only) | `filesystem` |
 | TDX_ENC_KEY_DIR | Directory to store the encryption key blob | `/var/local/private/.keys` |
 | TDX_ENC_KEY_FILE | File name of the encryption key blob | `tdx-enc-key.blob` |
 | TDX_ENC_STORAGE_LOCATION | Partition to be encrypted (e.g. `/dev/sdb1`) | Empty |
+| TDX_ENC_STORAGE_RESERVE | Number of blocks to reserve from the partition to be encrypted. Each block is 512-byte in size. Might be useful in case one needs a storage location to save data in raw mode, outside the dm-drypt partition. If `TDX_ENC_KEY_LOCATION` is set to `partition`, then the first reserved block is used to store the encryption key blob. | `0` |
 | TDX_ENC_STORAGE_MOUNTPOINT | Directory to mount the encrypted partition | `/run/encdata` |
 
 IMPORTANT: The script that mounts the encrypted partition runs early in the boot process, where not necessarily udev has run/settled. For that reason, it is recommended to use the name of the partition as assigned by the kernel (e.g. `/dev/sdb1`). If one wants to set a name that relies on udev rules then one must review the systemd dependencies of the service to ensure the name is available.
