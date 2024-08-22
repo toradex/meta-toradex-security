@@ -10,7 +10,15 @@ TDX_ENC_ENABLE = "1"
 TDX_ENC_KEY_BACKEND ?= ""
 TDX_ENC_KEY_BACKEND:imx-generic-bsp ?= "caam"
 
+# Encryption key blob location
+# This variable defines where the encrypted key will be stored
+# Available options:
+#    filesystem -> encrypted key blob is stored as a file in the filesystem
+#    partition  -> encrypted key blob is stored in a block of the disk outside the dm-crypt partition
+TDX_ENC_KEY_LOCATION ?= "filesystem"
+
 # directory to store the encryption key blob
+# required if the encryption key location is the filesystem
 TDX_ENC_KEY_DIR ?= "/var/local/private/.keys"
 
 # encryption key blob file name
@@ -24,6 +32,11 @@ TDX_ENC_STORAGE_TYPE ?= "partition"
 
 # Partition to be encrypted (e.g. /dev/sda1)
 TDX_ENC_STORAGE_LOCATION ?= ""
+
+# Number of blocks to reserve from the partition to be encrypted
+# Useful in case one needs a storage location to save data in raw
+# mode, outside the dm-drypt partition
+TDX_ENC_STORAGE_RESERVE ?= "0"
 
 # Defines where the encrypted storage will be mounted
 TDX_ENC_STORAGE_MOUNTPOINT ?= "/run/encdata"

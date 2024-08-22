@@ -5,6 +5,9 @@
 # backend used to manage the encryption key
 TDX_ENC_KEY_BACKEND="@@TDX_ENC_KEY_BACKEND@@"
 
+# encryption key location
+TDX_ENC_KEY_LOCATION="@@TDX_ENC_KEY_LOCATION@@"
+
 # directory to store CAAM encrypted key
 TDX_ENC_KEY_DIR="@@TDX_ENC_KEY_DIR@@"
 
@@ -13,6 +16,16 @@ TDX_ENC_KEY_FILE="@@TDX_ENC_KEY_FILE@@"
 
 # storage location to be encrypted (e.g. partition)
 TDX_ENC_STORAGE_LOCATION="@@TDX_ENC_STORAGE_LOCATION@@"
+
+# Number of blocks to reserve from the partition to be encrypted
+# Useful in case one needs a storage location to save data in raw
+# mode, outside the dm-drypt partition
+TDX_ENC_STORAGE_RESERVE="@@TDX_ENC_STORAGE_RESERVE@@"
+
+# number of blocks in the storage to be encrypted by dm-crypt
+# depends on the size of the partition and the number of blocks
+# reserved (see TDX_ENC_STORAGE_RESERVE), initialized at runtime
+TDX_ENC_STORAGE_NUM_BLOCKS=""
 
 # directory to mount the encrypted storage
 TDX_ENC_STORAGE_MOUNTPOINT="@@TDX_ENC_STORAGE_MOUNTPOINT@@"
@@ -60,6 +73,20 @@ tdx_enc_prepare_generic() {
     if ! dmsetup targets | grep crypt -q; then
         tdx_enc_exit_error "No support for dm-crypt target!"
     fi
+
+    TDX_ENC_STORAGE_NUM_BLOCKS=$(blockdev --getsz ${TDX_ENC_STORAGE_LOCATION})
+    if [ "${TDX_ENC_KEY_LOCATION}" = "partition" ] && [ "${TDX_ENC_STORAGE_RESERVE}" = "0" ]; then
+        # we need at least one reserved block to store the encryption key blob
+        TDX_ENC_STORAGE_RESERVE="1"
+    fi
+    TDX_ENC_STORAGE_NUM_BLOCKS=$((TDX_ENC_STORAGE_NUM_BLOCKS - TDX_ENC_STORAGE_RESERVE))
+
+    tdx_enc_log "Blocks to be encrypted: $TDX_ENC_STORAGE_NUM_BLOCKS..."
+    tdx_enc_log "Reserved blocks: $TDX_ENC_STORAGE_RESERVE..."
+
+    if [ "${TDX_ENC_KEY_LOCATION}" = "partition" ]; then
+        tdx_enc_key_recover_from_partition
+    fi
 }
 
 # CLEARTEXT: prepare system
@@ -97,6 +124,65 @@ tdx_enc_prepare_tpm() {
     fi
 }
 
+tdx_enc_key_recover_from_partition() {
+    tdx_enc_log "Recovering encrypted key blob from partition ${TDX_ENC_STORAGE_LOCATION}..."
+
+    TDX_ENC_KEY_FULLPATH="/tmp/${TDX_ENC_KEY_FILE}"
+    rm -rf $TDX_ENC_KEY_FULLPATH
+
+    STORAGE_KEY_BLOCK_DATA=/tmp/.enckey.txt
+    if ! dd if=${TDX_ENC_STORAGE_LOCATION} of=${STORAGE_KEY_BLOCK_DATA} skip=${TDX_ENC_STORAGE_NUM_BLOCKS} bs=512 count=1; then
+        tdx_enc_exit_error "Could not read block from ${TDX_ENC_STORAGE_LOCATION} with key information!"
+    fi
+
+    EOT=$(printf '\004')
+    while read -r line; do
+        echo "$line" | grep -q "$EOT" && break
+        key=$(echo "$line" | cut -d'=' -f1)
+        val=$(echo "$line" | cut -d'=' -f2)
+        case "$key" in
+            "keyname") keyname="${val}" ;;
+            "keydata") keydata="${val}" ;;
+            "keycsum") keycsum="${val}" ;;
+        esac
+    done < ${STORAGE_KEY_BLOCK_DATA}
+
+    if [ "${keyname}" != "${TDX_ENC_KEY_KEYRING_NAME}" ]; then
+        tdx_enc_log "Invalid key name! A new key will be created."
+        return 1
+    fi
+
+    if [ -z "${keydata}" ]; then
+        tdx_enc_log "Invalid key data! A new key will be created."
+        return 1
+    fi
+
+    csum=$(printf "%s" "${keydata}" | sha256sum | cut -d' ' -f1)
+    if [ "${csum}" != "${keycsum}" ]; then
+        tdx_enc_log "Invalid checksum! A new key will be created."
+        return 1
+    fi
+
+    echo "${keydata}" > ${TDX_ENC_KEY_FULLPATH}
+    tdx_enc_log "Encrypted key blob successfully recovered from partition."
+}
+
+tdx_enc_key_save_to_partition() {
+    tdx_enc_log "Saving encrypted key to partition ${TDX_ENC_STORAGE_LOCATION}..."
+
+    STORAGE_KEY_BLOCK_DATA="/tmp/.enckey.txt"
+    {
+        echo "keyname=${TDX_ENC_KEY_KEYRING_NAME}"
+        echo "keydata=$(cat ${TDX_ENC_KEY_FULLPATH})"
+        echo "keycsum=$(sha256sum ${TDX_ENC_KEY_FULLPATH} | cut -d' ' -f1)"
+        printf "\04"
+    } > ${STORAGE_KEY_BLOCK_DATA}
+
+    if ! dd if=${STORAGE_KEY_BLOCK_DATA} of=${TDX_ENC_STORAGE_LOCATION} seek=${TDX_ENC_STORAGE_NUM_BLOCKS} bs=512; then
+        tdx_enc_exit_error "Could not save encrypted key to partition ${TDX_ENC_STORAGE_LOCATION}!"
+    fi
+}
+
 # configure key in kernel keyring
 tdx_enc_keyring_configure() {
     TDX_ENC_KEY_KEYRING_TYPE="$1"
@@ -112,6 +198,9 @@ tdx_enc_keyring_configure() {
         mkdir -p "${TDX_ENC_KEY_DIR}"
         if ! keyctl pipe "$KEYHANDLE" > "${TDX_ENC_KEY_FULLPATH}"; then
             tdx_enc_exit_error "Error saving key blob!"
+        fi
+        if [ "${TDX_ENC_KEY_LOCATION}" = "partition" ]; then
+            tdx_enc_key_save_to_partition
         fi
     else
         tdx_enc_log "Encrypted key exists. Importing it..."
@@ -197,7 +286,7 @@ tdx_enc_partition_setup() {
     tdx_enc_log "Setting up partition with dm-crypt..."
 
     if ! dmsetup -v create ${TDX_ENC_DM_DEVICE} \
-                 --table "0 $(blockdev --getsz ${TDX_ENC_STORAGE_LOCATION}) \
+                 --table "0 ${TDX_ENC_STORAGE_NUM_BLOCKS} \
                  crypt capi:cbc(aes)-plain :32:${TDX_ENC_KEY_KEYRING_TYPE}:${TDX_ENC_KEY_KEYRING_NAME} \
                  0 ${TDX_ENC_STORAGE_LOCATION} 0 1 sector_size:512"; then
         tdx_enc_exit_error "Error setting up dm-crypt partition!"
