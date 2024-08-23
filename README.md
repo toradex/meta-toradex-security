@@ -19,7 +19,13 @@ revision: HEAD
 URI: git://git.yoctoproject.org/meta-security
 branch: kirkstone
 revision: HEAD
+```
 
+# Layer recommendations
+
+This layer recommends:
+
+```
 URI: git://git.toradex.com/meta-toradex-nxp.git
 branch: kirkstone
 revision: HEAD
