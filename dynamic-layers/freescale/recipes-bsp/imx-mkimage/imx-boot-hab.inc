@@ -18,7 +18,7 @@ sign_ahab_helper() {
 
         # re-generate flash.bin and save logs
         make SOC=${IMX_BOOT_SOC_TARGET} ${REV_OPTION} dtbs=${UBOOT_DTB_NAME_EXTRA} \
-	     ${target} > ${MKIMAGE_BUILD_LOG} 2>&1
+             ${target} > ${MKIMAGE_BUILD_LOG} 2>&1
 
         # sign flash.bin
         TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
@@ -35,8 +35,8 @@ sign_ahab_helper() {
 
         # create fuse commands
         ${WORKDIR}/create_fuse_cmds.sh \
-		  ${IMX_BOOT_SOC_TARGET} ${TDX_IMX_HAB_CST_SRK_FUSE} \
-		  ${WORKDIR}/fuse-cmds.txt
+                  ${IMX_BOOT_SOC_TARGET} ${TDX_IMX_HAB_CST_SRK_FUSE} \
+                  ${WORKDIR}/fuse-cmds.txt
     done
 }
 
@@ -60,8 +60,8 @@ sign_habv4_helper() {
 
         # generate HAB info
         make SOC=${IMX_BOOT_SOC_TARGET} ${REV_OPTION} dtbs=${UBOOT_DTB_NAME_EXTRA} \
-	     PRINT_FIT_HAB_OFFSET=${PRINT_FIT_HAB_OFFSET} \
-	     print_fit_hab > ${MKIMAGE_HAB_LOG} 2>&1
+             PRINT_FIT_HAB_OFFSET=${PRINT_FIT_HAB_OFFSET} \
+             print_fit_hab > ${MKIMAGE_HAB_LOG} 2>&1
 
         # generate SPL and FIT CSF files
         TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
@@ -89,13 +89,22 @@ sign_habv4_helper() {
 
         # create fuse commands
         ${WORKDIR}/create_fuse_cmds.sh \
-		  ${IMX_BOOT_SOC_TARGET} ${TDX_IMX_HAB_CST_SRK_FUSE} \
-		  ${WORKDIR}/fuse-cmds.txt
+                  ${IMX_BOOT_SOC_TARGET} ${TDX_IMX_HAB_CST_SRK_FUSE} \
+                  ${WORKDIR}/fuse-cmds.txt
     done
 }
 
 sign_common() {
     local helper_type="${1?Helper type expected (ahab or habv4)}"
+
+    if [ ! -e "${TDX_IMX_HAB_CST_BIN}" ]; then
+        bberror "Could not find CST binary at ${TDX_IMX_HAB_CST_BIN}."
+        exit 1
+    fi
+
+    if [ ! -e "${TDX_IMX_HAB_CST_SRK_FUSE}" ]; then
+        bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
+    fi
 
     # The basic structure of this comes from meta-freescale/imx-boot_*.bb:
     for type in ${UBOOT_CONFIG}; do
@@ -119,22 +128,23 @@ sign_common() {
                     # backward compatibility
                     UBOOT_DTB_NAME_EXTRA="${dtb_name}"
                 fi
+                UBOOT_NAME_EXTRA="u-boot-${MACHINE}.bin-${UBOOT_CONFIG_EXTRA}"
                 BOOT_CONFIG_MACHINE_EXTRA="${BOOT_NAME}-${MACHINE}-${UBOOT_CONFIG_EXTRA}.bin"
-		UBOOT_NAME_EXTRA="u-boot-${MACHINE}.bin-${UBOOT_CONFIG_EXTRA}"
 
-		# Copy again artifacts for current U-Boot config to BOOT_STAGING
-		compile_${SOC_FAMILY}
+                # Copy again artifacts for current U-Boot config to BOOT_STAGING
+                compile_${SOC_FAMILY}
 
-		case "$helper_type" in
-		    "habv4") sign_habv4_helper ;;
-		    "ahab")  sign_ahab_helper  ;;
-		    *)
-			bbfatal "bad parameter to sign_common()"
-			exit 1;;
-		esac
+                case "$helper_type" in
+                    "habv4") sign_habv4_helper ;;
+                    "ahab")  sign_ahab_helper  ;;
+                    *)
+                        bbfatal "bad parameter to sign_common()"
+                        exit 1;;
+                esac
 
                 unset UBOOT_CONFIG_EXTRA
                 unset UBOOT_DTB_NAME_EXTRA
+                unset UBOOT_NAME_EXTRA
                 unset BOOT_CONFIG_MACHINE_EXTRA
             fi
 
@@ -147,42 +157,16 @@ sign_common() {
     unset type
 }
 
-sign_ahab() {
-    if [ ! -e "${TDX_IMX_HAB_CST_BIN}" ]; then
-        bberror "Could not find CST binary at ${TDX_IMX_HAB_CST_BIN}."
-        exit 1
-    fi
-
-    if [ ! -e "${TDX_IMX_HAB_CST_SRK_FUSE}" ]; then
-        bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
-    fi
-
-    sign_common ahab
-}
-
-sign_habv4() {
-    if [ ! -e "${TDX_IMX_HAB_CST_BIN}" ]; then
-        bberror "Could not find CST binary at ${TDX_IMX_HAB_CST_BIN}."
-        exit 1
-    fi
-
-    if [ ! -e "${TDX_IMX_HAB_CST_SRK_FUSE}" ]; then
-        bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
-    fi
-
+do_compile:append:mx8m-generic-bsp() {
     sign_common habv4
 }
 
-do_compile:append:mx8m-generic-bsp() {
-    sign_habv4
-}
-
 do_compile:append:mx8qm-generic-bsp() {
-    sign_ahab
+    sign_common ahab
 }
 
 do_compile:append:mx8x-generic-bsp() {
-    sign_ahab
+    sign_common ahab
 }
 
 do_deploy:append() {
