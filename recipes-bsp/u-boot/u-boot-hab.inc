@@ -5,8 +5,8 @@ DEPENDS += "util-linux-native"
 
 SRC_URI:append = "\
     file://u-boot-hab.cfg \
-    file://create_csf.sh \
     file://create_fuse_cmds.sh \
+    file://imx6_imx7_create_csf.sh \
     file://imx6ull_template.csf \
     file://imx7_template.csf \
     file://imx6_template.csf \
@@ -54,7 +54,7 @@ imx6_imx7_sign_habv4() {
                     TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
                     IMXBOOT="${B}/${config}/${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX}" \
                     HAB_LOG="${B}/${config}/u-boot-ivt.img.log" \
-                    ${WORKDIR}/create_csf.sh -m "${soc}"
+                    ${WORKDIR}/imx6_imx7_create_csf.sh -m "${soc}"
 
 		    # Save unsigned image
 		    mv ${B}/${config}/${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX} \
@@ -73,7 +73,7 @@ imx6_imx7_sign_habv4() {
                         TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
                         IMXBOOT="${B}/${config}/${SPL_BINARY}" \
                         HAB_LOG="${B}/${config}/${SPL_BINARY}.log" \
-                        ${WORKDIR}/create_csf.sh -m "${soc}"
+                        ${WORKDIR}/imx6_imx7_create_csf.sh -m "${soc}"
 
 			mv ${B}/${config}/${SPL_BINARY} ${B}/${config}/${SPL_BINARY}-unsigned
 
@@ -95,7 +95,7 @@ imx6_imx7_sign_habv4() {
         TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
 	IMXBOOT="${B}/${UBOOT_BINARY}" \
         HAB_LOG="${B}/${UBOOT_MAKE_TARGET}.log" \
-        ${WORKDIR}/create_csf.sh -m "${soc}"
+        ${WORKDIR}/imx6_imx7_create_csf.sh -m "${soc}"
 
 	# Save unsigned image
 	mv ${UBOOT_BINARY} ${UBOOT_BINARY}-unsigned
