@@ -16,7 +16,8 @@ SRC_URI:append:use-nxp-bsp = "\
     file://0001-bootm-don-t-use-HAB-to-authenticate-FIT-image.patch \
 "
 
-sign_habv4() {
+# Sign U-Boot binary and/or SPL (this works both with i.MX6 and i.MX7).
+imx6_imx7_sign_habv4() {
     if [ ! -e "${TDX_IMX_HAB_CST_BIN}" ]; then
         bberror "Could not find CST binary at ${TDX_IMX_HAB_CST_BIN}."
         exit 1
@@ -111,7 +112,7 @@ do_compile:append:mx6ull-generic-bsp() {
     # Only sign here if FIT image signing is disabled.
     # Otherwise we sign later instead (see u-boot-fit-signature.inc).
     if [ "${UBOOT_SIGN_ENABLE}" != "1" ]; then
-        sign_habv4 "IMX6ULL"
+        imx6_imx7_sign_habv4 "IMX6ULL"
     fi
 }
 
@@ -119,7 +120,7 @@ do_compile:append:mx7-generic-bsp() {
     # Only sign here if FIT image signing is disabled.
     # Otherwise we sign later instead (see u-boot-fit-signature.inc).
     if [ "${UBOOT_SIGN_ENABLE}" != "1" ]; then
-        sign_habv4 "IMX7"
+        imx6_imx7_sign_habv4 "IMX7"
     fi
 }
 
@@ -127,7 +128,7 @@ do_compile:append:mx6q-generic-bsp() {
     # Only sign here if FIT image signing is disabled.
     # Otherwise we sign later instead (see u-boot-fit-signature.inc).
     if [ "${UBOOT_SIGN_ENABLE}" != "1" ]; then
-        sign_habv4 "IMX6"
+        imx6_imx7_sign_habv4 "IMX6"
     fi
 }
 
@@ -135,7 +136,7 @@ do_compile:append:mx6dl-generic-bsp() {
     # Only sign here if FIT image signing is disabled.
     # Otherwise we sign later instead (see u-boot-fit-signature.inc).
     if [ "${UBOOT_SIGN_ENABLE}" != "1" ]; then
-        sign_habv4 "IMX6"
+        imx6_imx7_sign_habv4 "IMX6"
     fi
 }
 
