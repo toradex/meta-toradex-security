@@ -66,13 +66,21 @@ create_fuse_cmds_mx7() {
     fuse_write_line 1 3 0x02000000
 }
 
+create_fuse_cmds_mx8m() {
+    # Fusing is exactly the same as with the i.MX7
+    create_fuse_cmds_mx7 "$@"
+}
+
 case ${SOC} in
     "IMX6ULL"|"IMX6")
         create_fuse_cmds_mx6 > ${FUSE_CMDS_FILE}
         ;;
     "IMX7")
-	create_fuse_cmds_mx7 > ${FUSE_CMDS_FILE}
-	;;
+        create_fuse_cmds_mx7 > ${FUSE_CMDS_FILE}
+        ;;
+    "IMX8M")
+        create_fuse_cmds_mx8m > ${FUSE_CMDS_FILE}
+        ;;
     *)
         echo "Invalid SOC!"
         return 1

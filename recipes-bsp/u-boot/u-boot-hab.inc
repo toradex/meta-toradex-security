@@ -3,6 +3,9 @@ inherit imx-hab
 # Need this for hexdump utility which is used in create_fuse_cmds.sh
 DEPENDS += "util-linux-native"
 
+# Need this for the xxd and fdtget utilities used by imx8m_sign.sh
+DEPENDS += "xxd-native dtc-native"
+
 SRC_URI:append = "\
     file://u-boot-hab.cfg \
     file://create_fuse_cmds.sh \
@@ -16,6 +19,12 @@ TDX_IMX6_IMX7_CSF_ARTIFACTS = "\
 "
 SRC_URI:append:mx6-generic-bsp = "${TDX_IMX6_IMX7_CSF_ARTIFACTS}"
 SRC_URI:append:mx7-generic-bsp = "${TDX_IMX6_IMX7_CSF_ARTIFACTS}"
+
+TDX_IMX8M_CSF_ARTIFACTS = "\
+    file://imx8m_sign.sh \
+    file://imx8m_template.csf \
+"
+SRC_URI:append:mx8m-generic-bsp = "${TDX_IMX8M_CSF_ARTIFACTS}"
 
 TDX_UBOOT_HAB_PATCHES_DOWNSTREAM = "\
     file://0001-bootm-don-t-use-HAB-to-authenticate-FIT-image.patch \
@@ -90,6 +99,41 @@ imx6_imx7_sign_habv4() {
                                    "${WORKDIR}/fuse-cmds.txt"
 }
 
+# Sign U-Boot binary and/or SPL (this works with i.MX8M).
+# This is supposed to run in the U-Boot build directory.
+imx8m_sign_habv4() {
+    local soc="$1"
+    local type="$2"
+    local binary="$3"
+
+    if [ ! -e "${TDX_IMX_HAB_CST_BIN}" ]; then
+        bbfatal "Could not find CST binary at ${TDX_IMX_HAB_CST_BIN}."
+    fi
+
+    for f in "${TDX_IMX_HAB_CST_SRK}" "${TDX_IMX_HAB_CST_CSF_CERT}" \
+             "${TDX_IMX_HAB_CST_IMG_CERT}" "${TDX_IMX_HAB_CST_SRK_FUSE}"; do
+        if [ ! -e "${f}" ]; then
+            bbfatal "Could not find file '${f}' (required for HAB)."
+        fi
+    done
+
+    # Save unsigned image
+    cp "flash.bin" "flash.bin-unsigned"
+
+    # Sign the bootloader container (in-place)
+    TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
+    TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
+    TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
+    TDX_IMX_HAB_CST_IMG_CERT="${TDX_IMX_HAB_CST_IMG_CERT}" \
+    TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
+    ${WORKDIR}/imx8m_sign.sh
+
+    # Create fuse commands
+    ${WORKDIR}/create_fuse_cmds.sh "${soc}" \
+                                   "${TDX_IMX_HAB_CST_SRK_FUSE}" \
+                                   "${WORKDIR}/fuse-cmds.txt"
+}
+
 uboot_assemble_fitimage_helper:append:mx6dl-generic-bsp() {
     type="$1"
     binary="$2"
@@ -112,6 +156,12 @@ uboot_assemble_fitimage_helper:append:mx7-generic-bsp() {
     type="$1"
     binary="$2"
     imx6_imx7_sign_habv4 "IMX7" "${type}" "${binary}"
+}
+
+uboot_assemble_fitimage_helper:append:mx8m-generic-bsp() {
+    type="$1"
+    binary="$2"
+    imx8m_sign_habv4 "IMX8M" "${type}" "${binary}"
 }
 
 do_deploy:append() {

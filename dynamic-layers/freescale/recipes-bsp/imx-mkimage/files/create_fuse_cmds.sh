@@ -30,26 +30,6 @@ fuse_write_line() {
     echo "fuse prog -y $bank $word $hexval"
 }
 
-create_fuse_cmds_mx8m() {
-    echo "${WARNING1}"
-
-    # commands to program SRK_HASH fuses
-    bank=6
-    word=0
-    for hexval in $(hexdump -e '/4 "0x"' -e '/4 "%X""\n"' ${SRK_FUSE_FILE}); do
-        fuse_write_line $bank $word $hexval
-        word=$((word+1))
-        if [ "$word" = "4" ]; then
-            bank=$((bank+1))
-            word=0
-        fi
-    done
-
-    # command to program SEC_CONFIG fuse and 'close' the device
-    echo -e "\n${WARNING2}"
-    fuse_write_line 1 3 0x02000000
-}
-
 create_fuse_cmds_mx8() {
     echo "${WARNING1}"
 
@@ -67,9 +47,6 @@ create_fuse_cmds_mx8() {
 }
 
 case ${SOC} in
-    "iMX8MP"|"iMX8MM")
-        create_fuse_cmds_mx8m > ${FUSE_CMDS_FILE}
-        ;;
     "iMX8QX")
         create_fuse_cmds_mx8 730 > ${FUSE_CMDS_FILE}
         ;;
