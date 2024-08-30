@@ -35,7 +35,7 @@ deploy_dtb() {
 common_imx6() {
     # If HAB is enabled the re-built U-Boot and SPL must be signed
     if [ "${TDX_IMX_HAB_ENABLE}" = "1" ]; then
-        sign_habv4 "IMX6"
+        imx6_imx7_sign_habv4 "IMX6"
         if [ -n "${UBOOT_CONFIG}" ]; then
             i=0
             j=0
@@ -55,7 +55,7 @@ common_imx6() {
 do_deploy:prepend:mx6ull-generic-bsp() {
     # If HAB is enabled the re-built U-Boot image must be signed
     if [ "${TDX_IMX_HAB_ENABLE}" = "1" ]; then
-        sign_habv4 "IMX6ULL"
+        imx6_imx7_sign_habv4 "IMX6ULL"
 	install ${B}/${UBOOT_BINARY} ${DEPLOYDIR}/${UBOOT_IMAGE}
     fi
 }
@@ -63,7 +63,7 @@ do_deploy:prepend:mx6ull-generic-bsp() {
 do_deploy:prepend:mx7-generic-bsp() {
     # If HAB is enabled the re-built U-Boot image must be signed
     if [ "${TDX_IMX_HAB_ENABLE}" = "1" ]; then
-        sign_habv4 "IMX7"
+        imx6_imx7_sign_habv4 "IMX7"
         install ${B}/${UBOOT_BINARY} ${DEPLOYDIR}/${UBOOT_IMAGE}
     fi
 }
