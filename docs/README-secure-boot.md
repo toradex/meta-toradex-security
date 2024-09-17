@@ -54,8 +54,6 @@ For details on the bootloader signature checking implementation for SoMs that us
 
 ## U-Boot hardening
 
-**Important**: Currently, due to incompatibility with newer Toradex Embedded Linux BSP releases, the U-Boot hardening feature is not supported and is disabled by default (see [Issue #20](https://github.com/toradex/meta-toradex-security/issues/20)). This will be fixed in a future release of this layer.
-
 Toradex is implementing various changes to U-Boot (currently as a series of patches) with the purpose of hardening it for secure boot. The hardening includes the following features:
 
 - **Command whitelisting**: this part of the hardening is responsible for limiting the set of commands available to boot scripts once the device is in closed state - by default, only a small set of commands remain available in that state (mostly those strictly required for booting a secure boot image) alongside a few others considered strictly secure and potentially useful for future boot scripts.
@@ -67,10 +65,9 @@ The hardening features above are controlled by the following variables:
 
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
-| `TDX_UBOOT_HARDENING_ENABLE` | Enable hardening features as a whole | `1` if building a Torizon OS image with both `TDX_IMX_HAB_ENABLE` and `UBOOT_SIGN_ENABLE` set; `0` otherwise |
-| `TDX_SECBOOT_REQUIRED_BOOTARGS` | Expected value for the fixed part of the kernel command line | Different value for each machine (suitable for Torizon OS) |
-
-Obs.: Currently, U-Boot hardening is enabled by default only when building the Torizon OS.
+| `TDX_UBOOT_HARDENING_ENABLE` | Enable hardening features as a whole | `1` if both `TDX_IMX_HAB_ENABLE` and `UBOOT_SIGN_ENABLE` are set; `0` otherwise |
+| `TDX_SECBOOT_REQUIRED_BOOTARGS` | Expected value for the fixed part of the kernel command line | Different value for each machine |
+| `TDX_AMEND_BOOT_SCRIPT` | When set to `1` the boot script will be amended to make it suitable for secure boot; this only works with the script provided by Toradex for BSP reference images; users employing a custom script should set this to `0` | Same value as variable `TDX_UBOOT_HARDENING_ENABLE` |
 
 The behavior of the different hardening features can be set via the control FDT (see [Devicetree Control in U-Boot](https://u-boot.readthedocs.io/en/stable/develop/devicetree/control.html)). Setting the control FDT at build time can be achieved by adding extra device-tree [.dtsi fragments](https://u-boot.readthedocs.io/en/stable/develop/devicetree/control.html#external-dtsi-fragments) to U-Boot and setting the Kconfig variable `CONFIG_DEVICE_TREE_INCLUDES` appropriately; with Yocto/OE this would normally involve adding small patches to U-Boot and appending changes to its recipe but the details are outside the scope of the present document.
 
@@ -135,3 +132,7 @@ When `tdxref-signed` is used to enable secure boot, the rootfs image is generate
 Because `dm-verity` is read-only, you might want to create an additional partition in the eMMC to store persistent data.
 
 If that is the case, you can use the `tdx-tezi-data-partition` class. For more information, have a look at its documentation ([README-data-partition.md](README-data-partition.md)).
+
+## Known issues and limitations
+
+- Currently the hardening is implemented/integrated on NXP SoCs only; when building for other SoC vendors one has to disable the feature (set `TDX_UBOOT_HARDENING_ENABLE=` to `0`) or the build will fail.
