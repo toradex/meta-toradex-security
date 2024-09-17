@@ -1,8 +1,8 @@
 update_signing_keys() {
-    rm -Rf ${S}/board/ti/keys
-    ln -s ${TDX_K3_HSSE_KEY_DIR} ${S}/board/ti/keys
+    rm -Rf ${S}/arch/arm/mach-k3/keys
+    ln -s ${TDX_K3_HSSE_KEY_DIR} ${S}/arch/arm/mach-k3/keys
 }
 
 do_unpack:append() {
-    bb.build.exec_func('update_signing_keys', d)    
+    bb.build.exec_func('update_signing_keys', d)
 }
