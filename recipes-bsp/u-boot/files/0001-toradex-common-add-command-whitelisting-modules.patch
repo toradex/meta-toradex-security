@@ -1,4 +1,4 @@
-From 31e1ab9d8cb3aa57eaa821607ef3d344ba572458 Mon Sep 17 00:00:00 2001
+From 70b7241992acd4e9d9c002f6f473b486d18a7f02 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:28:50 -0300
 Subject: [PATCH 1/7] toradex: common: add command whitelisting modules
@@ -288,7 +288,7 @@ index 0000000000..789d1ed128
 +#endif
 diff --git a/common/whitelist.c b/common/whitelist.c
 new file mode 100644
-index 0000000000..e5047f5d62
+index 0000000000..462df6709d
 --- /dev/null
 +++ b/common/whitelist.c
 @@ -0,0 +1,841 @@
@@ -599,7 +599,7 @@ index 0000000000..e5047f5d62
 +	{ { "nfs", ALL }, { CMD_CAT_EXEC, CMD_CAT_MEM_WRITE } },
 +	{ { "nm", ALL }, { CMD_CAT_MEM_READ, CMD_CAT_MEM_WRITE } },
 +	{ { "panic", ALL }, { CMD_CAT_SAFE } },
-+	{ { "part", "uuid", ALL }, { CMD_CAT_PART_READ } },
++	{ { "part", "uuid", ALL }, { CMD_CAT_PART_READ, CMD_CAT_NEEDED } },
 +	{ { "part", "list", ALL }, { CMD_CAT_PART_READ, CMD_CAT_NEEDED } },
 +	{ { "part", "start", ALL }, { CMD_CAT_PART_READ } },
 +	{ { "part", "size", ALL }, { CMD_CAT_PART_READ } },
