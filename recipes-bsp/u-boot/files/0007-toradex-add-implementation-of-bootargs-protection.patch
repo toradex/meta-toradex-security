@@ -1,4 +1,4 @@
-From e607277dac5e54186e2b287c696924b443ba1fc2 Mon Sep 17 00:00:00 2001
+From 242b368c9a84863984e6f787762100af03298f10 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 6 Nov 2023 22:25:28 -0300
 Subject: [PATCH 7/8] toradex: add implementation of bootargs protection
@@ -10,12 +10,12 @@ Upstream-Status: Inappropriate [TorizonCore specific]
 
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
- common/tdx-harden.c  | 197 +++++++++++++++++++++++++++++++++++++++++++
+ common/tdx-harden.c  | 231 +++++++++++++++++++++++++++++++++++++++++++
  include/tdx-harden.h |   9 +-
- 2 files changed, 204 insertions(+), 2 deletions(-)
+ 2 files changed, 238 insertions(+), 2 deletions(-)
 
 diff --git a/common/tdx-harden.c b/common/tdx-harden.c
-index 1134b6ce596..c4963c0868c 100644
+index 1134b6ce596..4061bc85eac 100644
 --- a/common/tdx-harden.c
 +++ b/common/tdx-harden.c
 @@ -3,12 +3,18 @@
@@ -37,7 +37,7 @@ index 1134b6ce596..c4963c0868c 100644
  #include <asm/global_data.h>
  #include <tdx-harden.h>
  
-@@ -42,6 +48,33 @@ enum dbg_hab_status_t dbg_hab_status = DBG_HAB_STATUS_AUTO;
+@@ -42,6 +48,36 @@ enum dbg_hab_status_t dbg_hab_status = DBG_HAB_STATUS_AUTO;
  enum dbg_hdn_status_t dbg_hdn_status = DBG_HDN_STATUS_AUTO;
  #endif
  
@@ -49,19 +49,22 @@ index 1134b6ce596..c4963c0868c 100644
 +	BPARAM_NONE,
 +	BPARAM_INTEGER,
 +	BPARAM_OSTREE_PATH,
++	BPARAM_GENERIC_UUID,
 +};
 +
 +struct bootarg_spec_t {
 +	const char *param;
 +	enum bootarg_param_type_t type;
++	const char *conflict;
 +};
 +
 +static const struct bootarg_spec_t bootarg_spec[] = {
-+	{ "ostree=", BPARAM_OSTREE_PATH },
++	{ "ostree=", BPARAM_OSTREE_PATH, NULL },
++	{ "root=PARTUUID=", BPARAM_GENERIC_UUID, "root=" }
 +#if 0
 +	/* Examples */
-+	{ "loglevel=", BPARAM_INTEGER },
-+	{ "nowb", BPARAM_NONE },
++	{ "loglevel=", BPARAM_INTEGER, NULL },
++	{ "nowb", BPARAM_NONE, NULL },
 +#endif
 +};
 +
@@ -71,13 +74,13 @@ index 1134b6ce596..c4963c0868c 100644
  static int _tdx_hardening_enabled(void)
  {
  	const void *dis_prop;
-@@ -210,6 +243,170 @@ void tdx_secure_boot_cmd(const char *cmd)
+@@ -210,6 +246,201 @@ void tdx_secure_boot_cmd(const char *cmd)
  }
  #endif
  
 +#ifdef CONFIG_TDX_BOOTARGS_PROTECTION
 +/**
-+ * _tdx_valid_var_bootargs - Check single argument in bootargs
++ * _tdx_valid_var_bootarg - Check single argument in bootargs
 + *
 + * TODO: Add support for quoted strings.
 + */
@@ -107,6 +110,14 @@ index 1134b6ce596..c4963c0868c 100644
 +			return 0;
 +		break;
 +	}
++	case BPARAM_GENERIC_UUID: {
++		/* Accept hex digits and dashes. */
++		while (isxdigit(*valp) || *valp == '-')
++			valp++;
++		if (valp == value)
++			return 0;
++		break;
++	}
 +	default:
 +		printf("Unhandled bootarg param type %d\n", (int) type);
 +		return 0;
@@ -125,7 +136,7 @@ index 1134b6ce596..c4963c0868c 100644
 +/**
 + * _tdx_valid_var_bootargs - Check the variable part of bootargs
 + */
-+static int _tdx_valid_var_bootargs(const char *bootargs)
++static int _tdx_valid_var_bootargs(const char *bootargs, const char *reqargs)
 +{
 +	const char *args = bootargs, *value = NULL, *eptr;
 +
@@ -140,7 +151,7 @@ index 1134b6ce596..c4963c0868c 100644
 +			}
 +		}
 +		if (bi >= BOOTARG_SPEC_LEN) {
-+			printf("## Unexpected argument in bootargs: "
++			printf("## Unexpected argument in variable bootargs: "
 +			       "%.16s...\n", args);
 +			return 0;
 +		}
@@ -149,6 +160,29 @@ index 1134b6ce596..c4963c0868c 100644
 +			printf("## Argument validation failed for bootarg "
 +			       "%.16s...\n", args);
 +			return 0;
++		}
++
++		/* Check if the parameter specified in the variable part conflicts
++                   with a parameter in the required (fixed) part; this prevents
++                   parameters to be overriden in the variable part when they are
++                   supposed to be present only in the fixed part of the bootargs. */
++		if (bootarg_spec[bi].conflict) {
++			const char *reqptr = strstr(reqargs, bootarg_spec[bi].conflict);
++			int conflict = 0;
++			if (reqptr && reqptr == reqargs) {
++				/* found at the beginning of the reqargs. */
++				conflict = 1;
++
++			} else if (reqptr && reqptr != reqargs) {
++				/* found not at the beginning: confirm. */
++				reqptr--;
++				if (isspace(*reqptr)) conflict = 1;
++			}
++			if (conflict) {
++				printf("## Conflicting argument in variable bootargs: "
++				       "%.16s...\n", args);
++				return 0;
++			}
 +		}
 +
 +		args = eptr;
@@ -216,7 +250,7 @@ index 1134b6ce596..c4963c0868c 100644
 +	}
 +
 +	debug("variable part to validate: \"%s\"\n", args);
-+	if (!_tdx_valid_var_bootargs(args))
++	if (!_tdx_valid_var_bootargs(args, req_args))
 +		goto varpart_invalid;
 +
 +	return 1;
