@@ -151,14 +151,14 @@ index 1134b6ce596..4061bc85eac 100644
 +			}
 +		}
 +		if (bi >= BOOTARG_SPEC_LEN) {
-+			printf("## Unexpected argument in variable bootargs: "
-+			       "%.16s...\n", args);
++			eprintf("## Unexpected argument in variable bootargs: "
++				"%.16s...\n", args);
 +			return 0;
 +		}
 +
 +		if (!_tdx_valid_var_bootarg(value, bootarg_spec[bi].type, &eptr)) {
-+			printf("## Argument validation failed for bootarg "
-+			       "%.16s...\n", args);
++			eprintf("## Argument validation failed for bootarg "
++				"%.16s...\n", args);
 +			return 0;
 +		}
 +
@@ -179,8 +179,8 @@ index 1134b6ce596..4061bc85eac 100644
 +				if (isspace(*reqptr)) conflict = 1;
 +			}
 +			if (conflict) {
-+				printf("## Conflicting argument in variable bootargs: "
-+				       "%.16s...\n", args);
++				eprintf("## Conflicting argument in variable bootargs: "
++					"%.16s...\n", args);
 +				return 0;
 +			}
 +		}
@@ -210,15 +210,15 @@ index 1134b6ce596..4061bc85eac 100644
 +
 +	node_offset = fdt_path_offset(fdt, bootargs_node_path);
 +	if (node_offset < 0) {
-+		printf("## WARNING: Required node \"%s\" could not be found "
-+		       "in device-tree.\n", bootargs_node_path);
++		eprintf("## WARNING: Required node \"%s\" could not be found "
++			"in device-tree.\n", bootargs_node_path);
 +		return 0;
 +	}
 +
 +	req_args = fdt_getprop(fdt, node_offset, req_prop, &req_len);
 +	if (!req_args) {
-+		printf("## WARNING: Required property \"%s/%s\" could not be "
-+		       "found in device-tree.\n", bootargs_node_path, req_prop);
++		eprintf("## WARNING: Required property \"%s/%s\" could not be "
++			"found in device-tree.\n", bootargs_node_path, req_prop);
 +		return 0;
 +	}
 +
@@ -256,19 +256,19 @@ index 1134b6ce596..4061bc85eac 100644
 +	return 1;
 +
 +fixpart_invalid:
-+	printf("## WARNING: Initial part of passed bootargs string (A) does "
-+	       "not match '%s' property (B) in device-tree.\n", req_prop);
-+	printf("##  A: \"%s\"\n", skip_spaces(bootargs));
-+	printf("##  B: \"%.*s\"\n", req_len, req_args);
++	eprintf("## WARNING: Initial part of passed bootargs string (A) does "
++		"not match '%s' property (B) in device-tree.\n", req_prop);
++	eprintf("##  A: \"%s\"\n", skip_spaces(bootargs));
++	eprintf("##  B: \"%.*s\"\n", req_len, req_args);
 +	return 0;
 +
 +varpart_invalid:
-+	printf("## WARNING: Validation of the variable part of bootargs "
-+	       "failed; the full bootargs string (A) and its fixed part "
-+	       "(as defined in the '%s' property inside the device-tree) "
-+	       "follow:\n", req_prop);
-+	printf("##  A: \"%s\"\n", skip_spaces(bootargs));
-+	printf("##  B: \"%.*s\"\n", req_len, req_args);
++	eprintf("## WARNING: Validation of the variable part of bootargs "
++		"failed; the full bootargs string (A) and its fixed part "
++		"(as defined in the '%s' property inside the device-tree) "
++		"follow:\n", req_prop);
++	eprintf("##  A: \"%s\"\n", skip_spaces(bootargs));
++	eprintf("##  B: \"%.*s\"\n", req_len, req_args);
 +	return 0;
 +}
 +#endif
