@@ -1,0 +1,50 @@
+From 0e44c1769d9c7be3b5df154a287424aa3e70013a Mon Sep 17 00:00:00 2001
+From: Sergio Prado <sergio.prado@e-labworks.com>
+Date: Wed, 25 Sep 2024 22:33:08 -0300
+Subject: [PATCH] imx8mp: binman: add tee node
+
+Upstream-Status: Pending
+
+Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
+---
+ arch/arm/dts/imx8mp-u-boot.dtsi | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/dts/imx8mp-u-boot.dtsi b/arch/arm/dts/imx8mp-u-boot.dtsi
+index c4c1a1771026..999e06ff63da 100644
+--- a/arch/arm/dts/imx8mp-u-boot.dtsi
++++ b/arch/arm/dts/imx8mp-u-boot.dtsi
+@@ -167,6 +167,19 @@
+ 				};
+ #endif
+ 
++				tee {
++					description = "TEE firmware";
++					type = "firmware";
++					arch = "arm64";
++					compression = "none";
++					load = <0x56000000>;
++					entry = <0x56000000>;
++
++					tee_blob: blob-ext {
++						filename = "tee.bin";
++					};
++				};
++
+ 				@fdt-SEQ {
+ 					description = "NAME";
+ 					type = "flat_dt";
+@@ -186,7 +199,9 @@
+ 					fdt = "fdt-SEQ";
+ 					firmware = "uboot";
+ #ifndef CONFIG_ARMV8_PSCI
+-					loadables = "atf";
++					loadables = "atf", "tee";
++#else
++					loadables = "tee";
+ #endif
+ 				};
+ 			};
+-- 
+2.34.1
+
