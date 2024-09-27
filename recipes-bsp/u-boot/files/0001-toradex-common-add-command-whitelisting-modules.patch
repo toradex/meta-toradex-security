@@ -995,21 +995,21 @@ index 0000000000..462df6709d
 +				    int argc, char *const argv[],
 +				    char *const reason)
 +{
-+	puts("## WARNING: Command execution ");
-+	puts(simulated ? "WOULD BE DENIED in closed state" : "denied");
-+	puts(" (");
-+	puts(reason);
-+	puts(") for `");
++	eputs("## WARNING: Command execution ");
++	eputs(simulated ? "WOULD BE DENIED in closed state" : "denied");
++	eputs(" (");
++	eputs(reason);
++	eputs(") for `");
 +	for (int i = 0; i < argc; i++) {
 +		if (i > 0)
-+			puts(" ");
-+		puts(argv[i]);
++			eputs(" ");
++		eputs(argv[i]);
 +		if (i >= 3) {
-+			puts("...");
++			eputs("...");
 +			break;
 +		}
 +	}
-+	puts("`.\n");
++	eputs("`.\n");
 +}
 +
 +/**
