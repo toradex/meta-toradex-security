@@ -60,12 +60,12 @@ index 2bd80a9dfb..717709e059 100644
 +		if (tdx_valid_bootargs(fdt, str)) {
 +			printf("## Validation of bootargs succeeded.\n");
 +		} else if (tdx_secboot_dev_is_open()) {
-+			printf("## WARNING: Allowing boot while device is "
-+			       "open; please fix bootargs before closing "
-+			       "device.\n");
++			eprintf("## WARNING: Allowing boot while device is "
++				"open; please fix bootargs before closing "
++				"device.\n");
 +		} else {
-+			printf("## FATAL: Stopping boot process due to "
-+			       "bootargs validation error.\n");
++			eprintf("## FATAL: Stopping boot process due to "
++				"bootargs validation error.\n");
 +			return -FDT_ERR_BADVALUE;
 +		}
 +	}
