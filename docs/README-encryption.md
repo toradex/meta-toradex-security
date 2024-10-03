@@ -97,6 +97,8 @@ To confirm you have a TPM to be used as a Trust Source for managing the encrypti
 # ls -l /dev/tpm0
 ```
 
+If your hardware lacks a discrete TPM chip, you may want to consider using an fTPM (firmware-based TPM) running in OP-TEE. This layer currently supports OP-TEE and fTPM on Verdin iMX8MP. For additional details, please refer to the [fTPM session in the OP-TEE documentation](README-optee.md#ftpm-support-in-op-tee).
+
 ## Encrypting a partition in the eMMC
 
 In case you want to create an additional partition in the eMMC to store encrypted data, you can use the `tdx-tezi-data-partition` class. For more information, have a look at its documentation ([README-data-partition.md](README-data-partition.md)).
