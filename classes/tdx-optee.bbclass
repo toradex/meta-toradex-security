@@ -4,6 +4,10 @@ TDX_OPTEE_ENABLE = "1"
 # required by some vendor BSPs
 MACHINE_FEATURES:append = " optee"
 
+# enable support for building OP-TEE with the fTPM trusted application
+TDX_OPTEE_FTPM ?= "0"
+MACHINE_FEATURES:append = " ${@oe.utils.conditional('TDX_OPTEE_FTPM', '1', 'optee-ftpm', '', d)}"
+
 # enable OP-TEE debug messages
 TDX_OPTEE_DEBUG ?= "0"
 
@@ -20,6 +24,7 @@ TDX_OPTEE_PACKAGES_TESTS = "\
 IMAGE_INSTALL:append = "\
     optee-os \
     optee-client \
+    ${@oe.utils.conditional('TDX_OPTEE_FTPM', '1', 'tpm2-tools', '', d)} \
     ${@oe.utils.conditional('TDX_OPTEE_INSTALL_TESTS', '1', '${TDX_OPTEE_PACKAGES_TESTS}', '', d)} \
 "
 
