@@ -17,6 +17,7 @@ FIT_KEY_REQ_ARGS ?= "-batch -new"
 FIT_KEY_SIGN_PKCS ?= "-x509"
 
 # parameters to sign FIT images
+FIT_HASH_ALG ?= "sha256"
 FIT_SIGN_ALG ?= "rsa2048"
 FIT_SIGN_NUMBITS ?= "2048"
 FIT_SIGN_INDIVIDUAL = "0"
