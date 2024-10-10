@@ -1,7 +1,7 @@
-From 64bb5b975a890f13455757183d4084f375216697 Mon Sep 17 00:00:00 2001
+From e3cf5272047a931ee83148682d5da0164031eff8 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:29:34 -0300
-Subject: [PATCH 3/7] toradex: integrate command whitelisting (downstream)
+Subject: [PATCH 3/9] toradex: integrate command whitelisting (downstream)
 
 Integrate the command whitelisting feature which is part of the Secure
 Boot hardening on U-Boot made by Toradex. The feature allows categories
@@ -20,7 +20,7 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  3 files changed, 35 insertions(+)
 
 diff --git a/Kconfig b/Kconfig
-index 0b00696198a..badab0318d6 100644
+index 5710934000f..5f6ec0afbbf 100644
 --- a/Kconfig
 +++ b/Kconfig
 @@ -742,3 +742,31 @@ source "lib/Kconfig"
@@ -56,7 +56,7 @@ index 0b00696198a..badab0318d6 100644
 +	help
 +	  Enable the command white-listing feature provided by Toradex.
 diff --git a/common/Makefile b/common/Makefile
-index a83dcbee81e..8317e002ff0 100644
+index 009e0da8a40..a2d89720674 100644
 --- a/common/Makefile
 +++ b/common/Makefile
 @@ -24,6 +24,8 @@ obj-$(CONFIG_DISPLAY_BOARDINFO_LATE) += board_info.o

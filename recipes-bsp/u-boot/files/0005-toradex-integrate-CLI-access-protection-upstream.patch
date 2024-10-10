@@ -1,7 +1,7 @@
-From 77b9e5a11a2544622985ebb82152041b9d664d77 Mon Sep 17 00:00:00 2001
+From 8f5d953a2615627e1f8d2bac55f9b9204bba4ff7 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Wed, 13 Sep 2023 15:22:25 -0300
-Subject: [PATCH 5/7] toradex: integrate CLI access protection (upstream)
+Subject: [PATCH 5/9] toradex: integrate CLI access protection (upstream)
 
 Integrate the protection in U-Boot to prevent access to its CLI once
 the device is closed; this is part of the hardening for Secure Boot.
@@ -17,7 +17,7 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  4 files changed, 71 insertions(+), 1 deletion(-)
 
 diff --git a/Kconfig b/Kconfig
-index f046c21cc7..59591a7a52 100644
+index f046c21cc7e..59591a7a523 100644
 --- a/Kconfig
 +++ b/Kconfig
 @@ -761,6 +761,7 @@ config TDX_SECBOOT_HARDENING
@@ -39,7 +39,7 @@ index f046c21cc7..59591a7a52 100644
 +	  Enable the protection where the CLI is disabled when the device
 +	  is in closed state.
 diff --git a/common/main.c b/common/main.c
-index 82d3aafa53..13db55df88 100644
+index 82d3aafa53c..13db55df889 100644
 --- a/common/main.c
 +++ b/common/main.c
 @@ -20,6 +20,7 @@
@@ -62,7 +62,7 @@ index 82d3aafa53..13db55df88 100644
  		cli_secure_boot_cmd(s);
  
 diff --git a/common/tdx-harden.c b/common/tdx-harden.c
-index fb8aaa5eed..1134b6ce59 100644
+index 789d1ed1285..dbdb8c5e337 100644
 --- a/common/tdx-harden.c
 +++ b/common/tdx-harden.c
 @@ -6,6 +6,7 @@
@@ -139,7 +139,7 @@ index fb8aaa5eed..1134b6ce59 100644
 +#error Toradex hardening assumes CONFIG_UPDATE_TFTP is not set
 +#endif
 diff --git a/include/tdx-harden.h b/include/tdx-harden.h
-index dfdaa69d3a..50e850ba2a 100644
+index dfdaa69d3a4..50e850ba2af 100644
 --- a/include/tdx-harden.h
 +++ b/include/tdx-harden.h
 @@ -12,6 +12,8 @@

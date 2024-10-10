@@ -6,6 +6,8 @@ TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM = "\
     file://0005-toradex-integrate-CLI-access-protection-downstream.patch \
     file://0006-toradex-add-implementation-of-bootargs-protection.patch \
     file://0007-toradex-integrate-bootargs-protection-downstream.patch \
+    file://0008-toradex-show-message-if-CLI-access-allowed-common.patch \
+    file://0009-toradex-show-message-if-CLI-access-allowed-downstrea.patch \
 "
 
 TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM_AM62 = "\
@@ -16,6 +18,8 @@ TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM_AM62 = "\
     file://0005-toradex-integrate-CLI-access-protection-downstream.patch \
     file://0006-toradex-add-implementation-of-bootargs-protection.patch \
     file://0007-toradex-integrate-bootargs-protection-am62.patch \
+    file://0008-toradex-show-message-if-CLI-access-allowed-common.patch \
+    file://0009-toradex-show-message-if-CLI-access-allowed-downstrea.patch \
 "
 
 TDX_UBOOT_HARDENING_PATCHES_UPSTREAM = "\
@@ -26,6 +30,8 @@ TDX_UBOOT_HARDENING_PATCHES_UPSTREAM = "\
     file://0005-toradex-integrate-CLI-access-protection-upstream.patch \
     file://0006-toradex-add-implementation-of-bootargs-protection.patch \
     file://0007-toradex-integrate-bootargs-protection-upstream.patch \
+    file://0008-toradex-show-message-if-CLI-access-allowed-common.patch \
+    file://0009-toradex-show-message-if-CLI-access-allowed-upstream.patch \
 "
 
 TDX_UBOOT_HARDENING_PATCHES = "${TDX_UBOOT_HARDENING_PATCHES_UPSTREAM}"
