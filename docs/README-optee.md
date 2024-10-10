@@ -24,6 +24,19 @@ A few variables can be used to customize the behavior of this feature:
 | :------- | :---------- | :------------ |
 | TDX_OPTEE_DEBUG | Enable OP-TEE debug messages to the serial console (`1` to enable or `0` to disable) | `0` |
 | TDX_OPTEE_INSTALL_TESTS | Enable the installation of OP-TEE test applications (`1` to enable or `0` to disable) | `0` |
+| TDX_OPTEE_FTPM | Enable support for a firmware TPM (fTPM) implementation running as trusted application in OP-TEE (`1` to enable or `0` to disable). For more information on how an fTPM works, see the next session. | `0` |
+
+## fTPM support in OP-TEE
+
+Trusted Platform Modules (TPMs) are designed to enhance system security by performing cryptographic operations such as key generation, encryption, and digital signing. Their primary role is to provide secure storage for cryptographic keys and ensure system integrity by measuring the software environment during the boot process.
+
+An fTPM (Firmware-based Trusted Platform Module) is a type of TPM that operates within firmware, as opposed to being a discrete hardware chip. While it offers similar functionality, it runs inside a Trusted Execution Environment (TEE), such as OP-TEE.
+
+The [fTPM implementation](https://github.com/microsoft/ms-tpm-20-ref) integrated into this layer uses the secure storage API provided by OP-TEE. This secure storage currently saves data in `/data/tee/`, where persistent information such as cryptographic keys and other general-purpose data is securely stored. All stored data is encrypted using a Hardware Unique Key (HUK), which is supplied by the CAAM driver on i.MX platforms.
+
+For further details on how secure storage works in OP-TEE, refer to the [OP-TEE documentation](https://optee.readthedocs.io/en/latest/architecture/secure_storage.html).
+
+It's important to note that an fTPM may not entirely replace the need for a discrete TPM chip, as this depends on the specific use case and the product's threat model. Nevertheless, an fTPM can provide adequate security for certain scenarios, especially when incorporating a hardware TPM chip is impractical.
 
 ## Read-write filesystem for OP-TEE
 
