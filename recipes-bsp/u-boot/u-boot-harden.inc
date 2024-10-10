@@ -8,6 +8,16 @@ TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM = "\
     file://0007-toradex-integrate-bootargs-protection-downstream.patch \
 "
 
+TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM_AM62 = "\
+    file://0001-toradex-common-add-command-whitelisting-modules.patch \
+    file://0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch \
+    file://0003-toradex-integrate-command-whitelisting-downstream.patch \
+    file://0004-toradex-integrate-bootm-protection-downstream.patch \
+    file://0005-toradex-integrate-CLI-access-protection-downstream.patch \
+    file://0006-toradex-add-implementation-of-bootargs-protection.patch \
+    file://0007-toradex-integrate-bootargs-protection-am62.patch \
+"
+
 TDX_UBOOT_HARDENING_PATCHES_UPSTREAM = "\
     file://0001-toradex-common-add-command-whitelisting-modules.patch \
     file://0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch \
@@ -21,6 +31,8 @@ TDX_UBOOT_HARDENING_PATCHES_UPSTREAM = "\
 TDX_UBOOT_HARDENING_PATCHES = "${TDX_UBOOT_HARDENING_PATCHES_UPSTREAM}"
 TDX_UBOOT_HARDENING_PATCHES:apalis-imx8 = "${TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM}"
 TDX_UBOOT_HARDENING_PATCHES:colibri-imx8x = "${TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM}"
+TDX_UBOOT_HARDENING_PATCHES:verdin-am62 = "${TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM_AM62}"
+TDX_UBOOT_HARDENING_PATCHES:verdin-am62-k3r5 = "${TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM_AM62}"
 
 SRC_URI:append = "\
     file://u-boot-harden.cfg \
