@@ -20,6 +20,9 @@ TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM_AM62 = "\
     file://0007-toradex-integrate-bootargs-protection-am62.patch \
     file://0008-toradex-show-message-if-CLI-access-allowed-common.patch \
     file://0009-toradex-show-message-if-CLI-access-allowed-downstrea.patch \
+    \
+    file://0001-toradex-add-helper-to-detect-closed-k3-based-device-.patch \
+    file://0002-toradex-support-detecting-closed-k3-based-device-am6.patch \
 "
 
 TDX_UBOOT_HARDENING_PATCHES_UPSTREAM = "\
