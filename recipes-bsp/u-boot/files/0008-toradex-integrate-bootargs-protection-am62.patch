@@ -1,0 +1,79 @@
+From 8c9be8ad67f61becf293676696575e0e85a0a69a Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Thu, 26 Oct 2023 12:40:46 -0300
+Subject: [PATCH 8/8] toradex: integrate bootargs protection (am62)
+
+Upstream-Status: Inappropriate [TorizonCore specific]
+
+Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+---
+ Kconfig              | 10 ++++++++++
+ common/fdt_support.c | 20 ++++++++++++++++++++
+ 2 files changed, 30 insertions(+)
+
+diff --git a/Kconfig b/Kconfig
+index f60212579ce..f3d3132334e 100644
+--- a/Kconfig
++++ b/Kconfig
+@@ -616,6 +616,7 @@ config TDX_SECBOOT_HARDENING
+ 	select TDX_CMD_WHITELIST
+ 	select TDX_BOOTM_PROTECTION
+ 	select TDX_CLI_PROTECTION
++	select TDX_BOOTARGS_PROTECTION
+ 	help
+ 	  This causes the Secure Boot hardening features added by Toradex
+ 	  to be built into U-Boot, including:
+@@ -652,3 +653,12 @@ config TDX_CLI_PROTECTION
+ 	help
+ 	  Enable the protection where the CLI is disabled when the device
+ 	  is in closed state.
++
++config TDX_BOOTARGS_PROTECTION
++	bool
++	help
++	  Enable the protection for the kernel command line (bootargs); with
++	  this feature, U-Boot will check the "bootargs" environment variable
++	  against information in the device-tree provided to the bootm
++	  command. Since the device-tree is supposed to come from a signed
++	  FIT image, it is expected to be a trustworthy source of information.
+diff --git a/common/fdt_support.c b/common/fdt_support.c
+index 0e2f12bd09c..1345092f9d3 100644
+--- a/common/fdt_support.c
++++ b/common/fdt_support.c
+@@ -25,6 +25,10 @@
+ 
+ DECLARE_GLOBAL_DATA_PTR;
+ 
++#ifdef CONFIG_TDX_BOOTARGS_PROTECTION
++#include <tdx-harden.h>
++#endif
++
+ /**
+  * fdt_getprop_u32_default_node - Return a node's property or a default
+  *
+@@ -312,6 +316,22 @@ int fdt_chosen(void *fdt)
+ 
+ 	str = board_fdt_chosen_bootargs();
+ 
++#ifdef CONFIG_TDX_BOOTARGS_PROTECTION
++	if (tdx_hardening_enabled()) {
++		if (tdx_valid_bootargs(fdt, str)) {
++			printf("## Validation of bootargs succeeded.\n");
++		} else if (tdx_secboot_dev_is_open()) {
++			eprintf("## WARNING: Allowing boot while device is "
++				"open; please fix bootargs before closing "
++				"device.\n");
++		} else {
++			eprintf("## FATAL: Stopping boot process due to "
++				"bootargs validation error.\n");
++			return -FDT_ERR_BADVALUE;
++		}
++	}
++#endif
++
+ 	if (str) {
+ 		err = fdt_setprop(fdt, nodeoffset, "bootargs", str,
+ 				  strlen(str) + 1);
+-- 
+2.25.1
+
