@@ -1,0 +1,82 @@
+From 1b6d7b53cd9a47551fe2d16f82c37d24d0bfc901 Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Thu, 10 Oct 2024 00:38:50 -0300
+Subject: [PATCH 09/10] toradex: show message if CLI access allowed (common)
+
+Before, a message was shown only when the device was closed and the CLI
+access was disabled by the CLI protection feature. Now we show a message
+also when the device is open which is helpful when someone wants to
+ensure the protection is compiled in without having to close the device.
+
+Upstream-Status: Inappropriate [TorizonCore specific]
+
+Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+---
+ common/tdx-harden.c  | 25 ++++++++++++++++++++-----
+ include/tdx-harden.h |  2 +-
+ 2 files changed, 21 insertions(+), 6 deletions(-)
+
+diff --git a/common/tdx-harden.c b/common/tdx-harden.c
+index 82ff38a7fe1..3fd7e8873ac 100644
+--- a/common/tdx-harden.c
++++ b/common/tdx-harden.c
+@@ -199,10 +199,9 @@ int tdx_secboot_dev_is_open(void)
+ 
+ #ifdef CONFIG_TDX_CLI_PROTECTION
+ /**
+- * tdx_cli_access_enabled - Determine if U-Boot CLI access is to be enabled
+- * Return: 1 if CLI access is to be enabled or 0 otherwise.
++ * TODO: Return status instead and show more detailed info in tdx_cli_access_enabled().
+  */
+-int tdx_cli_access_enabled(void)
++static int _tdx_cli_access_enabled(void)
+ {
+ 	const void *en_prop;
+ 	int secboot_offset, prop_len;
+@@ -232,12 +231,28 @@ int tdx_cli_access_enabled(void)
+ 	return 0;
+ }
+ 
++/**
++ * tdx_cli_access_enabled - Determine if U-Boot CLI access is to be enabled
++ * Return: 1 if CLI access is to be enabled or 0 otherwise.
++ */
++int tdx_cli_access_enabled(int showmsg)
++{
++	int res = _tdx_cli_access_enabled();
++	if (!showmsg)
++		return res;
++
++	if (res)
++		printf("## U-Boot CLI access is enabled\n");
++	else
++		printf("## U-Boot CLI access is disabled due to Secure Boot\n");
++
++	return res;
++}
++
+ void tdx_secure_boot_cmd(const char *cmd)
+ {
+ 	int rc;
+ 
+-	printf("## U-Boot CLI access is disabled due to Secure Boot\n");
+-
+ 	disable_ctrlc(1);
+ 	rc = run_command_list(cmd, -1, 0);
+ 
+diff --git a/include/tdx-harden.h b/include/tdx-harden.h
+index 1cb61aed45e..2209780b4c5 100644
+--- a/include/tdx-harden.h
++++ b/include/tdx-harden.h
+@@ -43,7 +43,7 @@ struct cmd_tbl;
+ int cmd_allowed_by_whitelist(struct cmd_tbl *cmd, int argc, char *const argv[]);
+ int tdx_secboot_dev_is_open(void);
+ int tdx_hardening_enabled(void);
+-int tdx_cli_access_enabled(void);
++int tdx_cli_access_enabled(int showmsg);
+ void tdx_secure_boot_cmd(const char *cmd);
+ int tdx_valid_bootargs(void *fdt, const char *bootargs);
+ 
+-- 
+2.25.1
+

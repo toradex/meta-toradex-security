@@ -1,7 +1,7 @@
 From 87d37b57fbe839a4e41b8bc215a7cc841ae7ae30 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Wed, 13 Sep 2023 15:22:25 -0300
-Subject: [PATCH 5/8] toradex: integrate CLI access protection (am62)
+Subject: [PATCH 05/10] toradex: integrate CLI access protection (am62)
 
 Integrate the protection in U-Boot to prevent access to its CLI once
 the device is closed; this is part of the hardening for Secure Boot.

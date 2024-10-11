@@ -1,7 +1,7 @@
 From d88b5ee767ce6e296946264ee5f4e8469e67fb36 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Thu, 7 Sep 2023 23:54:48 -0300
-Subject: [PATCH 4/8] toradex: integrate bootm protection (am62)
+Subject: [PATCH 04/10] toradex: integrate bootm protection (am62)
 
 Integrate the protection to the bootm command to only allow booting
 from FIT images. With the proper configuration of U-Boot (enabling FIT

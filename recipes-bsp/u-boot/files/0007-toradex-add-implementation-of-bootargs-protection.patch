@@ -1,7 +1,7 @@
-From 242b368c9a84863984e6f787762100af03298f10 Mon Sep 17 00:00:00 2001
+From 2cb9e2a2aaa6859ee9b22a91aeaf2b01fb9b6041 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 6 Nov 2023 22:25:28 -0300
-Subject: [PATCH 7/8] toradex: add implementation of bootargs protection
+Subject: [PATCH 07/10] toradex: add implementation of bootargs protection
 
 This only adds the code implementing the feature but does not integrate
 it into U-Boot.
@@ -15,7 +15,7 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  2 files changed, 238 insertions(+), 2 deletions(-)
 
 diff --git a/common/tdx-harden.c b/common/tdx-harden.c
-index 1134b6ce596..4061bc85eac 100644
+index 1134b6ce596..82ff38a7fe1 100644
 --- a/common/tdx-harden.c
 +++ b/common/tdx-harden.c
 @@ -3,12 +3,18 @@

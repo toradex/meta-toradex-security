@@ -1,7 +1,7 @@
-From 2a9639b60a7cab00b703b67a3b8120ddd6b6b647 Mon Sep 17 00:00:00 2001
+From 1e0cc60ee70d0664a90f2bfe0ee816d5cad7e8f0 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Thu, 26 Oct 2023 12:40:46 -0300
-Subject: [PATCH 8/8] toradex: integrate bootargs protection (downstream)
+Subject: [PATCH 08/10] toradex: integrate bootargs protection (downstream)
 
 Upstream-Status: Inappropriate [TorizonCore specific]
 
@@ -37,7 +37,7 @@ index 0dbb1f87a89..d9241273b14 100644
 +	  command. Since the device-tree is supposed to come from a signed
 +	  FIT image, it is expected to be a trustworthy source of information.
 diff --git a/common/fdt_support.c b/common/fdt_support.c
-index f08915c2c66..5f4f07c8f61 100644
+index f08915c2c66..5acd54fc702 100644
 --- a/common/fdt_support.c
 +++ b/common/fdt_support.c
 @@ -21,6 +21,10 @@
