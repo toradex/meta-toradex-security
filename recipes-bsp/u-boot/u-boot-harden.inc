@@ -41,8 +41,24 @@ SRC_URI:append = "\
     ${TDX_UBOOT_HARDENING_PATCHES} \
 "
 
-do_compile:prepend() {
+do_compile:prepend:imx-generic-bsp() {
     if [ "${TDX_IMX_HAB_ENABLE}" = "0" ] && [ "${TDX_UBOOT_HARDENING_ENABLE}" = "1" ]; then
-        bbfatal 'The combination TDX_IMX_HAB_ENABLE = "0" and TDX_UBOOT_HARDENING_ENABLE = "1" is not allowed: the whitelisting feature (part of the hardening) currently relies on HAB/AHAB.'
+        bbfatal 'The combination TDX_IMX_HAB_ENABLE="0" and TDX_UBOOT_HARDENING_ENABLE="1" is not allowed:' \
+                'the whitelisting feature (part of the hardening) currently relies on HAB/AHAB.'
+    fi
+}
+
+do_compile:prepend:k3() {
+    if [ "${TDX_K3_HSSE_ENABLE}" = "0" ] && [ "${TDX_UBOOT_HARDENING_ENABLE}" = "1" ]; then
+        bbfatal 'The combination TDX_K3_HSSE_ENABLE="0" and TDX_UBOOT_HARDENING_ENABLE="1" is not allowed:' \
+                'the whitelisting feature (part of the hardening) currently relies on K3.'
+    fi
+}
+
+do_compile:prepend:k3r5() {
+    # TODO: Consider implementing some kind of hardening for the R5 processor.
+    if [ "${TDX_UBOOT_HARDENING_ENABLE}" = "1" ]; then
+        bbfatal 'The hardening cannot be enabled for the R5 processor at the moment;' \
+	        'please review your setting of TDX_UBOOT_HARDENING_ENABLE.'
     fi
 }
