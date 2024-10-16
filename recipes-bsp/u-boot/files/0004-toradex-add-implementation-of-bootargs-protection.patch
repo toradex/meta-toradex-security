@@ -1,7 +1,7 @@
-From 79fed2d4d0629c90fa7d541399fb33316457d85d Mon Sep 17 00:00:00 2001
+From 382c0a14be9cd438bad235a37487d348047ee117 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 6 Nov 2023 22:25:28 -0300
-Subject: [PATCH 6/9] toradex: add implementation of bootargs protection
+Subject: [PATCH 4/5] toradex: add implementation of bootargs protection
 
 This only adds the code implementing the feature but does not integrate
 it into U-Boot.

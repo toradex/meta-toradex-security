@@ -1,7 +1,7 @@
-From 5cabfcf4945aabbdee876597440366112876d43e Mon Sep 17 00:00:00 2001
+From d9e08896284d75d8eea030232beb342b0f335ef0 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Thu, 26 Oct 2023 12:40:46 -0300
-Subject: [PATCH 7/9] toradex: integrate bootargs protection (upstream)
+Subject: [PATCH 4/5] toradex: integrate bootargs protection (downstream)
 
 Upstream-Status: Inappropriate [TorizonCore specific]
 
@@ -12,10 +12,10 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  2 files changed, 30 insertions(+)
 
 diff --git a/Kconfig b/Kconfig
-index 59591a7a523..4a4b1005688 100644
+index f8df1a262a1..c35fa239f18 100644
 --- a/Kconfig
 +++ b/Kconfig
-@@ -762,6 +762,7 @@ config TDX_SECBOOT_HARDENING
+@@ -748,6 +748,7 @@ config TDX_SECBOOT_HARDENING
  	select TDX_CMD_WHITELIST
  	select TDX_BOOTM_PROTECTION
  	select TDX_CLI_PROTECTION
@@ -23,7 +23,7 @@ index 59591a7a523..4a4b1005688 100644
  	help
  	  This causes the Secure Boot hardening features added by Toradex
  	  to be built into U-Boot, including:
-@@ -798,3 +799,12 @@ config TDX_CLI_PROTECTION
+@@ -784,3 +785,12 @@ config TDX_CLI_PROTECTION
  	help
  	  Enable the protection where the CLI is disabled when the device
  	  is in closed state.
@@ -37,12 +37,12 @@ index 59591a7a523..4a4b1005688 100644
 +	  command. Since the device-tree is supposed to come from a signed
 +	  FIT image, it is expected to be a trustworthy source of information.
 diff --git a/boot/fdt_support.c b/boot/fdt_support.c
-index 2bd80a9dfb1..e27f6f88300 100644
+index 090d82ee80a..9477a2dcb7b 100644
 --- a/boot/fdt_support.c
 +++ b/boot/fdt_support.c
-@@ -27,6 +27,10 @@
- 
- DECLARE_GLOBAL_DATA_PTR;
+@@ -23,6 +23,10 @@
+ #include <fdtdec.h>
+ #include <version.h>
  
 +#ifdef CONFIG_TDX_BOOTARGS_PROTECTION
 +#include <tdx-harden.h>
@@ -51,7 +51,7 @@ index 2bd80a9dfb1..e27f6f88300 100644
  /**
   * fdt_getprop_u32_default_node - Return a node's property or a default
   *
-@@ -314,6 +318,22 @@ int fdt_chosen(void *fdt)
+@@ -310,6 +314,22 @@ int fdt_chosen(void *fdt)
  
  	str = board_fdt_chosen_bootargs();
  

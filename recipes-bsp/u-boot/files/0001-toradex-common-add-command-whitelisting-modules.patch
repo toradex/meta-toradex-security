@@ -1,7 +1,7 @@
 From e48ddc42aa67f8353d3cd8571a4360c5741e20b3 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:28:50 -0300
-Subject: [PATCH 1/9] toradex: common: add command whitelisting modules
+Subject: [PATCH 1/5] toradex: common: add command whitelisting modules
 
 Add modules implementing the command whitelisting feature to be
 integrated into U-Boot on a separate commit.

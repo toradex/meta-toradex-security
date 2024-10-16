@@ -1,0 +1,64 @@
+From a8a1ac8d280bfd0d02df3e577b329f76658351fa Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Wed, 16 Oct 2024 17:51:27 -0300
+Subject: [PATCH 3/5] toradex: integrate CLI access protection (upstream)
+
+Integrate the protection in U-Boot to prevent access to its CLI once the
+device is closed; this is part of the hardening for Secure Boot.
+
+Upstream-Status: Inappropriate [TorizonCore specific]
+
+Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+---
+ Kconfig       | 7 +++++++
+ common/main.c | 5 +++++
+ 2 files changed, 12 insertions(+)
+
+diff --git a/Kconfig b/Kconfig
+index f046c21cc7e..59591a7a523 100644
+--- a/Kconfig
++++ b/Kconfig
+@@ -761,6 +761,7 @@ config TDX_SECBOOT_HARDENING
+ 	bool "Toradex Secure Boot hardening"
+ 	select TDX_CMD_WHITELIST
+ 	select TDX_BOOTM_PROTECTION
++	select TDX_CLI_PROTECTION
+ 	help
+ 	  This causes the Secure Boot hardening features added by Toradex
+ 	  to be built into U-Boot, including:
+@@ -791,3 +792,9 @@ config TDX_BOOTM_PROTECTION
+ 	help
+ 	  Enable the protection in bootm to prevent execution of unsigned
+ 	  images.
++
++config TDX_CLI_PROTECTION
++	bool
++	help
++	  Enable the protection where the CLI is disabled when the device
++	  is in closed state.
+diff --git a/common/main.c b/common/main.c
+index 82d3aafa53c..13db55df889 100644
+--- a/common/main.c
++++ b/common/main.c
+@@ -20,6 +20,7 @@
+ #include <net.h>
+ #include <version_string.h>
+ #include <efi_loader.h>
++#include <tdx-harden.h>
+ 
+ static void run_preboot_environment_command(void)
+ {
+@@ -66,6 +67,10 @@ void main_loop(void)
+ 	process_button_cmds();
+ 
+ 	s = bootdelay_process();
++#if CONFIG_IS_ENABLED(TDX_CLI_PROTECTION)
++	if (!tdx_cli_access_enabled())
++		tdx_secure_boot_cmd(s);		/* no return */
++#endif
+ 	if (cli_process_fdt(&s))
+ 		cli_secure_boot_cmd(s);
+ 
+-- 
+2.25.1
+
