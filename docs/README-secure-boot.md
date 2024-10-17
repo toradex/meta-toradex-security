@@ -113,6 +113,10 @@ A few variables can be used to configure this feature, including:
 
 The complete list of variables can be found in the `tdx-signed-fit-image.inc` file.
 
+### Configuring FIT image signing / known issues
+
+- On the **Verdin AM62** SoM, some of the configuration variables (e.g. `UBOOT_SIGN_KEYDIR`, `UBOOT_SIGN_KEYNAME` (check the complete list in `tdx-signed-fit-image.inc`)) are set through override `k3` to ensure the values coming from layer `meta-toradex-security` override those from layer `meta-ti-bsp`. Due to this, the recommended way to set those variables is via override `forcevariable`.
+
 ## Configuring rootfs image signing
 
 When the `tdxref-signed` class is inherited, the rootfs image will be generated using the `dm-verity` kernel feature.
