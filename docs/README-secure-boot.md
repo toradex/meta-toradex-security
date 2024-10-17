@@ -65,9 +65,11 @@ The hardening features above are controlled by the following variables:
 
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
-| `TDX_UBOOT_HARDENING_ENABLE` | Enable hardening features as a whole | `1` if both `TDX_IMX_HAB_ENABLE` and `UBOOT_SIGN_ENABLE` are set; `0` otherwise |
+| `TDX_UBOOT_HARDENING_ENABLE` | Enable hardening features as a whole | `1` if both secure boot support (controlled by variable `TDX_IMX_HAB_ENABLE` (NXP) or `TDX_K3_HSSE_ENABLE` (TI)) and FIT signing (controlled by `UBOOT_SIGN_ENABLE`) are enabled; `0` otherwise |
 | `TDX_SECBOOT_REQUIRED_BOOTARGS` | Expected value for the fixed part of the kernel command line | Different value for each machine |
 | `TDX_AMEND_BOOT_SCRIPT` | When set to `1` the boot script will be amended to make it suitable for secure boot; this only works with the script provided by Toradex for BSP reference images; users employing a custom script should set this to `0` | Same value as variable `TDX_UBOOT_HARDENING_ENABLE` |
+
+### U-Boot hardening / setup
 
 The behavior of the different hardening features can be set via the control FDT (see [Devicetree Control in U-Boot](https://u-boot.readthedocs.io/en/stable/develop/devicetree/control.html)). Setting the control FDT at build time can be achieved by adding extra device-tree [.dtsi fragments](https://u-boot.readthedocs.io/en/stable/develop/devicetree/control.html#external-dtsi-fragments) to U-Boot and setting the Kconfig variable `CONFIG_DEVICE_TREE_INCLUDES` appropriately; with Yocto/OE this would normally involve adding small patches to U-Boot and appending changes to its recipe but the details are outside the scope of the present document.
 
@@ -94,6 +96,10 @@ The following device-tree fragment shows all the nodes and properties that can b
 The command categories are currently only available as part of a [patch](./recipes-bsp/u-boot/files/0001-toradex-common-add-command-whitelisting-modules.patch) in header `cmd-categories.h`. The default FDT is part of another [patch](./recipes-bsp/u-boot/files/0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch) in file `tdx-secboot.dtsi`.
 
 <!-- TODO: Make more user-friendly instructions on setting the control FDT. -->
+
+### U-Boot hardening / known issues
+
+- On the **Verdin AM62** SoM, the hardening does not cover the bootloader running on the R5 processor (the boot master); we have plans to evaluate the need for such a protection and implementing it if actually needed.
 
 ## Configuring FIT image signing
 
@@ -136,7 +142,3 @@ When `tdxref-signed` is used to enable secure boot, the rootfs image is generate
 Because `dm-verity` is read-only, you might want to create an additional partition in the eMMC to store persistent data.
 
 If that is the case, you can use the `tdx-tezi-data-partition` class. For more information, have a look at its documentation ([README-data-partition.md](README-data-partition.md)).
-
-## Known issues and limitations
-
-- Currently the hardening is implemented/integrated on NXP SoCs only; when building for other SoC vendors one has to disable the feature (set `TDX_UBOOT_HARDENING_ENABLE=` to `0`) or the build will fail.
