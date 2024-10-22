@@ -36,7 +36,10 @@ inherit ${@ 'tdx-tezi-data-partition' if 'teziimg' in d.getVar('IMAGE_FSTYPES') 
 addhandler validate_optee_support
 validate_optee_support[eventmask] = "bb.event.SanityCheck"
 python validate_optee_support() {
-    supported_machines = ['verdin-imx8mp']
+    supported_machines = [
+        'verdin-imx8mp',
+        'verdin-imx8mm',
+    ]
     machine = e.data.getVar('MACHINE')
     if machine not in supported_machines:
         bb.fatal("OP-TEE is currently not supported on '%s' machine!" % machine)
