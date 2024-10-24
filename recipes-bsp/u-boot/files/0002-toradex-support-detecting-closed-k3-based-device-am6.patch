@@ -1,0 +1,31 @@
+From 641eac2471cb64da9a2b22b2ebc42dbdd1183740 Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Wed, 9 Oct 2024 20:28:32 -0300
+Subject: [PATCH 2/2] toradex: support detecting closed k3-based device (am62)
+
+Upstream-Status: Inappropriate [TorizonCore specific]
+
+Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+---
+ common/tdx-harden.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/common/tdx-harden.c b/common/tdx-harden.c
+index a8f303aaf63..f992b0cab76 100644
+--- a/common/tdx-harden.c
++++ b/common/tdx-harden.c
+@@ -144,6 +144,11 @@ static int _tdx_secboot_dev_is_open(void)
+ 	default:	/* Unknown */
+ 		break;
+ 	}
++#elif defined(CONFIG_ARCH_K3)
++	int tdx_secboot_k3_dev_is_closed(void);
++	if (tdx_secboot_k3_dev_is_closed()) {
++		return 0;
++	}
+ #else
+ #error Neither CONFIG_IMX_HAB nor CONFIG_AHAB_BOOT is set
+ #endif
+-- 
+2.25.1
+

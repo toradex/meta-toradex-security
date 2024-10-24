@@ -1,7 +1,7 @@
-From 5a9ab2d881076afb5d8b05145068d3a889301b8f Mon Sep 17 00:00:00 2001
+From 9a380ee7ace8af5800f240557a55352e8a37a9d4 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Wed, 26 Jun 2024 16:08:52 -0300
-Subject: [PATCH 4/7] toradex: integrate bootm protection (upstream)
+Subject: [PATCH 4/9] toradex: integrate bootm protection (upstream)
 
 Integrate the protection to the bootm command to only allow booting
 from FIT images. With the proper configuration of U-Boot (enabling FIT
@@ -17,7 +17,7 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  2 files changed, 70 insertions(+), 1 deletion(-)
 
 diff --git a/Kconfig b/Kconfig
-index 62d66b831a..f046c21cc7 100644
+index 62d66b831af..f046c21cc7e 100644
 --- a/Kconfig
 +++ b/Kconfig
 @@ -760,6 +760,7 @@ source "tools/Kconfig"
@@ -39,7 +39,7 @@ index 62d66b831a..f046c21cc7 100644
 +	  Enable the protection in bootm to prevent execution of unsigned
 +	  images.
 diff --git a/boot/bootm.c b/boot/bootm.c
-index 9879e1bba4..b39c53ab9d 100644
+index 9879e1bba4e..b39c53ab9d1 100644
 --- a/boot/bootm.c
 +++ b/boot/bootm.c
 @@ -34,6 +34,7 @@

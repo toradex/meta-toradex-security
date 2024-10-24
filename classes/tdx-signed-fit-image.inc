@@ -17,6 +17,18 @@ FIT_KEY_REQ_ARGS ?= "-batch -new"
 FIT_KEY_SIGN_PKCS ?= "-x509"
 
 # parameters to sign FIT images
+FIT_HASH_ALG ?= "sha256"
 FIT_SIGN_ALG ?= "rsa2048"
 FIT_SIGN_NUMBITS ?= "2048"
 FIT_SIGN_INDIVIDUAL = "0"
+
+# stronger assignments to override settings in meta-ti
+#
+# NOTICE: a side effect of these assignments is that users will need to use
+#         :forcevariable (or an override stronger than :k3) to set them.
+UBOOT_SIGN_KEYDIR:k3 ?= "${TOPDIR}/keys/fit"
+UBOOT_SIGN_KEYNAME:k3 ?= "dev"
+UBOOT_SIGN_IMG_KEYNAME:k3 ?= "dev2"
+FIT_HASH_ALG:k3 ?= "sha256"
+FIT_SIGN_ALG:k3 ?= "rsa2048"
+FIT_SIGN_NUMBITS:k3 ?= "2048"
