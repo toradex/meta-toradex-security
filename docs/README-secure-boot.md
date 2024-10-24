@@ -93,7 +93,7 @@ The following device-tree fragment shows all the nodes and properties that can b
 };
 ```
 
-The command categories are currently only available as part of a [patch](./recipes-bsp/u-boot/files/0001-toradex-common-add-command-whitelisting-modules.patch) in header `cmd-categories.h`. The default FDT is part of another [patch](./recipes-bsp/u-boot/files/0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch) in file `tdx-secboot.dtsi`.
+The command categories are currently only available as part of a [patch](../recipes-bsp/u-boot/files/0001-toradex-common-add-command-whitelisting-modules.patch) in header `cmd-categories.h`. The default FDT is part of another [patch](../recipes-bsp/u-boot/files/0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch) in file `tdx-secboot.dtsi`.
 
 <!-- TODO: Make more user-friendly instructions on setting the control FDT. -->
 
