@@ -9,6 +9,7 @@ TEE might be a good solution to store and manage secrets (e.g. encryption keys) 
 This layer provides support for running OP-TEE on the following SoMs:
 
 - Verdin iMX8MP
+- Verdin iMX8MM
 
 ## Enabling OP-TEE
 
