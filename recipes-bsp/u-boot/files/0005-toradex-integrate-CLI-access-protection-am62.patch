@@ -1,7 +1,7 @@
-From 5c4dcda9dcf466473fe5b7b0bb3298e836426f72 Mon Sep 17 00:00:00 2001
+From 87d37b57fbe839a4e41b8bc215a7cc841ae7ae30 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Wed, 13 Sep 2023 15:22:25 -0300
-Subject: [PATCH 05/10] toradex: integrate CLI access protection (downstream)
+Subject: [PATCH 05/10] toradex: integrate CLI access protection (am62)
 
 Integrate the protection in U-Boot to prevent access to its CLI once
 the device is closed; this is part of the hardening for Secure Boot.
@@ -17,10 +17,10 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  4 files changed, 71 insertions(+), 1 deletion(-)
 
 diff --git a/Kconfig b/Kconfig
-index a1c76f1cf06..0dbb1f87a89 100644
+index c843e29d1cd..f60212579ce 100644
 --- a/Kconfig
 +++ b/Kconfig
-@@ -509,6 +509,7 @@ config TDX_SECBOOT_HARDENING
+@@ -615,6 +615,7 @@ config TDX_SECBOOT_HARDENING
  	bool "Toradex Secure Boot hardening"
  	select TDX_CMD_WHITELIST
  	select TDX_BOOTM_PROTECTION
@@ -28,7 +28,7 @@ index a1c76f1cf06..0dbb1f87a89 100644
  	help
  	  This causes the Secure Boot hardening features added by Toradex
  	  to be built into U-Boot, including:
-@@ -539,3 +540,9 @@ config TDX_BOOTM_PROTECTION
+@@ -645,3 +646,9 @@ config TDX_BOOTM_PROTECTION
  	help
  	  Enable the protection in bootm to prevent execution of unsigned
  	  images.
@@ -39,7 +39,7 @@ index a1c76f1cf06..0dbb1f87a89 100644
 +	  Enable the protection where the CLI is disabled when the device
 +	  is in closed state.
 diff --git a/common/main.c b/common/main.c
-index 3f5214fd44b..3662c0361e7 100644
+index 682f3359ea3..fc36c44a438 100644
 --- a/common/main.c
 +++ b/common/main.c
 @@ -17,6 +17,7 @@
@@ -50,8 +50,8 @@ index 3f5214fd44b..3662c0361e7 100644
  
  static void run_preboot_environment_command(void)
  {
-@@ -58,6 +59,10 @@ void main_loop(void)
- 		efi_launch_capsules();
+@@ -61,6 +62,10 @@ void main_loop(void)
+ 	}
  
  	s = bootdelay_process();
 +#if CONFIG_IS_ENABLED(TDX_CLI_PROTECTION)

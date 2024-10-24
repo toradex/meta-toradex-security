@@ -1,0 +1,35 @@
+From db54f2591af7bc0e09654fdf86f59fd6d62e25e2 Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Wed, 9 Oct 2024 20:23:16 -0300
+Subject: [PATCH 1/2] toradex: add helper to detect closed k3-based device
+ (am62)
+
+Upstream-Status: Inappropriate [TorizonCore specific]
+
+Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+---
+ arch/arm/mach-k3/common.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/arch/arm/mach-k3/common.c b/arch/arm/mach-k3/common.c
+index 1a334bc435f..3f0f96c3012 100644
+--- a/arch/arm/mach-k3/common.c
++++ b/arch/arm/mach-k3/common.c
+@@ -464,6 +464,14 @@ static const char *get_device_type_name(void)
+ 	}
+ }
+ 
++#if defined(CONFIG_TDX_SECBOOT_HARDENING)
++int tdx_secboot_k3_dev_is_closed(void)
++{
++	/* Device is closed (security enforced (SE) state). */
++	return (get_device_type() == K3_DEVICE_TYPE_HS_SE);
++}
++#endif
++
+ int print_cpuinfo(void)
+ {
+ 	struct udevice *soc;
+-- 
+2.25.1
+

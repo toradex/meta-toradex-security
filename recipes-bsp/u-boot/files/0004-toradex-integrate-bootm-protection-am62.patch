@@ -1,7 +1,7 @@
-From d5b52d80aadc25521213ebb105a47a968b293172 Mon Sep 17 00:00:00 2001
+From d88b5ee767ce6e296946264ee5f4e8469e67fb36 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Thu, 7 Sep 2023 23:54:48 -0300
-Subject: [PATCH 04/10] toradex: integrate bootm protection (downstream)
+Subject: [PATCH 04/10] toradex: integrate bootm protection (am62)
 
 Integrate the protection to the bootm command to only allow booting
 from FIT images. With the proper configuration of U-Boot (enabling FIT
@@ -17,10 +17,10 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  2 files changed, 71 insertions(+), 1 deletion(-)
 
 diff --git a/Kconfig b/Kconfig
-index ed67576e677..a1c76f1cf06 100644
+index af670bac628..c843e29d1cd 100644
 --- a/Kconfig
 +++ b/Kconfig
-@@ -508,6 +508,7 @@ source "tools/Kconfig"
+@@ -614,6 +614,7 @@ source "tools/Kconfig"
  config TDX_SECBOOT_HARDENING
  	bool "Toradex Secure Boot hardening"
  	select TDX_CMD_WHITELIST
@@ -28,7 +28,7 @@ index ed67576e677..a1c76f1cf06 100644
  	help
  	  This causes the Secure Boot hardening features added by Toradex
  	  to be built into U-Boot, including:
-@@ -532,3 +533,9 @@ config TDX_CMD_WHITELIST
+@@ -638,3 +639,9 @@ config TDX_CMD_WHITELIST
  	bool
  	help
  	  Enable the command white-listing feature provided by Toradex.
@@ -39,7 +39,7 @@ index ed67576e677..a1c76f1cf06 100644
 +	  Enable the protection in bootm to prevent execution of unsigned
 +	  images.
 diff --git a/boot/bootm.c b/boot/bootm.c
-index 00c00aef84a..e4077ce1a97 100644
+index 4144ff3b031..19a6689a50f 100644
 --- a/boot/bootm.c
 +++ b/boot/bootm.c
 @@ -32,6 +32,7 @@
@@ -48,9 +48,9 @@ index 00c00aef84a..e4077ce1a97 100644
  #include <image.h>
 +#include <tdx-harden.h>
  
- #ifndef CONFIG_SYS_BOOTM_LEN
- /* use 8MByte as default max gunzip size */
-@@ -77,7 +78,29 @@ static int bootm_start(struct cmd_tbl *cmdtp, int flag, int argc,
+ #define MAX_CMDLINE_SIZE	SZ_4K
+ 
+@@ -72,7 +73,29 @@ static int bootm_start(struct cmd_tbl *cmdtp, int flag, int argc,
  		       char *const argv[])
  {
  	memset((void *)&images, 0, sizeof(images));
@@ -80,15 +80,15 @@ index 00c00aef84a..e4077ce1a97 100644
  
  	boot_start_lmb(&images);
  
-@@ -855,6 +878,7 @@ static const void *boot_get_kernel(struct cmd_tbl *cmdtp, int flag, int argc,
- 	image_header_t	*hdr;
+@@ -895,6 +918,7 @@ static const void *boot_get_kernel(struct cmd_tbl *cmdtp, int flag, int argc,
+ 	struct legacy_img_hdr	*hdr;
  #endif
  	ulong		img_addr;
 +	int		fmt;
  	const void *buf;
  	const char	*fit_uname_config = NULL;
  	const char	*fit_uname_kernel = NULL;
-@@ -871,7 +895,46 @@ static const void *boot_get_kernel(struct cmd_tbl *cmdtp, int flag, int argc,
+@@ -918,7 +942,46 @@ static const void *boot_get_kernel(struct cmd_tbl *cmdtp, int flag, int argc,
  	/* check image type, for FIT images get FIT kernel node */
  	*os_data = *os_len = 0;
  	buf = map_sysmem(img_addr, 0);
