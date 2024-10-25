@@ -1,7 +1,7 @@
-From b3c3e36623d0e26fcc0d4d25ae5d2bfd375b1f5b Mon Sep 17 00:00:00 2001
+From ce69c1b52b6d868ff7a09a3e6e5764aa962689b1 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Thu, 10 Oct 2024 00:39:52 -0300
-Subject: [PATCH 9/9] toradex: show message if CLI access allowed (downstream)
+Subject: [PATCH 5/5] toradex: show message if CLI access allowed (upstream)
 
 Before, a message was shown only when the device was closed and the CLI
 access was disabled by the CLI protection feature. Now we show a message
@@ -12,22 +12,24 @@ Upstream-Status: Inappropriate [TorizonCore specific]
 
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
- common/main.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ common/main.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/common/main.c b/common/main.c
-index 1284ecbd8c9..ce779345d67 100644
+index 13db55df889..ce779345d67 100644
 --- a/common/main.c
 +++ b/common/main.c
-@@ -68,7 +68,7 @@ void main_loop(void)
+@@ -68,8 +68,8 @@ void main_loop(void)
  
  	s = bootdelay_process();
  #if CONFIG_IS_ENABLED(TDX_CLI_PROTECTION)
 -	if (!tdx_cli_access_enabled())
+-		tdx_secure_boot_cmd(s);		/* no return */
 +	if (!tdx_cli_access_enabled(1))
- 		tdx_secure_boot_cmd(s); 	/* no return */
++		tdx_secure_boot_cmd(s); 	/* no return */
  #endif
  	if (cli_process_fdt(&s))
+ 		cli_secure_boot_cmd(s);
 -- 
 2.25.1
 

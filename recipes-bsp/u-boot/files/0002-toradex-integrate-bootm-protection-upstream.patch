@@ -1,7 +1,7 @@
-From 53d1e88ef7dd7761bfe38d48daca4045a99d53a3 Mon Sep 17 00:00:00 2001
+From f7ab37fd5bbe70a1dda72c82e6a288b71838d1e8 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Wed, 26 Jun 2024 16:08:52 -0300
-Subject: [PATCH 4/9] toradex: integrate bootm protection (downstream)
+Subject: [PATCH 2/5] toradex: integrate bootm protection (upstream)
 
 Integrate the protection to the bootm command to only allow booting
 from FIT images. With the proper configuration of U-Boot (enabling FIT
@@ -17,10 +17,10 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  2 files changed, 70 insertions(+), 1 deletion(-)
 
 diff --git a/Kconfig b/Kconfig
-index 5f6ec0afbbf..73a0dd8cfd8 100644
+index 62d66b831af..f046c21cc7e 100644
 --- a/Kconfig
 +++ b/Kconfig
-@@ -746,6 +746,7 @@ source "tools/Kconfig"
+@@ -760,6 +760,7 @@ source "tools/Kconfig"
  config TDX_SECBOOT_HARDENING
  	bool "Toradex Secure Boot hardening"
  	select TDX_CMD_WHITELIST
@@ -28,7 +28,7 @@ index 5f6ec0afbbf..73a0dd8cfd8 100644
  	help
  	  This causes the Secure Boot hardening features added by Toradex
  	  to be built into U-Boot, including:
-@@ -770,3 +771,9 @@ config TDX_CMD_WHITELIST
+@@ -784,3 +785,9 @@ config TDX_CMD_WHITELIST
  	bool
  	help
  	  Enable the command white-listing feature provided by Toradex.
@@ -39,7 +39,7 @@ index 5f6ec0afbbf..73a0dd8cfd8 100644
 +	  Enable the protection in bootm to prevent execution of unsigned
 +	  images.
 diff --git a/boot/bootm.c b/boot/bootm.c
-index d071537d692..b38182dd887 100644
+index 9879e1bba4e..b39c53ab9d1 100644
 --- a/boot/bootm.c
 +++ b/boot/bootm.c
 @@ -34,6 +34,7 @@

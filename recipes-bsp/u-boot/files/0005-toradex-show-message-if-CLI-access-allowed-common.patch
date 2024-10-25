@@ -1,7 +1,7 @@
-From 4157359194e1243f9fc7136f3022ac3b2a8e0d24 Mon Sep 17 00:00:00 2001
+From ad0e312d0443e984ee3235d97dbf2435723509dd Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Thu, 10 Oct 2024 00:38:50 -0300
-Subject: [PATCH 8/9] toradex: show message if CLI access allowed (common)
+Subject: [PATCH 5/5] toradex: show message if CLI access allowed (common)
 
 Before, a message was shown only when the device was closed and the CLI
 access was disabled by the CLI protection feature. Now we show a message
@@ -17,7 +17,7 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  2 files changed, 21 insertions(+), 6 deletions(-)
 
 diff --git a/common/tdx-harden.c b/common/tdx-harden.c
-index 2a2a775ffec..30cf559067c 100644
+index 2a2a775ffec..65e65cb1960 100644
 --- a/common/tdx-harden.c
 +++ b/common/tdx-harden.c
 @@ -199,10 +199,9 @@ int tdx_secboot_dev_is_open(void)
