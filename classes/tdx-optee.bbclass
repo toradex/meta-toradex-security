@@ -1,6 +1,9 @@
 # enable OP-TEE support
 TDX_OPTEE_ENABLE = "1"
 
+# disable OP-TEE on R5 firmware for K3 based platforms
+TDX_OPTEE_ENABLE:verdin-am62-k3r5 = "0"
+
 # required by some vendor BSPs
 MACHINE_FEATURES:append = " optee"
 
@@ -39,7 +42,12 @@ python validate_optee_support() {
     supported_machines = [
         'verdin-imx8mp',
         'verdin-imx8mm',
+        'verdin-am62',
     ]
+
+    if e.data.getVar('TDX_OPTEE_ENABLE') == '0':
+        return
+
     machine = e.data.getVar('MACHINE')
     if machine not in supported_machines:
         bb.fatal("OP-TEE is currently not supported on '%s' machine!" % machine)

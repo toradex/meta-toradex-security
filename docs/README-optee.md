@@ -10,6 +10,7 @@ This layer provides support for running OP-TEE on the following SoMs:
 
 - Verdin iMX8MP
 - Verdin iMX8MM
+- Verdin AM62
 
 ## Enabling OP-TEE
 
@@ -33,7 +34,7 @@ Trusted Platform Modules (TPMs) are designed to enhance system security by perfo
 
 An fTPM (Firmware-based Trusted Platform Module) is a type of TPM that operates within firmware, as opposed to being a discrete hardware chip. While it offers similar functionality, it runs inside a Trusted Execution Environment (TEE), such as OP-TEE.
 
-The [fTPM implementation](https://github.com/microsoft/ms-tpm-20-ref) integrated into this layer uses the secure storage API provided by OP-TEE. This secure storage currently saves data in `/data/tee/`, where persistent information such as cryptographic keys and other general-purpose data is securely stored. All stored data is encrypted using a Hardware Unique Key (HUK), which is supplied by the CAAM driver on i.MX platforms.
+The [fTPM implementation](https://github.com/microsoft/ms-tpm-20-ref) integrated into this layer uses the secure storage API provided by OP-TEE. This secure storage currently saves data in `/data/tee/`, where persistent information such as cryptographic keys and other general-purpose data is securely stored. All stored data is encrypted using a Hardware Unique Key (HUK), which is supplied by the CAAM driver on i.MX platforms and the DMSC subsystem on K3 based devices (e.g. AM6X).
 
 For further details on how secure storage works in OP-TEE, refer to the [OP-TEE documentation](https://optee.readthedocs.io/en/latest/architecture/secure_storage.html).
 
