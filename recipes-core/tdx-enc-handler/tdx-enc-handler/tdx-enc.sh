@@ -343,8 +343,10 @@ tdx_enc_clear_keys_keyring() {
 
 # umount partition
 tdx_enc_partition_umount() {
-    tdx_enc_log "Unmounting dm-crypt partition..."
-    umount "${TDX_ENC_STORAGE_MOUNTPOINT}"
+    for mnt in $(lsblk /dev/mapper/"${TDX_ENC_DM_DEVICE}" -n -o MOUNTPOINTS); do
+        tdx_enc_log "Unmounting dm-crypt partition from '${mnt}'..."
+        umount "${mnt}"
+    done
 }
 
 # remove dm-crypt partition
