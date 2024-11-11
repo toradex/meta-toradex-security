@@ -1,9 +1,9 @@
 [Unit]
 Description=Encryption handler for Toradex modules
 DefaultDependencies=no
-Wants=tmp.mount
 Before=local-fs.target
 After=systemd-remount-fs.service
+RequiresMountsFor=/tmp /var
 
 [Service]
 Type=oneshot
