@@ -37,6 +37,8 @@ do_install() {
     sed -i 's|@@TDX_ENC_STORAGE_LOCATION@@|${TDX_ENC_STORAGE_LOCATION}|g' ${D}${sbindir}/tdx-enc.sh
     sed -i 's|@@TDX_ENC_STORAGE_RESERVE@@|${TDX_ENC_STORAGE_RESERVE}|g' ${D}${sbindir}/tdx-enc.sh
     sed -i 's|@@TDX_ENC_STORAGE_MOUNTPOINT@@|${TDX_ENC_STORAGE_MOUNTPOINT}|g' ${D}${sbindir}/tdx-enc.sh
+    sed -i 's|@@TDX_ENC_STORAGE_MKFS_ARGS@@|${TDX_ENC_STORAGE_MKFS_ARGS}|g' ${D}${sbindir}/tdx-enc.sh
+    sed -i 's|@@TDX_ENC_STORAGE_MOUNT_ARGS@@|${TDX_ENC_STORAGE_MOUNT_ARGS}|g' ${D}${sbindir}/tdx-enc.sh
     sed -i 's|@@TDX_ENC_KEY_DIR@@|${TDX_ENC_KEY_DIR}|g' ${D}${sbindir}/tdx-enc.sh
     sed -i 's|@@TDX_ENC_PRESERVE_DATA@@|${TDX_ENC_PRESERVE_DATA}|g' ${D}${sbindir}/tdx-enc.sh
     sed -i 's|@@TDX_ENC_BACKUP_STORAGE_PCT@@|${TDX_ENC_BACKUP_STORAGE_PCT}|g' ${D}${sbindir}/tdx-enc.sh
