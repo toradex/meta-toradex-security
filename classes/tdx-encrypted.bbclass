@@ -1,5 +1,5 @@
-# Enable encryption support
-TDX_ENC_ENABLE = "1"
+# override for conditional assignment
+DISTROOVERRIDES .= ":tdx-encrypted"
 
 # Encryption key backend
 # This variable defines how the encryption key is managed
