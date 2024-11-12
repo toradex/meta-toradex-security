@@ -1,5 +1,5 @@
 # override for conditional assignment
-DISTROOVERRIDES:append = ":tdx-tezi-data-partition"
+DISTROOVERRIDES .= ":tdx-tezi-data-partition"
 
 # data partition filesystem type
 # supported values: ext2, ext3, ext4, fat, ubifs
