@@ -1,5 +1,5 @@
 # add the class name in the overrides for conditional assignment
-DISTROOVERRIDES:append = ":tdx-signed-dmverity"
+DISTROOVERRIDES .= ":tdx-signed-dmverity"
 
 # a ramdisk is required to check the root hash of the verity image
 INITRAMFS_IMAGE ?= "tdx-reference-ramdisk-image"

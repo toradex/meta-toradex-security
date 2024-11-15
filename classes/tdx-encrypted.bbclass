@@ -1,5 +1,5 @@
-# Enable encryption support
-TDX_ENC_ENABLE = "1"
+# override for conditional assignment
+DISTROOVERRIDES .= ":tdx-encrypted"
 
 # Encryption key backend
 # This variable defines how the encryption key is managed
@@ -40,6 +40,13 @@ TDX_ENC_STORAGE_RESERVE ?= "0"
 
 # Defines where the encrypted storage will be mounted
 TDX_ENC_STORAGE_MOUNTPOINT ?= "/run/encdata"
+
+# Extra arguments passed to "mkfs" when creating the filesystem on top
+# of the encrypted storage
+TDX_ENC_STORAGE_MKFS_ARGS ?= ""
+
+# Extra arguments passed to "mount" when mounting the encrypted storage
+TDX_ENC_STORAGE_MOUNT_ARGS ?= ""
 
 # Enables preservation of existing data on encrypted device
 TDX_ENC_PRESERVE_DATA ?= "0"

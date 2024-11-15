@@ -21,10 +21,21 @@ Additional variables can be used to customize the behavior of this feature:
 
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
-| TDX_TEZI_DATA_PARTITION_TYPE | Data partition filesystem type. Supported values are `ext2`, `ext3`, `ext4`, `fat` and `ubifs`. The supported values are limited to what Toradex Easy Installer supports | `ext4` |
-| TDX_TEZI_DATA_PARTITION_LABEL | Label that will be used to format and mount the data partition | `DATA` |
-| TDX_TEZI_DATA_PARTITION_AUTOMOUNT | Set to `1` to automatically mount the data partition at boot time, or `0` to disable automouting the partition | `1` |
-| TDX_TEZI_DATA_PARTITION_MOUNTPOINT | Directory where the data partition should be mounted | `/data` |
-| TDX_TEZI_DATA_PARTITION_MOUNT_FLAGS | Flags used to mount the data partition. See the `mount` man page for more information on the available mount flags | `rw,nosuid,nodev,noatime, errors=remount-ro` |
+| `TDX_TEZI_DATA_PARTITION_TYPE` | Data partition filesystem type. Supported values are `ext2`, `ext3`, `ext4`, `fat` and `ubifs`. The supported values are limited to what Toradex Easy Installer supports | `ext4` |
+| `TDX_TEZI_DATA_PARTITION_LABEL` | Label that will be used to format and mount the data partition | `DATA` |
+| `TDX_TEZI_DATA_PARTITION_AUTOMOUNT` | Set to `1` to automatically mount the data partition at boot time, or `0` to disable automouting the partition; when set to `-1` the partition won't even be listed in fstab (it should be mounted by other means) | `-1` if class `tdx-encrypted` is in use or `1` otherwise |
+| `TDX_TEZI_DATA_PARTITION_MOUNTPOINT` | Directory where the data partition should be mounted | `/data` |
+| `TDX_TEZI_DATA_PARTITION_MOUNT_FLAGS` | Flags used to mount the data partition. See the `mount` man page for more information on the available mount flags | `rw,nosuid,nodev,noatime, errors=remount-ro` |
 
 Additional variables from the `image_type_tezi` class in the `meta-toradex-bsp-common` layer can be used to customize the creation of the data partition. Please see the [source code of this class](https://git.toradex.com/cgit/meta-toradex-bsp-common.git/tree/classes/image_type_tezi.bbclass?h=kirkstone-6.x.y#n37) for more information.
+
+## Encrypting the data partition
+
+The default value of `TDX_TEZI_DATA_PARTITION_AUTOMOUNT` assumes the data partition is going to be encrypted when the class `tdx-encrypted` is also used; this is a common situation but not necessarily true and if not true one must set that variable appropriately for their use case.
+
+When the said assumption is true though, having an encrypted data partition would be achieved by setting (in your `local.conf`, for example):
+
+```
+INHERIT += "tdx-tezi-data-partition tdx-encrypted"
+TDX_ENC_STORAGE_LOCATION = "/dev/<block-device-for-data-partition>"
+```

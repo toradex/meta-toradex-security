@@ -1,5 +1,5 @@
 # override for conditional assignment
-DISTROOVERRIDES:append = ":tdx-tezi-data-partition"
+DISTROOVERRIDES .= ":tdx-tezi-data-partition"
 
 # data partition filesystem type
 # supported values: ext2, ext3, ext4, fat, ubifs
@@ -9,8 +9,18 @@ TDX_TEZI_DATA_PARTITION_TYPE ?= "ext4"
 # data partition label
 TDX_TEZI_DATA_PARTITION_LABEL ?= "DATA"
 
-# automount data partition at boot time
-TDX_TEZI_DATA_PARTITION_AUTOMOUNT ?= "1"
+# automount data partition at boot time; possible values:
+#  "-1": do not change fstab
+#   "0": add entry to fstab with the noauto option
+#   "1": add entry to fstab with the auto option
+TDX_TEZI_DATA_PARTITION_AUTOMOUNT ?= "${TDX_TEZI_DATA_PARTITION_AUTOMOUNT_DEFAULT}"
+
+# define the default value of above variable based on tdx-encrypted being
+# in use or not; notice TDX_TEZI_DATA_PARTITION_AUTOMOUNT_DEFAULT is for
+# internal usage of the present class and it should not be modified by
+# users (who should only care about TDX_TEZI_DATA_PARTITION_AUTOMOUNT)
+TDX_TEZI_DATA_PARTITION_AUTOMOUNT_DEFAULT = "1"
+TDX_TEZI_DATA_PARTITION_AUTOMOUNT_DEFAULT:tdx-encrypted = "-1"
 
 # data partition mount point
 TDX_TEZI_DATA_PARTITION_MOUNTPOINT ?= "/data"

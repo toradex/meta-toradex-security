@@ -30,10 +30,16 @@ TDX_ENC_STORAGE_NUM_BLOCKS=""
 # directory to mount the encrypted storage
 TDX_ENC_STORAGE_MOUNTPOINT="@@TDX_ENC_STORAGE_MOUNTPOINT@@"
 
+# extra arguments to mkfs; used when running mkfs on the encrypted storage
+TDX_ENC_STORAGE_MKFS_ARGS="@@TDX_ENC_STORAGE_MKFS_ARGS@@"
+
+# extra arguments to mount; used when mounting the fs stored on the encrypted storage
+TDX_ENC_STORAGE_MOUNT_ARGS="@@TDX_ENC_STORAGE_MOUNT_ARGS@@"
+
 # dm-crypt device to be created
 TDX_ENC_DM_DEVICE="encdata"
 
-# Flag to enable preservation of data on partition before encryption
+# flag to enable preservation of data on partition before encryption
 TDX_ENC_PRESERVE_DATA=@@TDX_ENC_PRESERVE_DATA@@
 
 # storage location of data backup file (if needed)
@@ -304,12 +310,12 @@ tdx_enc_partition_mount() {
     # format encrypted partition (if not formatted)
     if ! blkid /dev/mapper/"${TDX_ENC_DM_DEVICE}"; then
         tdx_enc_log "Formatting encrypted partition with ext4..."
-        mkfs.ext4 -q /dev/mapper/"${TDX_ENC_DM_DEVICE}"
+        mkfs.ext4 -q /dev/mapper/"${TDX_ENC_DM_DEVICE}" ${TDX_ENC_STORAGE_MKFS_ARGS}
     fi
 
     # mount encrypted partition
     mkdir -p "${TDX_ENC_STORAGE_MOUNTPOINT}"
-    if ! mount -t ext4 /dev/mapper/"${TDX_ENC_DM_DEVICE}" "${TDX_ENC_STORAGE_MOUNTPOINT}"; then
+    if ! mount -t ext4 /dev/mapper/"${TDX_ENC_DM_DEVICE}" "${TDX_ENC_STORAGE_MOUNTPOINT}" ${TDX_ENC_STORAGE_MOUNT_ARGS}; then
         tdx_enc_exit_error "Could not mount encrypted partition!"
     fi
 }
@@ -343,8 +349,10 @@ tdx_enc_clear_keys_keyring() {
 
 # umount partition
 tdx_enc_partition_umount() {
-    tdx_enc_log "Unmounting dm-crypt partition..."
-    umount "${TDX_ENC_STORAGE_MOUNTPOINT}"
+    for mnt in $(lsblk /dev/mapper/"${TDX_ENC_DM_DEVICE}" -n -o MOUNTPOINTS); do
+        tdx_enc_log "Unmounting dm-crypt partition from '${mnt}'..."
+        umount "${mnt}"
+    done
 }
 
 # remove dm-crypt partition
