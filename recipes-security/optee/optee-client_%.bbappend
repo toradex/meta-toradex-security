@@ -12,3 +12,6 @@ do_install:append() {
         install -m 755 ${WORKDIR}/tee-supplicant.rules ${D}${nonarch_base_libdir}/udev/rules.d/
     fi
 }
+
+# make sure the recipe is selected by the current machine
+COMPATIBLE_MACHINE = "${MACHINE}"
