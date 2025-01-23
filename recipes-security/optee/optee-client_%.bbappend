@@ -13,5 +13,7 @@ do_install:append() {
     fi
 }
 
+require ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB', '1', 'optee-fs-rpmb.inc', '', d)}
+
 # make sure the recipe is selected by the current machine
 COMPATIBLE_MACHINE = "${MACHINE}"
