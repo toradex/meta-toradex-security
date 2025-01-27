@@ -54,9 +54,10 @@ IMAGE_INSTALL:append = "\
     ${@oe.utils.conditional('TDX_OPTEE_INSTALL_TESTS', '1', '${TDX_OPTEE_PACKAGES_TESTS}', '', d)} \
 "
 
-# enable data partition if dm-verity and tezi are both enabled
+# enable data partition if dm-verity and tezi are both enabled, and RPMB is not enabled
 inherit ${@ 'tdx-tezi-data-partition' if 'teziimg' in d.getVar('IMAGE_FSTYPES') and \
-            'tdx-signed-dmverity' in d.getVar('OVERRIDES').split(':') else ''}
+            'tdx-signed-dmverity' in d.getVar('OVERRIDES').split(':') and \
+            d.getVar('TDX_OPTEE_FS_RPMB') == '0' else ''}
 
 # validate optee support
 addhandler validate_optee_support
