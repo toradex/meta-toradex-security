@@ -28,8 +28,9 @@ A few variables can be used to customize the behavior of this feature:
 | TDX_OPTEE_INSTALL_TESTS | Enable the installation of OP-TEE test applications (`1` to enable or `0` to disable) | `0` |
 | TDX_OPTEE_FS_RPMB | Enable support for using the eMMC RPMB partition as a secure storage device (`1` to enable or `0` to disable) | `0` |
 | TDX_OPTEE_FS_RPMB_DEV_ID | Configure the eMMC RPMB partition device node. For example, if configured with `2`, the TEE supplicant will use `/dev/mmcblk2rpmb` to communicate with to the RPMB partition | `0` |
-| TDX_OPTEE_FS_RPMB_MODE | RPMB secure storage operation mode. Valid options are `development` (to be used during development), `factory` (to enroll the RPMB key in a secure provisioning environment) and `production` (to be used in production). For more information on how to configure this variable, see the session [RPMB support in OP-TEE](/docs/README-optee.md#rpmb-support-in-op-tee) | `development` |
-| TDX_OPTEE_FTPM | Enable support for a firmware TPM (fTPM) implementation running as trusted application in OP-TEE (`1` to enable or `0` to disable). For more information on how an fTPM works, see the session [fTPM support in OP-TEE](/docs/README-optee.md#ftpm-support-in-op-tee) | `0` |
+| TDX_OPTEE_FS_RPMB_MODE | RPMB secure storage operation mode. Valid options are `development` (to be used during development), `factory` (to enroll the RPMB key in a secure provisioning environment) and `production` (to be used in production). For more information on how to configure this variable, see the section [RPMB support in OP-TEE](/docs/README-optee.md#rpmb-support-in-op-tee) | `development` |
+| TDX_OPTEE_FTPM | Enable support for a firmware TPM (fTPM) implementation running as trusted application in OP-TEE (`1` to enable or `0` to disable). For more information on how an fTPM works, see the section [fTPM support in OP-TEE](/docs/README-optee.md#ftpm-support-in-op-tee) | `0` |
+| TDX_OPTEE_PKCS11 | Enable support for PKCS#11 trusted application (`1` to enable or `0` to disable). For more information on how an PKCS#11 works, see the section [PKCS#11 support in OP-TEE](/docs/README-optee.md#pkcs11-support-in-op-tee) | `0` |
 
 ## Testing OP-TEE
 
@@ -131,6 +132,28 @@ And the TPM2 tools can be used to test it:
 ```
 
 It's important to note that an fTPM may not entirely replace the need for a discrete TPM chip, as this depends on the specific use case and the product's threat model. Nevertheless, an fTPM can provide adequate security for certain scenarios, especially when incorporating a hardware TPM chip is impractical.
+
+## PKCS#11 support in OP-TEE
+
+PKCS#11 (also known as the Cryptoki API) defines a set of standard calls that allow cryptographic operations (such as signing) to be offloaded to an external module. This module could be a smart card or, in the case of OP-TEE, a software PKCS#11 trusted application, which is presented to the userspace as if it were a hardware module. This trusted application is accessed through a shared object (dynamic library), which acts as the "bridge" that translates cryptographic requests into OP-TEE calls.
+
+Using this layer, the PKCS#11 Trusted Application can be enabled by adding the following line to an OE configuration file (e.g. `local.conf`):
+
+```
+TDX_OPTEE_PKCS11 = "1"
+```
+
+To verify that the PKCS#11 Trusted Application is enabled and functioning, you can use the `pkcs11-tool` command-line utility:
+
+```
+# pkcs11-tool --module /usr/lib/libckteec.so.0 --show-info
+Cryptoki version 2.40
+Manufacturer     Linaro
+Library          OP-TEE PKCS11 Cryptoki library (ver 0.1)
+Using slot 0 with a present token (0x0)
+```
+
+For additional details on how the PKCS#11 Trusted Application works, refer to the [OP-TEE official documentation](https://optee.readthedocs.io/en/latest/building/userland_integration.html#pkcs-11-driver).
 
 ## Important note
 
