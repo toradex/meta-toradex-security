@@ -13,5 +13,11 @@ do_install:append() {
     fi
 }
 
+EXTRA_OEMAKE:append = "\
+    ${@oe.utils.conditional('TDX_OPTEE_DEBUG', '1', 'CFG_TEE_SUPP_LOG_LEVEL=3', '', d)} \
+"
+
+require ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB', '1', 'optee-fs-rpmb.inc', '', d)}
+
 # make sure the recipe is selected by the current machine
 COMPATIBLE_MACHINE = "${MACHINE}"

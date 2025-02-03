@@ -17,3 +17,5 @@ EXTRA_OEMAKE:append:pn-optee-os = "\
     CFG_UART_BASE=${UART_BASE_ADDR} \
     ${OPTEE_OS_EXTRA_MACHINE_ARGS} \
 "
+
+require ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB', '1', 'optee-fs-rpmb.inc', '', d)}
