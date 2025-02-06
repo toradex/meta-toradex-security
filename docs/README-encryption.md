@@ -92,6 +92,10 @@ Be aware that, if you have a device with a partition encrypted with the test key
 
 To workaround this issue, you can manually remove the key blob, which is by default located at `/var/local/private/.keys/tdx-enc-key.blob`. After removing the key blob and rebooting the device, another key will be generated and the partition will be formatted and encrypted with the new key. As a consequence, you will lose any content on the partition previously encrypted with the test key.
 
+Alternatively, you can provide a script located at `/usr/sbin/encryption_allowed`, which will be used to trigger an `Encryption disabled by the user!` error and exit after initially mounting the partition (this will only occur if the partition has not already been encrypted). This could be used to check the system state, for example reading the SEC_BOOT eFuse (in the case of NXP iMX SoCs) and only enabling encryption once the OTPMK is used, thus avoiding issues when using the initial test key.
+
+NOTE: This user script must be owned and only writable by `root` (example Linux permission of 0755).
+
 ## Notes on using a TPM
 
 Before enabling the TPM backend, you need to make sure there is a TPM device available in the hardware and configured in the operating system. This usually involves enabling the device driver in the Linux kernel and adding a node in the device tree. Be aware that providing access to a TPM device is out of scope in this layer.

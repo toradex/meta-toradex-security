@@ -260,15 +260,31 @@ tdx_enc_key_gen_tpm() {
                               "load \$(cat ${TDX_ENC_KEY_FULLPATH})"
 }
 
-# backup original data in partition (if not encrypted)
-tdx_enc_backup_data() {
-    if [ ${TDX_ENC_PRESERVE_DATA} -ne 1 ]; then
-        tdx_enc_log "Data preservation is not enabled"
-        return 0
+# initially mount the partition if possible
+tdx_enc_pre_mount() {
+    tdx_enc_log "Attempting partition pre-mount"
+
+    if source=$(findmnt -no SOURCE "${TDX_ENC_STORAGE_MOUNTPOINT}"); then
+        if [ "${source}" = "${TDX_ENC_STORAGE_LOCATION}" ]; then
+            tdx_enc_log "Partition is already mounted to the specified location."
+            return 0
+        fi
+
+        tdx_enc_exit_error "Mount location already points to a different storage location."
     fi
 
     mkdir -p "${TDX_ENC_STORAGE_MOUNTPOINT}"
     if ! mount ${TDX_ENC_STORAGE_LOCATION} "${TDX_ENC_STORAGE_MOUNTPOINT}"; then
+        tdx_enc_log "Unable to mount location, possibly already encrypted..."
+        return 1
+    fi
+    return 0
+}
+
+# backup original data in partition (if not encrypted)
+tdx_enc_backup_data() {
+    if [ ${TDX_ENC_PRESERVE_DATA} -ne 1 ]; then
+        tdx_enc_log "Data preservation is not enabled"
         return 0
     fi
 
@@ -282,8 +298,25 @@ tdx_enc_backup_data() {
     if [ "$?" -ne 0 ] || echo "${msgs}" | grep -qi 'error\|invalid'; then
         tdx_enc_exit_error "Couldn't save original data."
     fi
+}
 
-    tdx_enc_log "Backup created at: ${TDX_ENC_BACKUP_FILE}"
+# call user check script
+tdx_run_user_check() {
+    TDX_ENC_USER_SCRIPT="/usr/sbin/encryption_allowed"
+    if [ -x ${TDX_ENC_USER_SCRIPT} ]; then
+        if ! [ -O ${TDX_ENC_USER_SCRIPT} -a -G ${TDX_ENC_USER_SCRIPT} ]; then
+            tdx_enc_log "WARNING: Ignoring user check script due to invalid ownership."
+        elif (( 0$(stat -c %a "${TDX_ENC_USER_SCRIPT}") & 07022 )); then
+            tdx_enc_log "WARNING: Ignoring user check script due to invalid permissions."
+        elif ! ${TDX_ENC_USER_SCRIPT}; then
+            tdx_enc_exit_error "Encryption disabled by the user!"
+        fi
+    fi
+}
+
+# unmount the partition if needed ready for encryption
+tdx_enc_pre_unmount() {
+    tdx_enc_log "Unmounting partition ready to encrypt..."
     umount "${TDX_ENC_STORAGE_MOUNTPOINT}"
 }
 
@@ -363,10 +396,14 @@ tdx_enc_partition_remove() {
 
 # mount encrypted partition
 tdx_enc_main_start() {
+    if tdx_enc_pre_mount; then
+        tdx_run_user_check
+        tdx_enc_backup_data
+        tdx_enc_pre_unmount
+    fi
     tdx_enc_prepare_generic
     tdx_enc_prepare_${TDX_ENC_KEY_BACKEND}
     tdx_enc_key_gen_${TDX_ENC_KEY_BACKEND}
-    tdx_enc_backup_data
     tdx_enc_partition_setup
     tdx_enc_partition_mount
     tdx_enc_restore_data
