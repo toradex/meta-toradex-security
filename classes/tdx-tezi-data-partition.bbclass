@@ -32,6 +32,7 @@ TDX_TEZI_DATA_PARTITION_MOUNT_FLAGS ?= "rw,nosuid,nodev,noatime,errors=remount-r
 TEZI_DATA_ENABLED = "1"
 TEZI_DATA_FSTYPE = "${TDX_TEZI_DATA_PARTITION_TYPE}"
 TEZI_DATA_LABEL = "${TDX_TEZI_DATA_PARTITION_LABEL}"
+TEZI_DATA_MOUNTPOINT = "${TDX_TEZI_DATA_PARTITION_MOUNTPOINT}"
 
 # check if tezi image is enabled
 addhandler validate_tezi_support

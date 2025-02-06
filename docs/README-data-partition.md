@@ -39,3 +39,13 @@ When the said assumption is true though, having an encrypted data partition woul
 INHERIT += "tdx-tezi-data-partition tdx-encrypted"
 TDX_ENC_STORAGE_LOCATION = "/dev/<block-device-for-data-partition>"
 ```
+
+The class `tdx-encrypted-data-partition` could be used to apply all the relevant configurations when wishing to encrypt the data partition.
+When using this class  the default value of `TDX_TEZI_DATA_PARTITION_MOUNTPOINT` will be set to the value of `TDX_ENC_STORAGE_MOUNTPOINT`.
+
+In this case you can use the following in your `local.conf` instead:
+
+```
+INHERIT += "tdx-encrypted-data-partition"
+TDX_ENC_STORAGE_LOCATION = "/dev/<block-device-for-data-partition>"
+```
