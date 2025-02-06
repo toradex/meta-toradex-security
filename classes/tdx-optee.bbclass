@@ -11,6 +11,9 @@ MACHINE_FEATURES:append = " optee"
 TDX_OPTEE_FTPM ?= "0"
 MACHINE_FEATURES:append = " ${@oe.utils.conditional('TDX_OPTEE_FTPM', '1', 'optee-ftpm', '', d)}"
 
+# enable support for PKCS#11 trusted application
+TDX_OPTEE_PKCS11 ?= "0"
+
 # enable support for using the eMMC RPMB partition as a secure storage device
 TDX_OPTEE_FS_RPMB ?= "0"
 
@@ -44,6 +47,7 @@ TDX_OPTEE_PACKAGES_TESTS = "\
     optee-test \
     optee-examples \
     mmc-utils \
+    openssl-bin \
 "
 
 # extra packages for OP-TEE support
@@ -51,6 +55,7 @@ IMAGE_INSTALL:append = "\
     optee-os \
     optee-client \
     ${@oe.utils.conditional('TDX_OPTEE_FTPM', '1', 'tpm2-tools', '', d)} \
+    ${@oe.utils.conditional('TDX_OPTEE_PKCS11', '1', 'libp11 opensc', '', d)} \
     ${@oe.utils.conditional('TDX_OPTEE_INSTALL_TESTS', '1', '${TDX_OPTEE_PACKAGES_TESTS}', '', d)} \
 "
 
