@@ -2,7 +2,7 @@
 TDX_OPTEE_ENABLE = "1"
 
 # disable OP-TEE on R5 firmware for K3 based platforms
-TDX_OPTEE_ENABLE:verdin-am62-k3r5 = "0"
+TDX_OPTEE_ENABLE:k3r5 = "0"
 
 # required by some vendor BSPs
 MACHINE_FEATURES:append = " optee"
@@ -72,6 +72,7 @@ addhandler validate_optee_support
 validate_optee_support[eventmask] = "bb.event.SanityCheck"
 python validate_optee_support() {
     supported_machines = [
+        'aquila-am69',
         'verdin-imx8mp',
         'verdin-imx8mm',
         'verdin-am62',
