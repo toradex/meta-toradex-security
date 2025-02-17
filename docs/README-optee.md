@@ -26,6 +26,7 @@ A few variables can be used to customize the behavior of this feature:
 | :------- | :---------- | :------------ |
 | TDX_OPTEE_DEBUG | Enable OP-TEE debug messages to the serial console (`1` to enable or `0` to disable) | `0` |
 | TDX_OPTEE_INSTALL_TESTS | Enable the installation of OP-TEE test applications (`1` to enable or `0` to disable) | `0` |
+| TDX_OPTEE_FS_PARENT_PATH | Defines the root directory when using the REE (Rich Execution Environment) filesystem for storage | `/data/tee` |
 | TDX_OPTEE_FS_RPMB | Enable support for using the eMMC RPMB partition as a secure storage device (`1` to enable or `0` to disable) | `0` |
 | TDX_OPTEE_FS_RPMB_DEV_ID | Configure the eMMC RPMB partition device node. For example, if configured with `2`, the TEE supplicant will use `/dev/mmcblk2rpmb` to communicate with to the RPMB partition | `0` |
 | TDX_OPTEE_FS_RPMB_MODE | RPMB secure storage operation mode. Valid options are `development` (to be used during development), `factory` (to enroll the RPMB key in a secure provisioning environment) and `production` (to be used in production). For more information on how to configure this variable, see the section [RPMB support in OP-TEE](/docs/README-optee.md#rpmb-support-in-op-tee) | `development` |
@@ -63,7 +64,7 @@ There are currently two secure storage implementations in OP-TEE:
 - The first one relies on the normal world (REE) file system.
 - The second one makes use of the Replay Protected Memory Block (RPMB) partition of an eMMC device.
 
-When relying on the normal world file system, OP-TEE uses `/data/tee/` as its secure storage location in the Linux file system. All stored data is encrypted using a Hardware Unique Key (HUK), which is supplied by the CAAM driver on i.MX platforms and the DMSC subsystem on K3-based devices (e.g., AM6X).
+When relying on the normal world file system, OP-TEE will use `/data/tee/` as its secure storage location in the Linux file system (this directory can be changed via the `TDX_OPTEE_FS_PARENT_PATH` variable). All stored data is encrypted using a Hardware Unique Key (HUK), which is supplied by the CAAM driver on i.MX platforms and the DMSC subsystem on K3-based devices (e.g., AM6X).
 
 To be able to write and persist data, OP-TEE needs a read-write filesystem mounted at `/data`. When rootfs signature checking is enabled via the `tdxref-signed` class, the rootfs image will be generated using the `dm-verity` kernel feature, which is read-only. In this case, to provide a read-write filesystem to OP-TEE, the `tdx-tezi-data-partition` class will be automatically inherited. This class will create an additional partition in the eMMC and mount it by default at `/data`. For more information on how this class works, have a look at its documentation ([README-data-partition.md](README-data-partition.md)).
 

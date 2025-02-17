@@ -14,6 +14,9 @@ MACHINE_FEATURES:append = " ${@oe.utils.conditional('TDX_OPTEE_FTPM', '1', 'opte
 # enable support for PKCS#11 trusted application
 TDX_OPTEE_PKCS11 ?= "0"
 
+# root directory when using the REE filesystem for storage
+TDX_OPTEE_FS_PARENT_PATH ?= "/data/tee"
+
 # enable support for using the eMMC RPMB partition as a secure storage device
 TDX_OPTEE_FS_RPMB ?= "0"
 
