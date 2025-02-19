@@ -44,8 +44,15 @@ TDX_UBOOT_HARDENING_PATCHES:verdin-am62-k3r5 = "${TDX_UBOOT_HARDENING_PATCHES_DO
 
 SRC_URI:append = "\
     file://u-boot-harden.cfg \
+    ${@oe.utils.conditional('TDX_UBOOT_HARDENING_ENABLE_DBG', '1', 'file://u-boot-harden-dbg.cfg', '', d)} \
     ${TDX_UBOOT_HARDENING_PATCHES} \
 "
+
+do_compile:prepend() {
+    if [ "${TDX_UBOOT_HARDENING_ENABLE_DBG}" != "0" ]; then
+        bbwarn 'Debugging of the hardening feature is enabled; be sure to disable it for production.'
+    fi
+}
 
 do_compile:prepend:imx-generic-bsp() {
     if [ "${TDX_IMX_HAB_ENABLE}" = "0" ] && [ "${TDX_UBOOT_HARDENING_ENABLE}" = "1" ]; then
