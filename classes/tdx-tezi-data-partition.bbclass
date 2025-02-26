@@ -41,3 +41,6 @@ python validate_tezi_support() {
     if 'teziimg' not in enabled_images:
         bb.fatal("tdx-tezi-data-partition class only works with Easy Installer images, and teziimg is not enabled!")
 }
+python validate_tezi_support:k3r5 () {
+    pass
+}
