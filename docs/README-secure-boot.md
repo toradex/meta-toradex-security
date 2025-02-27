@@ -66,6 +66,7 @@ The hardening features above are controlled by the following variables:
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
 | `TDX_UBOOT_HARDENING_ENABLE` | Enable hardening features as a whole | `1` if both secure boot support (controlled by variable `TDX_IMX_HAB_ENABLE` (NXP) or `TDX_K3_HSSE_ENABLE` (TI)) and FIT signing (controlled by `UBOOT_SIGN_ENABLE`) are enabled; `0` otherwise |
+| `TDX_UBOOT_HARDENING_ENABLE_DBG` | Enable debugging of the hardening features; amongst other things this adds a command to U-Boot that allows the hardening and the device state (open/closed in terms of secure boot) to be manually set for testing purposes - **never** do this in production | `0` |
 | `TDX_SECBOOT_REQUIRED_BOOTARGS` | Expected value for the fixed part of the kernel command line | Different value for each machine |
 | `TDX_AMEND_BOOT_SCRIPT` | When set to `1` the boot script will be amended to make it suitable for secure boot; this only works with the script provided by Toradex for BSP reference images; users employing a custom script should set this to `0` | Same value as variable `TDX_UBOOT_HARDENING_ENABLE` |
 
