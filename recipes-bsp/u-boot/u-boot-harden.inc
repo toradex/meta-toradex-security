@@ -48,6 +48,54 @@ SRC_URI:append = "\
     ${TDX_UBOOT_HARDENING_PATCHES} \
 "
 
+TDX_SECBOOT_WL_ALLOW_OPEN_CATEG ?= ""
+TDX_SECBOOT_WL_ALLOW_CLOSED_CATEG ?= ""
+TDX_SECBOOT_WL_DENY_OPEN_CATEG ?= ""
+TDX_SECBOOT_WL_DENY_CLOSED_CATEG ?= ""
+TDX_SECBOOT_WL_NEEDED_CATEG ?= ""
+# TODO: Consider new variable to configure 'enable-cli-when-closed' property.
+
+do_patch[postfuncs] += "amend_secboot_dtsi"
+amend_secboot_dtsi_cell_prop() {
+    prop="$1"
+    value="$2"
+    dtsi="${S}/arch/arm/dts/tdx-secboot.dtsi"
+
+    if ! grep -q "${prop} = <.*>" "${dtsi}"; then
+        bbwarn "Property '${prop}' will not be honored because it is not present in '${dtsi}'"
+	return 1
+    fi
+
+    bbnote "Amending '${prop}' property in '${dtsi}'"
+    sed -i -Ee "s#^([[:space:]]*)(// )?(${prop} = )<.*>#\1\3<${value}>#" "${dtsi}"
+}
+amend_secboot_dtsi() {
+    if [ -n "${TDX_SECBOOT_WL_ALLOW_OPEN_CATEG}" ]; then
+        amend_secboot_dtsi_cell_prop \
+	    "allow-open" "${TDX_SECBOOT_WL_ALLOW_OPEN_CATEG}"
+    fi
+
+    if [ -n "${TDX_SECBOOT_WL_ALLOW_CLOSED_CATEG}" ]; then
+        amend_secboot_dtsi_cell_prop \
+	    "allow-closed" "${TDX_SECBOOT_WL_ALLOW_CLOSED_CATEG}"
+    fi
+
+    if [ -n "${TDX_SECBOOT_WL_DENY_OPEN_CATEG}" ]; then
+        amend_secboot_dtsi_cell_prop \
+	    "deny-open" "${TDX_SECBOOT_WL_DENY_OPEN_CATEG}"
+    fi
+
+    if [ -n "${TDX_SECBOOT_WL_DENY_CLOSED_CATEG}" ]; then
+        amend_secboot_dtsi_cell_prop \
+	    "deny-closed" "${TDX_SECBOOT_WL_DENY_CLOSED_CATEG}"
+    fi
+
+    if [ -n "${TDX_SECBOOT_WL_NEEDED_CATEG}" ]; then
+        amend_secboot_dtsi_cell_prop \
+	    "needed" "${TDX_SECBOOT_WL_NEEDED_CATEG}"
+    fi
+}
+
 do_compile:prepend() {
     if [ "${TDX_UBOOT_HARDENING_ENABLE_DBG}" != "0" ]; then
         bbwarn 'Debugging of the hardening feature is enabled; be sure to disable it for production.'
