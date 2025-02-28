@@ -61,42 +61,36 @@ Toradex is implementing various changes to U-Boot (currently as a series of patc
 - **CLI access prevention**: this is an extra safeguard whereby the access to the U-Boot CLI gets disabled once the device is in closed state; this is what happens by default (but can be overridden).
 - **Kernel command-line protection**: normally U-Boot passes the contents of its environment variable `bootargs` directly to the Linux kernel and this variable in turn has its value set in the persistent U-Boot environment or it is dynamically built by the boot scripts (with Torizon OS following the latter approach) - either way, it is a vector of attack; to prevent tampering of `bootargs` the present protection causes the build to store a copy of the "expected" kernel arguments inside the (signed) FIT image and a related patch to U-Boot to check `bootargs` against that copy at runtime, possibly stopping the boot process in case of a mismatch.
 
-The hardening features above are controlled by the following variables:
+For further details, please refer to the article [Security Hardening of U-Boot](https://developer.toradex.com/torizon/security/u-boot-hardening-for-secure-boot/) at the Toradex website.
+
+The hardening features are controlled by the variables in the following table plus the ones in the next section related to the whitelist:
 
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
 | `TDX_UBOOT_HARDENING_ENABLE` | Enable hardening features as a whole | `1` if both secure boot support (controlled by variable `TDX_IMX_HAB_ENABLE` (NXP) or `TDX_K3_HSSE_ENABLE` (TI)) and FIT signing (controlled by `UBOOT_SIGN_ENABLE`) are enabled; `0` otherwise |
-| `TDX_UBOOT_HARDENING_ENABLE_DBG` | Enable debugging of the hardening features; amongst other things this adds a command to U-Boot that allows the hardening and the device state (open/closed in terms of secure boot) to be manually set for testing purposes - **never** do this in production | `0` |
+| `TDX_UBOOT_HARDENING_ENABLE_DBG` | Enable debugging of the hardening features; among other things this adds a command to U-Boot that allows the hardening and the device state (open/closed in terms of secure boot) to be manually set for testing purposes - **never** do this in production | `0` |
 | `TDX_SECBOOT_REQUIRED_BOOTARGS` | Expected value for the fixed part of the kernel command line | Different value for each machine |
 | `TDX_AMEND_BOOT_SCRIPT` | When set to `1` the boot script will be amended to make it suitable for secure boot; this only works with the script provided by Toradex for BSP reference images; users employing a custom script should set this to `0` | Same value as variable `TDX_UBOOT_HARDENING_ENABLE` |
 
-### U-Boot hardening / setup
+### U-Boot hardening / whitelist setup
 
-The behavior of the different hardening features can be set via the control FDT (see [Devicetree Control in U-Boot](https://u-boot.readthedocs.io/en/stable/develop/devicetree/control.html)). Setting the control FDT at build time can be achieved by adding extra device-tree [.dtsi fragments](https://u-boot.readthedocs.io/en/stable/develop/devicetree/control.html#external-dtsi-fragments) to U-Boot and setting the Kconfig variable `CONFIG_DEVICE_TREE_INCLUDES` appropriately; with Yocto/OE this would normally involve adding small patches to U-Boot and appending changes to its recipe but the details are outside the scope of the present document.
+For fine-tuning the command whitelisting feature the following variables are available:
 
-The following device-tree fragment shows all the nodes and properties that can be present in the control FDT:
+| Variable | Description | Default value |
+| :------- | :---------- | :------------ |
+| `TDX_SECBOOT_WL_ALLOW_OPEN_CATEG` | Command categories to be allowed when the device is open (as a space-separated list). | `""` |
+| `TDX_SECBOOT_WL_ALLOW_CLOSED_CATEG` | Command categories to be allowed when the device is closed (as a space-separated list). | `""` |
+| `TDX_SECBOOT_WL_DENY_OPEN_CATEG`\* | Command categories to be denied when the device is open (as a space-separated list). | `""` |
+| `TDX_SECBOOT_WL_DENY_CLOSED_CATEG`\* | Command categories to be denied when the device is closed (as a space-separated list). | `""` |
+| `TDX_SECBOOT_WL_NEEDED_CATEG`\* | Command categories to be allowed regardless of the device open/closed state. | `""` |
+
+When a variable is empty, the default value encoded in U-Boot is utilized. The command categories are currently only available as part of a [patch](../recipes-bsp/u-boot/files/0001-toradex-common-add-command-whitelisting-modules.patch) in header `cmd-categories.h`. The default configuration is kept in the U-Boot control FDT which is part of another [patch](../recipes-bsp/u-boot/files/0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch) in file `tdx-secboot.dtsi`.
+
+Overall, setting these variables is discouraged (especially the ones with an \*) since they are critical to security. The main use case where some of these variables might be set is when one has a custom boot script requiring commands not present in the Toradex boot scripts. For example, if someone needs to set a GPIO pin in their boot script even when the device is closed they could set (e.g. in their `local.conf` file):
 
 ```
-/ {
-    chosen {
-        toradex,secure-boot {          /* if not present: disable Toradex hardening at runtime */
-            disabled;                  /* if present: disable Toradex hardening at runtime */
-            enable-cli-when-closed;    /* if present: keep u-boot CLI enabled when device is closed */
-            bootloader-commands {
-                allow-open = <...>;    /* list of command categories allowed when device is open */
-                allow-closed = <...>;  /* list of command categories allowed when device is closed */
-                deny-open = <...>;     /* list of command categories denied when device is open (use is discouraged) */
-                deny-closed = <...>;   /* list of command categories denied when device is closed (use is discouraged) */
-                needed = <...>         /* list of command categories strictly needed to boot (use is discouraged) */
-            };
-        };
-    };
-};
+TDX_SECBOOT_WL_ALLOW_CLOSED_CATEG = "CMD_CAT_ALL_SAFE CMD_CAT_GPIO_CONTROL"
 ```
-
-The command categories are currently only available as part of a [patch](../recipes-bsp/u-boot/files/0001-toradex-common-add-command-whitelisting-modules.patch) in header `cmd-categories.h`. The default FDT is part of another [patch](../recipes-bsp/u-boot/files/0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch) in file `tdx-secboot.dtsi`.
-
-<!-- TODO: Make more user-friendly instructions on setting the control FDT. -->
 
 ### U-Boot hardening / known issues
 
