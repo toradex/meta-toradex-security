@@ -1,0 +1,89 @@
+From d9fa6917727c998b49710bf263fa7296b95d0948 Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Wed, 19 Feb 2025 12:05:24 -0300
+Subject: [PATCH 7/7] toradex: cmd: setexpr: integrate protections (downstream)
+
+Prevent usage of the '*' operator when device is closed; this operation
+allows arbitrary memory reads which is an undesirable operation in a
+secure boot environment.
+
+Upstream-Status: Inappropriate [Torizon OS specific]
+
+Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+---
+ cmd/setexpr.c | 38 ++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 38 insertions(+)
+
+diff --git a/cmd/setexpr.c b/cmd/setexpr.c
+index 233471f6cb7..5fb715f777f 100644
+--- a/cmd/setexpr.c
++++ b/cmd/setexpr.c
+@@ -17,6 +17,7 @@
+ #include <malloc.h>
+ #include <mapmem.h>
+ #include <linux/sizes.h>
++#include <tdx-harden.h>
+ #include "printf.h"
+ 
+ #define MAX_STR_LEN 128
+@@ -38,6 +39,18 @@ static int get_arg(char *s, int w, struct expr_arg *argp)
+ {
+ 	struct expr_arg arg;
+ 
++	if (s[0] == '*' && tdx_hardening_enabled()) {
++		if (tdx_secboot_dev_is_open()) {
++			eprintf("## WARNING: Allowing execution of setexpr '*' "
++				"operator while device is open; this would be "
++				"denied in closed state.\n");
++		} else {
++			eprintf("## WARNING: Execution of setexpr command "
++				"denied due to use of '*' operator.\n");
++			return -EINVAL;
++		}
++	}
++
+ 	/*
+ 	 * If the parameter starts with a '*' then assume it is a pointer to
+ 	 * the value we want.
+@@ -324,6 +337,18 @@ static int regex_sub_var(const char *name, const char *r, const char *s,
+ 	int len;
+ 	int ret;
+ 
++	if (tdx_hardening_enabled()) {
++		if (tdx_secboot_dev_is_open()) {
++			eprintf("## WARNING: Allowing execution of setexpr "
++				"regex command (sub/gsub) while device is "
++				"open; this would be denied in closed state.\n");
++		} else {
++			eprintf("## WARNING: Execution of setexpr regex "
++				"command denied in closed state.\n");
++			return 1;
++		}
++	}
++
+ 	if (!name)
+ 		return 1;
+ 
+@@ -399,6 +424,19 @@ static int do_setexpr(struct cmd_tbl *cmdtp, int flag, int argc,
+ 		if (argc == 3)
+ 			return CMD_RET_USAGE;
+ 
++		if (tdx_hardening_enabled()) {
++			if (tdx_secboot_dev_is_open()) {
++				eprintf("## WARNING: Allowing execution of "
++					"setexpr fmt command while device is "
++					"open; this would be denied in closed "
++					"state.\n");
++			} else {
++				eprintf("## WARNING: Execution of setexpr fmt "
++					"command denied in closed state.\n");
++				return CMD_RET_FAILURE;
++			}
++		}
++
+ 		result = printf_setexpr(str, sizeof(str), argc - 3, &argv[3]);
+ 		if (result)
+ 			return result;
+-- 
+2.34.1
+

@@ -1,9 +1,6 @@
 TDX_UBOOT_HARDENING_PATCHES_COMMON = "\
-    file://0001-toradex-common-add-command-whitelisting-modules.patch \
+    file://0001-toradex-common-add-shared-hardening-modules.patch \
     file://0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch \
-    file://0003-toradex-add-CLI-access-protection-code-common.patch \
-    file://0004-toradex-add-implementation-of-bootargs-protection.patch \
-    file://0005-toradex-show-message-if-CLI-access-allowed-common.patch \
 "
 
 TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM = "\
@@ -12,19 +9,20 @@ TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM = "\
     file://0002-toradex-integrate-bootm-protection-downstream.patch \
     file://0003-toradex-integrate-CLI-access-protection-downstream.patch \
     file://0004-toradex-integrate-bootargs-protection-downstream.patch \
-    file://0005-toradex-show-message-if-CLI-access-allowed-downstrea.patch \
+    file://0005-toradex-cmd-fuse-add-switch-for-quiet-operation-down.patch \
+    file://0006-toradex-cmd-fuse-add-readv-command-downstream.patch \
+    file://0007-toradex-cmd-setexpr-integrate-protections-downstream.patch \
 "
 
 TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM_AM62 = "\
     ${TDX_UBOOT_HARDENING_PATCHES_COMMON} \
-    file://0001-toradex-integrate-command-whitelisting-downstream.patch \
+    file://0001-toradex-integrate-command-whitelisting-am62.patch \
     file://0002-toradex-integrate-bootm-protection-downstream.patch \
     file://0003-toradex-integrate-CLI-access-protection-downstream.patch \
     file://0004-toradex-integrate-bootargs-protection-am62.patch \
-    file://0005-toradex-show-message-if-CLI-access-allowed-downstrea.patch \
-    \
-    file://0001-toradex-add-helper-to-detect-closed-k3-based-device-.patch \
-    file://0002-toradex-support-detecting-closed-k3-based-device-am6.patch \
+    file://0005-toradex-cmd-fuse-add-switch-for-quiet-operation-down.patch \
+    file://0006-toradex-cmd-fuse-add-readv-command-downstream.patch \
+    file://0007-toradex-cmd-setexpr-integrate-protections-downstream.patch \
 "
 
 TDX_UBOOT_HARDENING_PATCHES_UPSTREAM = "\
@@ -33,14 +31,16 @@ TDX_UBOOT_HARDENING_PATCHES_UPSTREAM = "\
     file://0002-toradex-integrate-bootm-protection-upstream.patch \
     file://0003-toradex-integrate-CLI-access-protection-upstream.patch \
     file://0004-toradex-integrate-bootargs-protection-upstream.patch \
-    file://0005-toradex-show-message-if-CLI-access-allowed-upstream.patch \
+    file://0005-toradex-cmd-fuse-add-switch-for-quiet-operation-upst.patch \
+    file://0006-toradex-cmd-fuse-add-readv-command-upstream.patch \
+    file://0007-toradex-cmd-setexpr-integrate-protections-upstream.patch \
 "
 
 TDX_UBOOT_HARDENING_PATCHES = "${TDX_UBOOT_HARDENING_PATCHES_UPSTREAM}"
 TDX_UBOOT_HARDENING_PATCHES:apalis-imx8 = "${TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM}"
 TDX_UBOOT_HARDENING_PATCHES:colibri-imx8x = "${TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM}"
 TDX_UBOOT_HARDENING_PATCHES:verdin-am62 = "${TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM_AM62}"
-TDX_UBOOT_HARDENING_PATCHES:verdin-am62-k3r5 = "${TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM_AM62}"
+TDX_UBOOT_HARDENING_PATCHES:verdin-am62-k3r5 = ""
 
 SRC_URI:append = "\
     file://u-boot-harden.cfg \
