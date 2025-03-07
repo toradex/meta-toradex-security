@@ -14,17 +14,17 @@ TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM = " \
     file://0001-toradex-integrate-shared-secboot-module-downstream.patch \
 "
 
-TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM_AM62 = " \
+TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM_K3 = " \
     ${TDX_UBOOT_SECBOOT_PATCHES_COMMON} \
-    file://0001-toradex-add-helper-to-detect-closed-k3-device-am62.patch \
+    file://0001-toradex-add-helper-to-detect-closed-device-k3.patch \
     file://0001-toradex-integrate-shared-secboot-module-downstream.patch \
 "
 
 TDX_UBOOT_SECBOOT_PATCHES = "${TDX_UBOOT_SECBOOT_PATCHES_UPSTREAM}"
 TDX_UBOOT_SECBOOT_PATCHES:apalis-imx8 = "${TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM}"
 TDX_UBOOT_SECBOOT_PATCHES:colibri-imx8x = "${TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM}"
-TDX_UBOOT_SECBOOT_PATCHES:verdin-am62 = "${TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM_AM62}"
-TDX_UBOOT_SECBOOT_PATCHES:verdin-am62-k3r5 = ""
+TDX_UBOOT_SECBOOT_PATCHES:k3 = "${TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM_K3}"
+TDX_UBOOT_SECBOOT_PATCHES:k3r5 = ""
 
 SRC_URI:append = " \
     ${TDX_UBOOT_SECBOOT_PATCHES} \

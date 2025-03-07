@@ -24,7 +24,7 @@ def default_tdx_uboot_hardening_enable(d):
     return False
 
 TDX_UBOOT_HARDENING_ENABLE ?= "${@'1' if default_tdx_uboot_hardening_enable(d) else '0'}"
-TDX_UBOOT_HARDENING_ENABLE:verdin-am62-k3r5 = "0"
+TDX_UBOOT_HARDENING_ENABLE:k3r5 = "0"
 TDX_UBOOT_HARDENING_ENABLE_DBG ?= "0"
 
 # Configure the "kernel command-line protection"; with this protection, the
