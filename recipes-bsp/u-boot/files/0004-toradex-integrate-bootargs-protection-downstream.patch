@@ -1,9 +1,9 @@
-From d9e08896284d75d8eea030232beb342b0f335ef0 Mon Sep 17 00:00:00 2001
+From 356e84f2b15a6b19d50218e32d659346d0678d27 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Thu, 26 Oct 2023 12:40:46 -0300
-Subject: [PATCH 4/5] toradex: integrate bootargs protection (downstream)
+Subject: [PATCH 4/7] toradex: integrate bootargs protection (downstream)
 
-Upstream-Status: Inappropriate [TorizonCore specific]
+Upstream-Status: Inappropriate [Torizon OS specific]
 
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
@@ -75,5 +75,5 @@ index 090d82ee80a..9477a2dcb7b 100644
  		err = fdt_setprop(fdt, nodeoffset, "bootargs", str,
  				  strlen(str) + 1);
 -- 
-2.25.1
+2.34.1
 

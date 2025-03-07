@@ -1,0 +1,27 @@
+From daed55e5e62e5eef5522885a4b47e43412f0dfac Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Thu, 27 Feb 2025 23:59:12 -0300
+Subject: [PATCH] toradex: integrate shared secboot module (downstream)
+
+Upstream-Status: Inappropriate [Torizon OS specific]
+
+Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+---
+ common/Makefile | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/common/Makefile b/common/Makefile
+index b3c1e93a518..d8e592b3485 100644
+--- a/common/Makefile
++++ b/common/Makefile
+@@ -24,6 +24,7 @@ obj-$(CONFIG_DISPLAY_BOARDINFO_LATE) += board_info.o
+ obj-$(CONFIG_MII) += miiphyutil.o
+ obj-$(CONFIG_CMD_MII) += miiphyutil.o
+ obj-$(CONFIG_PHYLIB) += miiphyutil.o
++obj-y += tdx-secboot.o
+ 
+ obj-$(CONFIG_USB_HOST) += usb.o usb_hub.o
+ obj-$(CONFIG_USB_GADGET) += usb.o
+-- 
+2.34.1
+

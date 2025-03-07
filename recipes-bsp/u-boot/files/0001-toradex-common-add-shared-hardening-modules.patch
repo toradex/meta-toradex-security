@@ -1,20 +1,56 @@
-From e48ddc42aa67f8353d3cd8571a4360c5741e20b3 Mon Sep 17 00:00:00 2001
+From db448debd4eb9788d597c7894f25b07be15d3122 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:28:50 -0300
-Subject: [PATCH 1/5] toradex: common: add command whitelisting modules
+Subject: [PATCH 1/2] toradex: common: add shared hardening modules
 
-Add modules implementing the command whitelisting feature to be
-integrated into U-Boot on a separate commit.
+v1:
 
-Upstream-Status: Inappropriate [TorizonCore specific]
+- Add modules implementing the command whitelisting feature to be
+  integrated into U-Boot on a separate commit.
+
+v2:
+
+- Get rid of code now provided by tdx-secboot (former tdx-hab-utils).
+- Rename some local functions for consistency.
+- Add commands related to PCI and NVMe.
+- Add commands required for the fusing feature, namely:
+  * "fuse cmp": this command is generally secure and therefore was
+    simply marked as "needed" in the whitelist (thus being available
+    both when the device is open or closed).
+  * "fuse readv": this command is a new one introduced by Toradex to
+    replace the usage of "fuse readm" (which is a very insecure command
+    allowing arbitrary memory writes).
+  * "setexpr": this one allows arbitrary memory reads which in theory is
+    not insecure but it is undesirable; because of that we enable it
+    in the whitelist but as a separate commit we also add protections
+    to the command itself to allow only the secure usage.
+  * "tdx_secboot_get": this is a Toradex-specific command that is secure
+    being therefore marked both as safe and needed.
+- Squash with "toradex: add CLI access protection code (common)"
+  Add the common code (i.e. shared by all branches of U-Boot where the
+  hardening might be used) to support the hardening feature called "CLI
+  access protection", without integrating it. The integration is left to
+  separate commits handling specific cases (upstream, downstream and
+  possibly others).
+- Squash with "toradex: add implementation of bootargs protection"
+  This only adds the code implementing the feature but does not
+  integrate it into U-Boot.
+- Squash with "toradex: show message if CLI access allowed"
+  Before, a message was shown only when the device was closed and the
+  CLI access was disabled by the CLI protection feature. Now we show a
+  message also when the device is open which is helpful when someone
+  wants to ensure the protection is compiled in without having to close
+  the device.
+
+Upstream-Status: Inappropriate [Torizon OS specific]
 
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
- common/tdx-harden.c                           | 260 ++++++
- common/whitelist.c                            | 841 ++++++++++++++++++
- .../dt-bindings/secure-boot/cmd-categories.h  | 101 +++
- include/tdx-harden.h                          |  42 +
- 4 files changed, 1244 insertions(+)
+ common/tdx-harden.c                           | 485 ++++++++++
+ common/whitelist.c                            | 878 ++++++++++++++++++
+ .../dt-bindings/secure-boot/cmd-categories.h  | 110 +++
+ include/tdx-harden.h                          |  59 ++
+ 4 files changed, 1532 insertions(+)
  create mode 100644 common/tdx-harden.c
  create mode 100644 common/whitelist.c
  create mode 100644 include/dt-bindings/secure-boot/cmd-categories.h
@@ -22,28 +58,30 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 
 diff --git a/common/tdx-harden.c b/common/tdx-harden.c
 new file mode 100644
-index 00000000000..789d1ed1285
+index 00000000000..d325620e998
 --- /dev/null
 +++ b/common/tdx-harden.c
-@@ -0,0 +1,260 @@
+@@ -0,0 +1,485 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2023 Toradex
 + */
 +
++/* To see messages, also set CONFIG_LOG_MAX_LEVEL=8 and CONFIG_LOG_LEVEL=8. */
++/* #define DEBUG */
++/* #define LOG_DEBUG */
++
 +#include <common.h>
 +#include <compiler.h>
 +#include <command.h>
++#include <console.h>
 +#include <log.h>
 +#include <fdt_support.h>
++#include <linux/ctype.h>
++#include <linux/string.h>
 +#include <asm/global_data.h>
++#include <tdx-secboot.h>
 +#include <tdx-harden.h>
-+
-+#if defined(CONFIG_IMX_HAB)
-+#include <asm/mach-imx/hab.h>
-+#elif defined(CONFIG_AHAB_BOOT)
-+#include <firmware/imx/sci/sci.h>
-+#endif
 +
 +DECLARE_GLOBAL_DATA_PTR;
 +
@@ -51,13 +89,6 @@ index 00000000000..789d1ed1285
 +static const char secboot_node_path[] = TDX_SECBOOT_NODE_PATH;
 +
 +#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
-+/* Fake HAB status for debugging purposes. */
-+enum dbg_hab_status_t {
-+	DBG_HAB_STATUS_AUTO,
-+	DBG_HAB_STATUS_OPEN,
-+	DBG_HAB_STATUS_CLOSED,
-+};
-+
 +/* Fake hardening status for debugging purposes. */
 +enum dbg_hdn_status_t {
 +	DBG_HDN_STATUS_AUTO,
@@ -65,8 +96,37 @@ index 00000000000..789d1ed1285
 +	DBG_HDN_STATUS_ENABLED,
 +};
 +
-+enum dbg_hab_status_t dbg_hab_status = DBG_HAB_STATUS_AUTO;
-+enum dbg_hdn_status_t dbg_hdn_status = DBG_HDN_STATUS_AUTO;
++static enum dbg_hdn_status_t dbg_hdn_status = DBG_HDN_STATUS_AUTO;
++#endif
++
++#ifdef CONFIG_TDX_BOOTARGS_PROTECTION
++/* Path of node in OS FDT containing all bootargs properties. */
++static const char bootargs_node_path[] = TDX_BOOTARGS_NODE_PATH;
++
++enum bootarg_param_type_t {
++	BPARAM_NONE,
++	BPARAM_INTEGER,
++	BPARAM_OSTREE_PATH,
++	BPARAM_GENERIC_UUID,
++};
++
++struct bootarg_spec_t {
++	const char *param;
++	enum bootarg_param_type_t type;
++	const char *conflict;
++};
++
++static const struct bootarg_spec_t bootarg_spec[] = {
++	{ "ostree=", BPARAM_OSTREE_PATH, NULL },
++	{ "root=PARTUUID=", BPARAM_GENERIC_UUID, "root=" }
++#if 0
++	/* Examples */
++	{ "loglevel=", BPARAM_INTEGER, NULL },
++	{ "nowb", BPARAM_NONE, NULL },
++#endif
++};
++
++#define BOOTARG_SPEC_LEN (sizeof(bootarg_spec) / sizeof(bootarg_spec[0]))
 +#endif
 +
 +static int _tdx_hardening_enabled(void)
@@ -98,51 +158,6 @@ index 00000000000..789d1ed1285
 +	return 1;
 +}
 +
-+static int _tdx_secboot_dev_is_open(void)
-+{
-+#if defined(CONFIG_IMX_HAB)
-+	if (imx_hab_is_enabled()) {
-+		/* Device is closed (OR some error occurred). */
-+		/* Notice that imx_hab_is_enabled() returns bool as per its
-+		 * prototype but checking its code it can return a negative
-+		 * value in case of fuse read errors. */
-+		/* TODO: Evaluate if this is the best we can do here. */
-+		return 0;
-+	}
-+#elif defined(CONFIG_AHAB_BOOT)
-+	u16 lc;
-+	if (sc_seco_chip_info(-1, &lc, NULL, NULL, NULL)) {
-+		/* Some error occurred. */
-+		return 0;
-+	}
-+	switch (lc) {
-+	case 0x1:	/* Pristine */
-+	case 0x2:	/* Fab */
-+	case 0x8:	/* Open */
-+		debug("Device is in a pre NXP-closed state!\n");
-+		break;
-+	case 0x20:	/* NXP closed */
-+		debug("Device is in a NXP-closed state!\n");
-+		break;
-+	case 0x80:	/* OEM closed */
-+		debug("Device is in OEM-closed state!\n");
-+		return 0;
-+	case 0x100:	/* Partial field return */
-+	case 0x200:	/* Full field return */
-+	case 0x400:	/* No return */
-+		debug("Device is in some 'return' state!\n");
-+		return 1;
-+	default:	/* Unknown */
-+		break;
-+	}
-+#else
-+#error Neither CONFIG_IMX_HAB nor CONFIG_AHAB_BOOT is set
-+#endif
-+
-+	/* Device is (assumed to be) open. */
-+	return 1;
-+}
-+
 +/**
 + * tdx_hardening_enabled - Determine if Toradex U-Boot hardening is enabled
 + * Return: 1 if hardening is enabled or 0 otherwise.
@@ -166,29 +181,266 @@ index 00000000000..789d1ed1285
 +	return hdn_enabled;
 +}
 +
++#ifdef CONFIG_TDX_CLI_PROTECTION
 +/**
-+ * tdx_secboot_dev_is_open - Determine if device is open (w.r.t. HAB/AHAB)
-+ * Return: 1 if device is open or 0 otherwise.
-+ *
-+ * Determine if device is open for the purpose of the Toradex U-Boot
-+ * hardening.
++ * TODO: Return status instead and show more detailed info in tdx_cli_access_enabled().
 + */
-+int tdx_secboot_dev_is_open(void)
++static int _tdx_cli_access_enabled(void)
 +{
-+	int dev_open = _tdx_secboot_dev_is_open();
++	const void *en_prop;
++	int secboot_offset, prop_len;
 +
-+#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
-+	/* Override results (for debugging). */
-+	if (dbg_hab_status == DBG_HAB_STATUS_OPEN) {
-+		dev_open = 1;
-+	} else if (dbg_hab_status == DBG_HAB_STATUS_CLOSED) {
-+		dev_open = 0;
++	if (!tdx_hardening_enabled())
++		return 1;
++	if (tdx_secboot_dev_is_open())
++		return 1;
++	if (!gd->fdt_blob)
++		return 1;	/* no hardening */
++
++	secboot_offset = fdt_path_offset(gd->fdt_blob, secboot_node_path);
++	if (secboot_offset < 0)
++		return 1;	/* no hardening */
++
++	/* Hardening is enabled and device is closed: CLI access should be
++	   disabled unless the control DTB says otherwise: check it.  */
++	en_prop = fdt_getprop(gd->fdt_blob, secboot_offset,
++			       "enable-cli-when-closed", &prop_len);
++	if (en_prop) {
++		debug("U-Boot CLI access enabled by property (len=%d)\n",
++		      prop_len);
++		return 1;
 +	}
-+#endif
-+	return dev_open;
++
++	debug("U-Boot CLI access disabled\n");
++	return 0;
 +}
 +
-+static int hardening_info(void)
++/**
++ * tdx_cli_access_enabled - Determine if U-Boot CLI access is to be enabled
++ * Return: 1 if CLI access is to be enabled or 0 otherwise.
++ */
++int tdx_cli_access_enabled(int showmsg)
++{
++	int res = _tdx_cli_access_enabled();
++	if (!showmsg)
++		return res;
++
++	if (res)
++		printf("## U-Boot CLI access is enabled\n");
++	else
++		printf("## U-Boot CLI access is disabled due to Secure Boot\n");
++
++	return res;
++}
++
++void tdx_secure_boot_cmd(const char *cmd)
++{
++	int rc;
++
++	disable_ctrlc(1);
++	rc = run_command_list(cmd, -1, 0);
++
++	panic("## ERROR: \"%s\" returned (code %d) and CLI access is "
++	      "disabled\n", cmd, rc);
++}
++#endif
++
++#ifdef CONFIG_TDX_BOOTARGS_PROTECTION
++/**
++ * _tdx_valid_var_bootarg - Check single argument in bootargs
++ *
++ * TODO: Add support for quoted strings.
++ */
++static int _tdx_valid_var_bootarg(const char *value,
++				  enum bootarg_param_type_t type,
++				  const char **eptr)
++{
++	const char *valp = value;
++
++	debug("check value '%.10s...' against type=%d\n", value, (int) type);
++
++	switch (type) {
++	case BPARAM_NONE:
++		break;
++	case BPARAM_INTEGER: {
++		while (isdigit(*valp))
++			valp++;
++		if (valp == value)
++			return 0;
++		break;
++	}
++	case BPARAM_OSTREE_PATH: {
++		/* Accept only a limited set of characters. */
++		while (isalnum(*valp) || *valp == '/' || *valp == '.')
++			valp++;
++		if (valp == value)
++			return 0;
++		break;
++	}
++	case BPARAM_GENERIC_UUID: {
++		/* Accept hex digits and dashes. */
++		while (isxdigit(*valp) || *valp == '-')
++			valp++;
++		if (valp == value)
++			return 0;
++		break;
++	}
++	default:
++		printf("Unhandled bootarg param type %d\n", (int) type);
++		return 0;
++	}
++
++	/* Ensure argument is finished by space or NUL. */
++	if (*valp == '\0' || isspace(*valp)) {
++		if (eptr)
++			*eptr = valp;
++		return 1;
++	}
++
++	return 0;
++}
++
++/**
++ * _tdx_valid_var_bootargs - Check the variable part of bootargs
++ */
++static int _tdx_valid_var_bootargs(const char *bootargs, const char *reqargs)
++{
++	const char *args = bootargs, *value = NULL, *eptr;
++
++	while (*args) {
++		int bi;
++		for (bi = 0; bi < BOOTARG_SPEC_LEN; bi++) {
++			int plen = strlen(bootarg_spec[bi].param);
++			if (!strncmp(args, bootarg_spec[bi].param, plen)) {
++				debug("arg '%s'\n", bootarg_spec[bi].param);
++				value = &args[plen];
++				break;
++			}
++		}
++		if (bi >= BOOTARG_SPEC_LEN) {
++			eprintf("## Unexpected argument in variable bootargs: "
++				"%.16s...\n", args);
++			return 0;
++		}
++
++		if (!_tdx_valid_var_bootarg(value, bootarg_spec[bi].type, &eptr)) {
++			eprintf("## Argument validation failed for bootarg "
++				"%.16s...\n", args);
++			return 0;
++		}
++
++		/* Check if the parameter specified in the variable part conflicts
++                   with a parameter in the required (fixed) part; this prevents
++                   parameters to be overriden in the variable part when they are
++                   supposed to be present only in the fixed part of the bootargs. */
++		if (bootarg_spec[bi].conflict) {
++			const char *reqptr = strstr(reqargs, bootarg_spec[bi].conflict);
++			int conflict = 0;
++			if (reqptr && reqptr == reqargs) {
++				/* found at the beginning of the reqargs. */
++				conflict = 1;
++
++			} else if (reqptr && reqptr != reqargs) {
++				/* found not at the beginning: confirm. */
++				reqptr--;
++				if (isspace(*reqptr)) conflict = 1;
++			}
++			if (conflict) {
++				eprintf("## Conflicting argument in variable bootargs: "
++					"%.16s...\n", args);
++				return 0;
++			}
++		}
++
++		args = eptr;
++		args = skip_spaces(args);
++	}
++
++	return 1;
++}
++
++/**
++ * tdx_valid_bootargs - Check if bootargs string is valid
++ * Return: 1 if valid or 0 otherwise.
++ *
++ * Check bootargs string against information in FDT (the one passed to the OS);
++ * the FDT is expected to contain a copy of the initial part of the kernel
++ * command line (specifically the part that can be determined at build-time).
++ */
++int tdx_valid_bootargs(void *fdt, const char *bootargs)
++{
++	static const char req_prop[] = "required-bootargs";
++	const char *req_args = NULL;
++	const char *args = bootargs;
++	int req_len = 0;
++	int node_offset;
++
++	node_offset = fdt_path_offset(fdt, bootargs_node_path);
++	if (node_offset < 0) {
++		eprintf("## WARNING: Required node \"%s\" could not be found "
++			"in device-tree.\n", bootargs_node_path);
++		return 0;
++	}
++
++	req_args = fdt_getprop(fdt, node_offset, req_prop, &req_len);
++	if (!req_args) {
++		eprintf("## WARNING: Required property \"%s/%s\" could not be "
++			"found in device-tree.\n", bootargs_node_path, req_prop);
++		return 0;
++	}
++
++	debug("** bootargs(env)=\"%s\"\n", bootargs);
++	debug("** bootargs(fdt)=\"%.*s\" [L=%d]\n", req_len, req_args, req_len);
++
++	/* Strings should be NUL-terminated but let us be careful. */
++	req_len = strnlen(req_args, req_len);
++
++	/* First part of bootargs must match required property in FDT. */
++	if (req_len) {
++		args = skip_spaces(args);
++		debug("check 1st part:\n A: \"%.*s\"\n B: \"%.*s\"\n",
++		      req_len, args, req_len, req_args);
++		if (strncmp(args, req_args, req_len)) {
++			debug("req_args comparison failed\n");
++			goto fixpart_invalid;
++		}
++		args += req_len;
++	}
++
++	/* Second part (if any) is variable. */
++	if (*args) {
++		if (req_len && !isspace(*args)) {
++			debug("no space before variable args\n");
++			goto fixpart_invalid;
++		}
++		args = skip_spaces(args);
++	}
++
++	debug("variable part to validate: \"%s\"\n", args);
++	if (!_tdx_valid_var_bootargs(args, req_args))
++		goto varpart_invalid;
++
++	return 1;
++
++fixpart_invalid:
++	eprintf("## WARNING: Initial part of passed bootargs string (A) does "
++		"not match '%s' property (B) in device-tree.\n", req_prop);
++	eprintf("##  A: \"%s\"\n", skip_spaces(bootargs));
++	eprintf("##  B: \"%.*s\"\n", req_len, req_args);
++	return 0;
++
++varpart_invalid:
++	eprintf("## WARNING: Validation of the variable part of bootargs "
++		"failed; the full bootargs string (A) and its fixed part "
++		"(as defined in the '%s' property inside the device-tree) "
++		"follow:\n", req_prop);
++	eprintf("##  A: \"%s\"\n", skip_spaces(bootargs));
++	eprintf("##  B: \"%.*s\"\n", req_len, req_args);
++	return 0;
++}
++#endif
++
++static int show_hardening_info(void)
 +{
 +	int hdn_enabled = tdx_hardening_enabled();
 +	int dev_open = tdx_secboot_dev_is_open();
@@ -200,28 +452,32 @@ index 00000000000..789d1ed1285
 +}
 +
 +#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
-+static int hardening_set_hab_status(int argc, char *const argv[])
++static int set_hab_status(int argc, char *const argv[])
 +{
 +	const char *str_subcmd;
++	enum dbg_hab_status_t status = DBG_HAB_STATUS_AUTO;
 +
 +	if (argc < 1)
 +		return CMD_RET_USAGE;
 +
 +	str_subcmd = argv[0];
 +	if (!strcmp(str_subcmd, "auto")) {
-+		dbg_hab_status = DBG_HAB_STATUS_AUTO;
++		status = DBG_HAB_STATUS_AUTO;
 +	} else if (!strcmp(str_subcmd, "open")) {
-+		dbg_hab_status = DBG_HAB_STATUS_OPEN;
++		status = DBG_HAB_STATUS_OPEN;
 +	} else if (!strcmp(str_subcmd, "closed")) {
-+		dbg_hab_status = DBG_HAB_STATUS_CLOSED;
++		status = DBG_HAB_STATUS_CLOSED;
 +	} else {
 +		return CMD_RET_USAGE;
 +	}
 +
++	if (tdx_secboot_set_hab_status(status))
++		return CMD_RET_FAILURE;
++
 +	return CMD_RET_SUCCESS;
 +}
 +
-+static int hardening_set_hdn_status(int argc, char *const argv[])
++static int set_hardening_status(int argc, char *const argv[])
 +{
 +	const char *str_subcmd;
 +
@@ -255,12 +511,12 @@ index 00000000000..789d1ed1285
 +	argv += 2;
 +
 +	if (!strcmp(str_cmd, "info")) {
-+		return hardening_info();
++		return show_hardening_info();
 +#ifdef CONFIG_TDX_SECBOOT_HARDENING_DBG
 +	} else if (!strcmp(str_cmd, "set-hab-status")) {
-+		return hardening_set_hab_status(argc, argv);
++		return set_hab_status(argc, argv);
 +	} else if (!strcmp(str_cmd, "set-hdn-status")) {
-+		return hardening_set_hdn_status(argc, argv);
++		return set_hardening_status(argc, argv);
 +#endif
 +	}
 +
@@ -286,12 +542,17 @@ index 00000000000..789d1ed1285
 + * U-Boot configuration is wrong. */
 +#error Toradex hardening assumes CONFIG_LMB is set
 +#endif
++
++#ifdef CONFIG_UPDATE_TFTP
++/* Self-updates are likely not safe. */
++#error Toradex hardening assumes CONFIG_UPDATE_TFTP is not set
++#endif
 diff --git a/common/whitelist.c b/common/whitelist.c
 new file mode 100644
-index 00000000000..ac460202124
+index 00000000000..40ed5596333
 --- /dev/null
 +++ b/common/whitelist.c
-@@ -0,0 +1,841 @@
+@@ -0,0 +1,878 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2023 Toradex
@@ -486,8 +747,9 @@ index 00000000000..ac460202124
 +	{ { "fstype", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
 +	{ { "fstypes", ALL }, { CMD_CAT_SAFE } },
 +	{ { "fuse", "read", ALL }, { CMD_CAT_FUSE_READ } },
-+	{ { "fuse", "cmp", ALL }, { CMD_CAT_FUSE_READ } },
++	{ { "fuse", "cmp", ALL }, { CMD_CAT_FUSE_READ, CMD_CAT_NEEDED } }, /* Needed by fusing feature. */
 +	{ { "fuse", "readm", ALL }, { CMD_CAT_FUSE_READ, CMD_CAT_MEM_WRITE } },
++	{ { "fuse", "readv", ALL }, { CMD_CAT_FUSE_READ, CMD_CAT_NEEDED } }, /* Needed by fusing feature. */
 +	{ { "fuse", "sense", ALL }, { CMD_CAT_FUSE_READ } },
 +	{ { "fuse", "prog", ALL }, { CMD_CAT_FUSE_WRITE } },
 +	{ { "fuse", "override", ALL }, { CMD_CAT_FUSE_WRITE } },
@@ -598,6 +860,16 @@ index 00000000000..ac460202124
 +	{ { "net", "list", ALL }, { CMD_CAT_NET_DIAG } },
 +	{ { "nfs", ALL }, { CMD_CAT_EXEC, CMD_CAT_MEM_WRITE } },
 +	{ { "nm", ALL }, { CMD_CAT_MEM_READ, CMD_CAT_MEM_WRITE } },
++#ifdef CONFIG_CMD_NVME
++	{ { "nvme", "scan", ALL }, { CMD_CAT_NVME_CONTROL } },
++	{ { "nvme", "detail", ALL }, { CMD_CAT_NVME_DIAG } },
++	{ { "nvme", "info", ALL }, { CMD_CAT_NVME_DIAG } },
++	{ { "nvme", "dev", ALL }, { CMD_CAT_NVME_CONTROL } }, /* alias to "device" */
++	{ { "nvme", "device", ALL }, { CMD_CAT_NVME_CONTROL } },
++	{ { "nvme", "part", ALL }, { CMD_CAT_NVME_DIAG } },
++	{ { "nvme", "read", ALL }, { CMD_CAT_NVME_READ } },
++	{ { "nvme", "write", ALL }, { CMD_CAT_NVME_WRITE } },
++#endif /* CONFIG_CMD_NVME */
 +	{ { "panic", ALL }, { CMD_CAT_SAFE } },
 +	{ { "part", "uuid", ALL }, { CMD_CAT_PART_READ, CMD_CAT_NEEDED } },
 +	{ { "part", "list", ALL }, { CMD_CAT_PART_READ, CMD_CAT_NEEDED } },
@@ -605,6 +877,31 @@ index 00000000000..ac460202124
 +	{ { "part", "size", ALL }, { CMD_CAT_PART_READ } },
 +	{ { "part", "number", ALL }, { CMD_CAT_PART_READ } },
 +	{ { "part", "types", ALL }, { CMD_CAT_PART_DIAG } },
++#ifdef CONFIG_CMD_PCI
++	{ { "pci", "enum", ALL }, { CMD_CAT_PCI_CONTROL } },
++	{ { "pci", "header", ALL }, { CMD_CAT_PCI_DIAG } },
++	{ { "pci", "bar", ALL }, { CMD_CAT_PCI_DIAG } },
++	{ { "pci", "regions", ALL }, { CMD_CAT_PCI_DIAG } },
++	{ { "pci", "display", ALL }, { CMD_CAT_PCI_READ } },
++	{ { "pci", "display.b", ALL }, { CMD_CAT_PCI_READ } },
++	{ { "pci", "display.w", ALL }, { CMD_CAT_PCI_READ } },
++	{ { "pci", "display.l", ALL }, { CMD_CAT_PCI_READ } },
++	{ { "pci", "next", ALL }, { CMD_CAT_PCI_WRITE } },
++	{ { "pci", "next.b", ALL }, { CMD_CAT_PCI_WRITE } },
++	{ { "pci", "next.w", ALL }, { CMD_CAT_PCI_WRITE } },
++	{ { "pci", "next.l", ALL }, { CMD_CAT_PCI_WRITE } },
++	{ { "pci", "modify", ALL }, { CMD_CAT_PCI_WRITE } },
++	{ { "pci", "modify.b", ALL }, { CMD_CAT_PCI_WRITE } },
++	{ { "pci", "modify.w", ALL }, { CMD_CAT_PCI_WRITE } },
++	{ { "pci", "modify.l", ALL }, { CMD_CAT_PCI_WRITE } },
++	{ { "pci", "write", ALL }, { CMD_CAT_PCI_WRITE } },
++	{ { "pci", "write.b", ALL }, { CMD_CAT_PCI_WRITE } },
++	{ { "pci", "write.w", ALL }, { CMD_CAT_PCI_WRITE } },
++	{ { "pci", "write.l", ALL }, { CMD_CAT_PCI_WRITE } },
++	{ { "pci", "*" }, { CMD_CAT_PCI_DIAG } },
++	{ { "pci", "*", "long" }, { CMD_CAT_PCI_DIAG } },
++	{ { "pci", ALL }, { CMD_CAT_PCI_OTHER } },
++#endif /* CONFIG_CMD_PCI */
 +	{ { "ping", ALL }, { CMD_CAT_NET_DIAG } },
 +	{ { "pinmux", "list", ALL }, { CMD_CAT_PINMUX_DIAG } },
 +	{ { "pinmux", "dev", ALL }, { CMD_CAT_PINMUX_DIAG } },
@@ -645,7 +942,7 @@ index 00000000000..ac460202124
 +	{ { "set_fips_mode", ALL }, { CMD_CAT_SNVS_CONTROL } },
 +	{ { "setenv", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
 +#ifdef CONFIG_CMD_SETEXPR
-+	{ { "setexpr", ALL }, { CMD_CAT_SETEXPR, CMD_CAT_MEM_READ } },
++	{ { "setexpr", ALL }, { CMD_CAT_SETEXPR, CMD_CAT_MEM_READ, CMD_CAT_NEEDED } }, /* Needed by fusing feature. */
 +#endif /* CONFIG_CMD_SETEXPR */
 +	{ { "showvar", ALL }, { CMD_CAT_SAFE } },
 +	{ { "size", ALL }, { CMD_CAT_SAFE, CMD_CAT_FS_DIAG } },
@@ -657,6 +954,7 @@ index 00000000000..ac460202124
 +	{ { "source", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
 +	{ { "sysboot", ALL }, { CMD_CAT_EXEC, CMD_CAT_MEM_WRITE } },
 +	{ { "tamper_pin_cfg", ALL }, { CMD_CAT_SNVS_CONTROL } },
++	{ { "tdx_secboot_get", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
 +	{ { "test", ALL }, { CMD_CAT_SAFE, CMD_CAT_NEEDED } },
 +	{ { "tftpboot", ALL }, { CMD_CAT_EXEC, CMD_CAT_MEM_WRITE } },
 +	{ { "time", ALL }, { CMD_CAT_DIAG } },
@@ -1135,10 +1433,10 @@ index 00000000000..ac460202124
 +}
 diff --git a/include/dt-bindings/secure-boot/cmd-categories.h b/include/dt-bindings/secure-boot/cmd-categories.h
 new file mode 100644
-index 00000000000..002f118499e
+index 00000000000..8f6b9c96079
 --- /dev/null
 +++ b/include/dt-bindings/secure-boot/cmd-categories.h
-@@ -0,0 +1,101 @@
+@@ -0,0 +1,110 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * This header provides constants for command categories used with the whitelist
@@ -1215,8 +1513,17 @@ index 00000000000..002f118499e
 +#define CMD_CAT_MMC_READ		252
 +#define CMD_CAT_MMC_WRITE		253
 +#define CMD_CAT_NET_DIAG		260
++#define CMD_CAT_NVME_CONTROL		265
++#define CMD_CAT_NVME_DIAG		266
++#define CMD_CAT_NVME_READ		267
++#define CMD_CAT_NVME_WRITE		268
 +#define CMD_CAT_PART_DIAG		270
 +#define CMD_CAT_PART_READ		271
++#define CMD_CAT_PCI_CONTROL		274
++#define CMD_CAT_PCI_DIAG		275
++#define CMD_CAT_PCI_READ		276
++#define CMD_CAT_PCI_WRITE		277
++#define CMD_CAT_PCI_OTHER		278
 +#define CMD_CAT_PINMUX_DIAG		280
 +#define CMD_CAT_PMIC_DIAG		290
 +#define CMD_CAT_PMIC_READ		291
@@ -1242,10 +1549,10 @@ index 00000000000..002f118499e
 +#endif
 diff --git a/include/tdx-harden.h b/include/tdx-harden.h
 new file mode 100644
-index 00000000000..dfdaa69d3a4
+index 00000000000..150558ab0d3
 --- /dev/null
 +++ b/include/tdx-harden.h
-@@ -0,0 +1,42 @@
+@@ -0,0 +1,59 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2023 Toradex
@@ -1254,40 +1561,57 @@ index 00000000000..dfdaa69d3a4
 +#ifndef __TDX_HARDEN_H
 +#define __TDX_HARDEN_H
 +
++/* Use of tdx-harden implies use of tdx-secboot. */
++#include <tdx-secboot.h>
++
 +/*
 + * Sample device-tree configuring hardening:
 + * / {
 + *     chosen {
 + *         toradex,secure-boot {    [if not present: disable Toradex hardening]
 + *             disabled;                  [optional: disable Toradex hardening]
++ *             enable-cli-when-closed; [optional: keep u-boot cli enabled when]
++                                                          [...device is closed]
 + *             bootloader-commands {
 + *                 allow-open = <CMD_CAT_ALL>;
-+ *                 allow-closed = <CMD_CAT_NEEDED CMD_CAT_SAFE>;
++ *                 allow-closed = <CMD_CAT_ALL_SAFE>;
 + *                 deny-open = <CMD_CAT_ALL_UNSAFE>;    [optional, discouraged]
 + *                 deny-closed = <CMD_CAT_ALL_UNSAFE>;  [optional, discouraged]
-+ *                 needed = <CMD_CAT_NEEDED>            [optional, discouraged]
++ *                 needed = <CMD_CAT_NEEDED>;           [optional, discouraged]
 + *             };
 + *         };
 + *     };
 + * };
 + */
 +
-+/* Path of node in FDT containing all Secure Boot setup. */
++/* Path of node in control FDT containing all Secure Boot setup. */
 +#define TDX_SECBOOT_NODE_PATH \
 +        "/chosen/toradex,secure-boot"
 +
-+/* Path of node in FDT containing command whitelist/blacklist. */
++/* Path of node in control FDT containing command whitelist/blacklist. */
 +#define TDX_BOOTLDR_CMDS_NODE_PATH \
 +        "/chosen/toradex,secure-boot/bootloader-commands"
++
++/* Path of node in OS FDT containing all bootargs properties. */
++#define TDX_BOOTARGS_NODE_PATH \
++        "/chosen/toradex,secure-boot"
 +
 +struct cmd_tbl;
 +
 +int cmd_allowed_by_whitelist(struct cmd_tbl *cmd, int argc, char *const argv[]);
++int tdx_cli_access_enabled(int showmsg);
++void tdx_secure_boot_cmd(const char *cmd);
++int tdx_valid_bootargs(void *fdt, const char *bootargs);
 +
-+int tdx_secboot_dev_is_open(void);
++#ifdef CONFIG_TDX_SECBOOT_HARDENING
 +int tdx_hardening_enabled(void);
++#else
++static inline int tdx_hardening_enabled(void) {
++	return 0;
++}
++#endif
 +
 +#endif	/* __TDX_HARDEN_H */
 -- 
-2.25.1
+2.34.1
 
