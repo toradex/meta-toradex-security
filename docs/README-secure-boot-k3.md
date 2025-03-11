@@ -6,13 +6,13 @@ This document describes how bootloader signature checking works for System on Mo
 
 The Texas Instruments K3 platform encompasses a family of SoCs (System on Chips) designed to offer a blend of multicore processing capabilities, optimized for high performance and power efficiency across a broad array of industrial, automotive, and other market segments.
 
-The AM62x family of SoCs (part of the K3 platform) has two types of devices: GP (General Purpose) and HS (High Security).
+The AM6x family of SoCs (part of the K3 platform) has two types of devices: GP (General Purpose) and HS (High Security).
 
 General Purpose (GP) devices lack several security features and don't support secure boot.
 
 High Security (HS) devices have all security features available and support encrypted and authenticated (secure) boot.
 
-**IMPORTANT**: To have access to the secure boot feature on Verdin AM62, make sure you are using an SoC of type HS.
+**IMPORTANT**: To have access to the secure boot feature on AM6x based SoMs (Verdin AM62, Aquila AM69), make sure you are using an SoC of type HS.
 
 A High Security (HS) device might be in one of two different states:
 
@@ -21,7 +21,7 @@ A High Security (HS) device might be in one of two different states:
 
 For more details on how secure boot works on K3 platforms, it is recommended to read the documentation provided by Texas Instruments. Since most documentation related to security is provided under NDA, you will need to talk to a TI Sales representative.
 
-## Enabling secure boot on Verdin AM62
+## Enabling secure boot on AM6x based devices
 
 There are three major steps to enable secure boot on Verdin AM62:
 
@@ -94,7 +94,7 @@ To finish, remove write access to the keys and certificates:
 $ chmod a-w *
 ```
 
-### Signing bootloader artefacts
+### Signing bootloader artifacts
 
 When the `tdx-signed` class is inherited, signing bootloader images on K3-based platforms like AM62 is enabled by default.
 
@@ -115,7 +115,7 @@ OTP Key Writer is a single firmware image that has three components:
 - A secure firmware encrypted and signed by TI (provided under NDA) that will run on the ARM Cortex M4 core, being responsible for writing to the fuses.
 - A firmware developed by the user that will run on the ARM Cortex R5 core, being responsible for parsing the certificate and sending messages to the secure firmware, so the keys and other information are written to the OTP fuses.
   
-Also, the VPP pin from the SoC requires 1.8v while programming OTP eFuses and should be floating when not programming. That means the hardware needs to be designed in a way that the state of the VPP pin can be controlled by the OTP Key Writer firmware (e.g. via GPIO pin).
+Also, the *VPP* pins from the SoC (*VPP* on AM62, *VPP_CORE* and *VPP_MCU* on AM69) require 1.8v while programming OTP eFuses and should be floating when not programming. That means the hardware needs to be designed in a way that the state of the *VPP* pins can be controlled by the OTP Key Writer firmware (e.g. via GPIO pin).
 
 The [OTP Keywriter Tutorial](https://dev.ti.com/tirex/explore/node?node=A__AagJ-8QGXM582KzTgxFZbA__AM62-ACADEMY__uiYMDcq__LATEST) provided by TI might help to understand how to implement the OTP KeyWriter software.
 

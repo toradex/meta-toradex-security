@@ -24,7 +24,7 @@ def default_tdx_uboot_hardening_enable(d):
     return False
 
 TDX_UBOOT_HARDENING_ENABLE ?= "${@'1' if default_tdx_uboot_hardening_enable(d) else '0'}"
-TDX_UBOOT_HARDENING_ENABLE:verdin-am62-k3r5 = "0"
+TDX_UBOOT_HARDENING_ENABLE:k3r5 = "0"
 TDX_UBOOT_HARDENING_ENABLE_DBG ?= "0"
 
 # Configure the "kernel command-line protection"; with this protection, the
@@ -42,6 +42,7 @@ TDX_SECBOOT_REQUIRED_BOOTARGS:verdin-imx8mm ?= "ro rootwait console=tty1 console
 TDX_SECBOOT_REQUIRED_BOOTARGS:verdin-imx8mp ?= "ro rootwait console=tty1 console=ttymxc2,115200"
 TDX_SECBOOT_REQUIRED_BOOTARGS:colibri-imx8x ?= "ro rootwait console=tty1 console=ttyLP3,115200"
 TDX_SECBOOT_REQUIRED_BOOTARGS:verdin-am62 ?= "ro rootwait console=tty1 console=ttyS2,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS:aquila-am69 ?= "ro rootwait console=tty1 console=ttyS2,115200"
 
 # Name of the overlay file (without extension) that will contain the fixed part
 # of the kernel command line; this will be stored inside the FIT image; notice

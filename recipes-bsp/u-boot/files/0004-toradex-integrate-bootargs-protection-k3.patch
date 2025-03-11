@@ -1,7 +1,7 @@
 From 4f82c2f035ad004244482a7a297d78602ae87c0c Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Thu, 26 Oct 2023 12:40:46 -0300
-Subject: [PATCH 4/7] toradex: integrate bootargs protection (am62)
+Subject: [PATCH 4/7] toradex: integrate bootargs protection (k3)
 
 Upstream-Status: Inappropriate [Torizon OS specific]
 

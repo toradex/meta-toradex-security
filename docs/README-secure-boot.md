@@ -6,6 +6,7 @@ Secure boot is currently supported on the following SoMs:
 
 - Apalis iMX6
 - Apalis iMX8
+- Aquila AM69
 - Colibri iMX6DL
 - Colibri iMX6ULL (1GB eMMC variant only)
 - Colibri iMX7D (1GB eMMC variant only)
@@ -50,7 +51,7 @@ The bootloader signature checking implementation is dependent on the System on C
 
 For details on the bootloader signature checking implementation for SoMs that use NXP iMX-based platforms (i.e. iMX6/7/8), see the [README-secure-boot-imx.md](README-secure-boot-imx.md) file.
 
-For details on the bootloader signature checking implementation for SoMs that use TI K3-based platforms (i.e. AM62), see the [README-secure-boot-k3.md](README-secure-boot-k3.md) file.
+For details on the bootloader signature checking implementation for SoMs that use TI K3-based platforms (i.e. AM62/AM69), see the [README-secure-boot-k3.md](README-secure-boot-k3.md) file.
 
 ## U-Boot hardening
 
@@ -94,7 +95,7 @@ TDX_SECBOOT_WL_ALLOW_CLOSED_CATEG = "CMD_CAT_ALL_SAFE CMD_CAT_GPIO_CONTROL"
 
 ### U-Boot hardening / known issues
 
-- On the **Verdin AM62** SoM, the hardening does not cover the bootloader running on the R5 processor (the boot master); we have plans to evaluate the need for such a protection and implementing it if actually needed.
+- On K3 based platforms (Verdin AM62, Aquila AM69), the hardening does not cover the bootloader running on the R5 processor (the boot master); we have plans to evaluate the need for such a protection and implementing it if actually needed.
 
 ## Configuring FIT image signing
 
@@ -116,7 +117,7 @@ The complete list of variables can be found in the `tdx-signed-fit-image.inc` fi
 
 ### Configuring FIT image signing / known issues
 
-- On the **Verdin AM62** SoM, some of the configuration variables (e.g. `UBOOT_SIGN_KEYDIR`, `UBOOT_SIGN_KEYNAME` (check the complete list in `tdx-signed-fit-image.inc`)) are set through override `k3` to ensure the values coming from layer `meta-toradex-security` override those from layer `meta-ti-bsp`. Due to this, the recommended way to set those variables is via override `forcevariable`.
+- On K3 based platforms (Verdin AM62, Aquila AM69), some of the configuration variables (e.g. `UBOOT_SIGN_KEYDIR`, `UBOOT_SIGN_KEYNAME` (check the complete list in `tdx-signed-fit-image.inc`)) are set through override `k3` to ensure the values coming from layer `meta-toradex-security` override those from layer `meta-ti-bsp`. Due to this, the recommended way to set those variables is via override `forcevariable`.
 
 ## Configuring rootfs image signing
 

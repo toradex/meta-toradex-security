@@ -1,7 +1,7 @@
 From c8f0e86b1382b7d2ffbab5f2805e1d069a39cd7e Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Wed, 9 Oct 2024 20:23:16 -0300
-Subject: [PATCH] toradex: add helper to detect closed k3 device (am62)
+Subject: [PATCH] toradex: add helper to detect closed device (k3)
 
 Upstream-Status: Inappropriate [Torizon OS specific]
 
