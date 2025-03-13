@@ -1,7 +1,7 @@
-From 356e84f2b15a6b19d50218e32d659346d0678d27 Mon Sep 17 00:00:00 2001
+From 539cace106a0ea51c9f02ce786c95e0d2cf9f84a Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Thu, 26 Oct 2023 12:40:46 -0300
-Subject: [PATCH 4/7] toradex: integrate bootargs protection (downstream)
+Subject: [PATCH 4/8] toradex: integrate bootargs protection (downstream)
 
 Upstream-Status: Inappropriate [Torizon OS specific]
 

@@ -1,7 +1,7 @@
-From 35775bac82c696bfbd007c4f7660ad524deae83f Mon Sep 17 00:00:00 2001
+From f0fe01a592931ca3b281124198014a3a77134c76 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Tue, 18 Feb 2025 16:37:15 -0300
-Subject: [PATCH 6/7] toradex: cmd: fuse: add readv command (upstream)
+Subject: [PATCH 7/8] toradex: cmd: fuse: add readv command (downstream)
 
 Add command "fuse readv" to allow reading fuse values into a
 variable.

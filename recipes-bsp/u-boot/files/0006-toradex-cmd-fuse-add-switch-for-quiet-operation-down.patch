@@ -1,7 +1,7 @@
-From 3c2e503e27235ca5173d617b0bce74e5468456dd Mon Sep 17 00:00:00 2001
+From f51c5df015ffafad517f4a3322e923f658434e14 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Tue, 18 Feb 2025 15:19:37 -0300
-Subject: [PATCH 5/7] toradex: cmd: fuse: add switch for quiet operation
+Subject: [PATCH 6/8] toradex: cmd: fuse: add switch for quiet operation
  (downstream)
 
 Add switch -q for quiet operation to all fuse subcommands.

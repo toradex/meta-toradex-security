@@ -1,0 +1,160 @@
+From 59665281d572d5793d3c1e1bda1efe5ca8b82da6 Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Fri, 7 Mar 2025 15:56:56 -0300
+Subject: [PATCH 5/8] toradex: integrate load protection (downstream)
+
+This introduces an extra protection to the "load" command. When this
+protection is enabled (by CONFIG_TDX_LOAD_PROTECTION) the command will
+only allow the loading of files in the address range:
+
+- [R0, R0+1G-64M) on devices with at least 1GB of SDRAM.
+- [R0, R0+512M-64M) on devices with less than 1GB of SDRAM.
+
+where R0 stands for the initial address of the SDRAM.
+
+This is supposed to fulfill two goals:
+
+- Prevent the running U-Boot from being overwritten.
+- Prevent write access to any area that are not actual memory such as
+  memory-mapped devices.
+
+In theory, the LMB feature in U-Boot should fulfill the same goals but
+tests have shown it doesn't handle all cases and seems to be even buggy.
+The present implementation nonetheless adds to the LMB protections and
+actually relies on data structures present only when CONFIG_LMB is
+enabled.
+
+Upstream-Status: Inappropriate [Torizon OS specific]
+
+Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+---
+ Kconfig   |  7 ++++++
+ fs/fs.c   |  6 +++++
+ lib/lmb.c | 65 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 78 insertions(+)
+
+diff --git a/Kconfig b/Kconfig
+index c35fa239f18..a630a092638 100644
+--- a/Kconfig
++++ b/Kconfig
+@@ -747,6 +747,7 @@ config TDX_SECBOOT_HARDENING
+ 	bool "Toradex Secure Boot hardening"
+ 	select TDX_CMD_WHITELIST
+ 	select TDX_BOOTM_PROTECTION
++	select TDX_LOAD_PROTECTION
+ 	select TDX_CLI_PROTECTION
+ 	select TDX_BOOTARGS_PROTECTION
+ 	help
+@@ -780,6 +781,12 @@ config TDX_BOOTM_PROTECTION
+ 	  Enable the protection in bootm to prevent execution of unsigned
+ 	  images.
+ 
++config TDX_LOAD_PROTECTION
++	bool
++	help
++	  Enable the protection in the load command to prevent overwriting
++	  U-Boot itself or writing to memory mapped devices.
++
+ config TDX_CLI_PROTECTION
+ 	bool
+ 	help
+diff --git a/fs/fs.c b/fs/fs.c
+index acf465bdd80..b7ede5068a1 100644
+--- a/fs/fs.c
++++ b/fs/fs.c
+@@ -553,6 +553,12 @@ static int fs_read_lmb_check(const char *filename, ulong addr, loff_t offset,
+ 	lmb_init_and_reserve(&lmb, gd->bd, (void *)gd->fdt_blob);
+ 	lmb_dump_all(&lmb);
+ 
++#if CONFIG_IS_ENABLED(TDX_LOAD_PROTECTION)
++	int tdx_valid_loadaddr(struct lmb *lmb, phys_addr_t base, phys_size_t size);
++	if (!tdx_valid_loadaddr(&lmb, addr, read_len))
++		return -EFAULT;
++#endif
++
+ 	if (lmb_alloc_addr(&lmb, addr, read_len) == addr)
+ 		return 0;
+ 
+diff --git a/lib/lmb.c b/lib/lmb.c
+index f4b8660d2d8..866dabbc95d 100644
+--- a/lib/lmb.c
++++ b/lib/lmb.c
+@@ -12,6 +12,8 @@
+ #include <lmb.h>
+ #include <log.h>
+ #include <malloc.h>
++#include <linux/sizes.h>
++#include <tdx-harden.h>
+ 
+ #include <asm/global_data.h>
+ #include <asm/sections.h>
+@@ -591,3 +593,66 @@ __weak void arch_lmb_reserve(struct lmb *lmb)
+ {
+ 	/* please define platform specific arch_lmb_reserve() */
+ }
++
++#if CONFIG_IS_ENABLED(TDX_LOAD_PROTECTION)
++int tdx_valid_loadaddr(struct lmb *lmb, phys_addr_t base, phys_size_t size)
++{
++	long rgn;
++	phys_addr_t end, off, lim;
++
++	if (!tdx_hardening_enabled())
++		return 1;
++	if (!gd->fdt_blob)
++		return 1;	/* no hardening */
++
++	rgn = lmb_overlaps_region(&lmb->memory, base, size);
++	if (rgn != 0) {
++		debug("Load address range does not overlap first "
++		      "memory region\n");
++		goto err;
++	}
++
++	end = base + size - 1;
++	if (!lmb_addrs_overlap(lmb->memory.region[rgn].base,
++			       lmb->memory.region[rgn].size, base, 1)) {
++		debug("Start address does not fall into memory region\n");
++		goto err;
++	}
++	if (!lmb_addrs_overlap(lmb->memory.region[rgn].base,
++			       lmb->memory.region[rgn].size, end, 1)) {
++		debug("End address does not fall into memory region\n");
++		goto err;
++	}
++
++	/*
++	 * Ensure the end address is within the memory region and below offset
++	 * 1G-64MB / 512M-64MB (on low-memory devices). On a 1GB/512MB device,
++	 * this should give U-Boot 64MB to use at the end of the memory and it
++	 * should be compatible with all Toradex boot scripts.
++	 */
++	off = end - lmb->memory.region[rgn].base;
++	lim = (lmb->memory.region[rgn].size >= SZ_1G) ?
++		(SZ_1G - SZ_64M) : (SZ_512M - SZ_64M);
++
++	debug("Checking offset 0x%llx against limit 0x%llx; "
++	      "memory start: 0x%llx, size: 0x%llx\n",
++	      (u64) off, (u64) lim,
++	      (u64) lmb->memory.region[rgn].base,
++	      (u64) lmb->memory.region[rgn].size);
++
++	if (off >= lim) {
++		debug("End offset (0x%llx) >= limit (0x%llx)\n",
++		      (u64) off, (u64) lim);
++		goto err;
++	}
++
++	debug("Load address 0x%llx, size=0x%llx passed validation\n",
++	      (u64) base, (u64) size);
++	return 1;
++
++err:
++	eprintf("## ERROR: Loading data into addr 0x%llx forbidden by the "
++		"hardening feature\n", (u64) base);
++	return 0;
++}
++#endif
+-- 
+2.34.1
+

@@ -97,7 +97,7 @@ index 00000000000..d325620e998
 +};
 +
 +static enum dbg_hdn_status_t dbg_hdn_status = DBG_HDN_STATUS_AUTO;
-+#endif
++#endif /* CONFIG_TDX_SECBOOT_HARDENING_DBG */
 +
 +#ifdef CONFIG_TDX_BOOTARGS_PROTECTION
 +/* Path of node in OS FDT containing all bootargs properties. */
@@ -127,7 +127,7 @@ index 00000000000..d325620e998
 +};
 +
 +#define BOOTARG_SPEC_LEN (sizeof(bootarg_spec) / sizeof(bootarg_spec[0]))
-+#endif
++#endif /* CONFIG_TDX_BOOTARGS_PROTECTION */
 +
 +static int _tdx_hardening_enabled(void)
 +{
@@ -243,7 +243,7 @@ index 00000000000..d325620e998
 +	panic("## ERROR: \"%s\" returned (code %d) and CLI access is "
 +	      "disabled\n", cmd, rc);
 +}
-+#endif
++#endif /* CONFIG_TDX_CLI_PROTECTION */
 +
 +#ifdef CONFIG_TDX_BOOTARGS_PROTECTION
 +/**
@@ -438,7 +438,7 @@ index 00000000000..d325620e998
 +	eprintf("##  B: \"%.*s\"\n", req_len, req_args);
 +	return 0;
 +}
-+#endif
++#endif /* CONFIG_TDX_BOOTARGS_PROTECTION */
 +
 +static int show_hardening_info(void)
 +{

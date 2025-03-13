@@ -1,7 +1,7 @@
-From 97233c46d64d96c35bde2a03e9452e20994961a5 Mon Sep 17 00:00:00 2001
+From 90e5b16505e73708ff93d050458cc214e2c353c7 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Wed, 16 Oct 2024 17:51:27 -0300
-Subject: [PATCH 3/7] toradex: integrate CLI access protection (upstream)
+Subject: [PATCH 3/8] toradex: integrate CLI access protection (upstream)
 
 Integrate the protection in U-Boot to prevent access to its CLI once the
 device is closed; this is part of the hardening for Secure Boot.

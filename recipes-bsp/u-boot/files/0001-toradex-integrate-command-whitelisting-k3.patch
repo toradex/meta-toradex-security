@@ -1,7 +1,7 @@
-From 29256c1438a006454bc17dd379b11d885fe7d1ac Mon Sep 17 00:00:00 2001
+From 430749ceb11ccffbbaae0140f2d5c43e322fbbcd Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:29:34 -0300
-Subject: [PATCH 1/7] toradex: integrate command whitelisting (k3)
+Subject: [PATCH 1/8] toradex: integrate command whitelisting (k3)
 
 v1:
 

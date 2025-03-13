@@ -1,7 +1,7 @@
-From 6ced049f833c0b78b6e1235b3e297f7f2e4e5736 Mon Sep 17 00:00:00 2001
+From 8b7785cadc7b75c0503c547bd253ef660f4b5e5d Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Wed, 26 Jun 2024 16:08:52 -0300
-Subject: [PATCH 2/7] toradex: integrate bootm protection (upstream)
+Subject: [PATCH 2/8] toradex: integrate bootm protection (upstream)
 
 Integrate the protection to the bootm command to only allow booting
 from FIT images. With the proper configuration of U-Boot (enabling FIT

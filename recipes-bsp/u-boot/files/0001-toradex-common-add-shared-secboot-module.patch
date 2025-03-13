@@ -299,7 +299,7 @@ index 00000000000..ee2dfdd884e
 +	}
 +
 +	if (prop) {
-+		int ret, val;
++		int val;
 +		/* Return an exit code of 16 to indicate an unknown property. */
 +		if (_secboot_get_prop(prop, &val) != 0) {
 +			eprintf("Unknown property: %s\n", prop);
