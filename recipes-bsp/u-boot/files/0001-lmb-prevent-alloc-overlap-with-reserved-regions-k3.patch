@@ -1,0 +1,84 @@
+From 3c86dfe96b06352231670bdbc47a06c0a8b01c40 Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Wed, 12 Mar 2025 19:47:36 -0300
+Subject: [PATCH] lmb: prevent alloc overlap with reserved regions (k3)
+
+Add explicit check into lmb_alloc_addr() to prevent the allocated memory
+range to overlap with reserved regions. Also, change the return value of
+the function when the allocation is unsuccessful to prevent failures to
+allocate address 0x0 from being misinterpreted as a success.
+
+The function lmb_alloc_addr() is currently called only in the context of
+the "load" command so that the present change should only impact that
+particular command and no other U-Boot functionality.
+
+Upstream-Status: Pending
+
+Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+---
+ lib/lmb.c | 43 +++++++++++++++++++++++++++++++------------
+ 1 file changed, 31 insertions(+), 12 deletions(-)
+
+diff --git a/lib/lmb.c b/lib/lmb.c
+index 44f98205310..8bcceb47bd7 100644
+--- a/lib/lmb.c
++++ b/lib/lmb.c
+@@ -505,24 +505,43 @@ phys_addr_t __lmb_alloc_base(struct lmb *lmb, phys_size_t size, ulong align, phy
+  */
+ phys_addr_t lmb_alloc_addr(struct lmb *lmb, phys_addr_t base, phys_size_t size)
+ {
++	int i;
+ 	long rgn;
+ 
+ 	/* Check if the requested address is in one of the memory regions */
+ 	rgn = lmb_overlaps_region(&lmb->memory, base, size);
+-	if (rgn >= 0) {
+-		/*
+-		 * Check if the requested end address is in the same memory
+-		 * region we found.
+-		 */
+-		if (lmb_addrs_overlap(lmb->memory.region[rgn].base,
+-				      lmb->memory.region[rgn].size,
+-				      base + size - 1, 1)) {
+-			/* ok, reserve the memory */
+-			if (lmb_reserve(lmb, base, size) >= 0)
+-				return base;
++	if (rgn < 0)
++		goto err;
++
++	/* Ensure end address is in the same memory region we found */
++	if (!lmb_addrs_overlap(lmb->memory.region[rgn].base,
++			       lmb->memory.region[rgn].size,
++			       base + size - 1, 1))
++		goto err;
++
++	/* Check for overlap with reserved regions */
++	for (i = 0; i < lmb->reserved.cnt; i++) {
++		if (lmb_addrs_overlap(lmb->reserved.region[i].base,
++				      lmb->reserved.region[i].size,
++				      base, size)) {
++			debug("Requested range overlaps with region "
++			      "reserved[%d]: [0x%llx-0x%llx]\n", i,
++			      (u64) lmb->reserved.region[i].base,
++			      ((u64) lmb->reserved.region[i].base +
++			       lmb->reserved.region[i].size - 1));
++			goto err;
+ 		}
+ 	}
+-	return 0;
++
++	/* All good, reserve the memory. */
++	if (lmb_reserve(lmb, base, size) >= 0)
++		return base;
++
++err:
++	debug("Couldn't allocate range [0x%llx-0x%llx]\n",
++	      (u64) base, (u64) base + size - 1);
++
++	return (phys_addr_t) -1;
+ }
+ 
+ /* Return number of bytes from a given address that are free */
+-- 
+2.34.1
+
