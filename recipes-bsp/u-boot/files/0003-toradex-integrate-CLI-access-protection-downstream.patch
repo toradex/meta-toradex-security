@@ -1,7 +1,7 @@
-From df7b2d7333d73960600c312b1fbf976de7c008a6 Mon Sep 17 00:00:00 2001
+From e4cd131e9a90e2ee84343f18e8b46d888e864e0c Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Wed, 16 Oct 2024 19:10:41 -0300
-Subject: [PATCH 3/7] toradex: integrate CLI access protection (downstream)
+Subject: [PATCH 3/8] toradex: integrate CLI access protection (downstream)
 
 Integrate the protection in U-Boot to prevent access to its CLI once the
 device is closed; this is part of the hardening for Secure Boot.
@@ -15,7 +15,7 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  2 files changed, 12 insertions(+)
 
 diff --git a/Kconfig b/Kconfig
-index 258de43d449..f8df1a262a1 100644
+index 73a0dd8cfd8..d39a38879cc 100644
 --- a/Kconfig
 +++ b/Kconfig
 @@ -747,6 +747,7 @@ config TDX_SECBOOT_HARDENING

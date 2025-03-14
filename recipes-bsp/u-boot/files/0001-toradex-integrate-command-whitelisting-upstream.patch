@@ -1,7 +1,7 @@
-From 02a5998c98e0dbe094818e30f9f0b9a58a4cdb90 Mon Sep 17 00:00:00 2001
+From d9a8c7c84c28f814c7b5b8fa3491aa8c0a01f08b Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:29:34 -0300
-Subject: [PATCH 1/7] toradex: integrate command whitelisting (upstream)
+Subject: [PATCH 1/8] toradex: integrate command whitelisting (upstream)
 
 v1:
 

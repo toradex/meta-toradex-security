@@ -9,9 +9,10 @@ TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM = "\
     file://0002-toradex-integrate-bootm-protection-downstream.patch \
     file://0003-toradex-integrate-CLI-access-protection-downstream.patch \
     file://0004-toradex-integrate-bootargs-protection-downstream.patch \
-    file://0005-toradex-cmd-fuse-add-switch-for-quiet-operation-down.patch \
-    file://0006-toradex-cmd-fuse-add-readv-command-downstream.patch \
-    file://0007-toradex-cmd-setexpr-integrate-protections-downstream.patch \
+    file://0005-toradex-integrate-load-protection-downstream.patch \
+    file://0006-toradex-cmd-fuse-add-switch-for-quiet-operation-down.patch \
+    file://0007-toradex-cmd-fuse-add-readv-command-downstream.patch \
+    file://0008-toradex-cmd-setexpr-integrate-protections-downstream.patch \
 "
 
 TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM_K3 = "\
@@ -20,9 +21,10 @@ TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM_K3 = "\
     file://0002-toradex-integrate-bootm-protection-downstream.patch \
     file://0003-toradex-integrate-CLI-access-protection-downstream.patch \
     file://0004-toradex-integrate-bootargs-protection-k3.patch \
-    file://0005-toradex-cmd-fuse-add-switch-for-quiet-operation-down.patch \
-    file://0006-toradex-cmd-fuse-add-readv-command-downstream.patch \
-    file://0007-toradex-cmd-setexpr-integrate-protections-downstream.patch \
+    file://0005-toradex-integrate-load-protection-k3.patch \
+    file://0006-toradex-cmd-fuse-add-switch-for-quiet-operation-down.patch \
+    file://0007-toradex-cmd-fuse-add-readv-command-downstream.patch \
+    file://0008-toradex-cmd-setexpr-integrate-protections-downstream.patch \
 "
 
 TDX_UBOOT_HARDENING_PATCHES_UPSTREAM = "\
@@ -31,9 +33,10 @@ TDX_UBOOT_HARDENING_PATCHES_UPSTREAM = "\
     file://0002-toradex-integrate-bootm-protection-upstream.patch \
     file://0003-toradex-integrate-CLI-access-protection-upstream.patch \
     file://0004-toradex-integrate-bootargs-protection-upstream.patch \
-    file://0005-toradex-cmd-fuse-add-switch-for-quiet-operation-upst.patch \
-    file://0006-toradex-cmd-fuse-add-readv-command-upstream.patch \
-    file://0007-toradex-cmd-setexpr-integrate-protections-upstream.patch \
+    file://0005-toradex-integrate-load-protection-upstream.patch \
+    file://0006-toradex-cmd-fuse-add-switch-for-quiet-operation-upst.patch \
+    file://0007-toradex-cmd-fuse-add-readv-command-upstream.patch \
+    file://0008-toradex-cmd-setexpr-integrate-protections-upstream.patch \
 "
 
 TDX_UBOOT_HARDENING_PATCHES = "${TDX_UBOOT_HARDENING_PATCHES_UPSTREAM}"
