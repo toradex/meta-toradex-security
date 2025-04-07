@@ -110,12 +110,20 @@ imx8m_sign_habv4() {
         bbfatal "Could not find CST binary at ${TDX_IMX_HAB_CST_BIN}."
     fi
 
-    for f in "${TDX_IMX_HAB_CST_SRK}" "${TDX_IMX_HAB_CST_CSF_CERT}" \
-             "${TDX_IMX_HAB_CST_IMG_CERT}" "${TDX_IMX_HAB_CST_SRK_FUSE}"; do
+    for f in "${TDX_IMX_HAB_CST_SRK}" "${TDX_IMX_HAB_CST_SRK_CERT}" \
+             "${TDX_IMX_HAB_CST_SRK_FUSE}"; do
         if [ ! -e "${f}" ]; then
             bbfatal "Could not find file '${f}' (required for HAB)."
         fi
     done
+
+    if [ "${TDX_IMX_HAB_CST_SRK_CA}" = "1" ]; then
+        for f in "${TDX_IMX_HAB_CST_CSF_CERT}" "${TDX_IMX_HAB_CST_IMG_CERT}"; do
+            if [ ! -e "${f}" ]; then
+                bbfatal "Could not find file '${f}' (required for HAB when the CA flag is set)."
+            fi
+        done
+    fi
 
     # Save unsigned image
     cp "flash.bin" "flash.bin-unsigned"
