@@ -13,15 +13,17 @@
 # UBOOT_SIGN_ENABLE are set, by default.
 #
 def default_tdx_uboot_hardening_enable(d):
+    unsupported_machines = ["aquila-am69", "imx95-19x19-verdin"]
+    for machine in unsupported_machines:
+        if (machine in d.getVar('OVERRIDES').split(':')):
+            bb.warnonce("%s machine requires some additional work to have "\
+                        "out-of-the-box support for U-Boot hardening, so " \
+                        "it is currently disabled by default." % machine)
+            return False
     if ('imx-generic-bsp' in d.getVar('OVERRIDES').split(':') and
         bb.utils.to_boolean(d.getVar('TDX_IMX_HAB_ENABLE')) and
         bb.utils.to_boolean(d.getVar('UBOOT_SIGN_ENABLE'))):
         return True
-    if ('aquila-am69' in d.getVar('OVERRIDES').split(':')):
-        bb.warnonce("Aquila AM69 requires some additional work to have "\
-                "out-of-the-box support for U-Boot hardening, so " \
-                "it is currently disabled by default.")
-        return False
     if ('k3' in d.getVar('OVERRIDES').split(':') and
         bb.utils.to_boolean(d.getVar('TDX_K3_HSSE_ENABLE')) and
         bb.utils.to_boolean(d.getVar('UBOOT_SIGN_ENABLE'))):
