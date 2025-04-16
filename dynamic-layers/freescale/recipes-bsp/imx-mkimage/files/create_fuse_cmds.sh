@@ -30,12 +30,12 @@ fuse_write_line() {
     echo "fuse prog -y $bank $word $hexval"
 }
 
-create_fuse_cmds_mx8() {
+create_ahab_fuse_cmds() {
     echo "${WARNING1}"
 
     # commands to program SRK_HASH fuses
-    bank=0
-    word=$1
+    bank=$1
+    word=$2
     for hexval in $(hexdump -e '/4 "0x"' -e '/4 "%X""\n"' ${SRK_FUSE_FILE}); do
         fuse_write_line $bank $word $hexval
         word=$((word+1))
@@ -48,13 +48,16 @@ create_fuse_cmds_mx8() {
 
 case ${SOC} in
     "iMX8QX")
-        create_fuse_cmds_mx8 730 > ${FUSE_CMDS_FILE}
+        create_ahab_fuse_cmds 0 730 > ${FUSE_CMDS_FILE}
         ;;
     "iMX8QM")
-        create_fuse_cmds_mx8 722 > ${FUSE_CMDS_FILE}
+        create_ahab_fuse_cmds 0 722 > ${FUSE_CMDS_FILE}
+        ;;
+    "iMX95")
+        create_ahab_fuse_cmds 16 0 > ${FUSE_CMDS_FILE}
         ;;
     *)
-        echo "Invalid SOC!"
+        echo "Error creating fuse commands file - SoC is invalid [${SOC}]!"
         return 1
         ;;
 esac
