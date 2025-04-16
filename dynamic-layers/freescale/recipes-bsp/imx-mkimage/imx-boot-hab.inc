@@ -16,7 +16,7 @@ sign_ahab_helper() {
 
         # re-generate flash.bin and save logs
         make SOC=${IMX_BOOT_SOC_TARGET} ${REV_OPTION} dtbs=${UBOOT_DTB_NAME_EXTRA} \
-             ${target} > ${MKIMAGE_BUILD_LOG} 2>&1
+             ${MKIMAGE_EXTRA_ARGS} ${target} > ${MKIMAGE_BUILD_LOG} 2>&1
 
         # sign flash.bin
         TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
@@ -115,6 +115,10 @@ do_compile:append:mx8qm-generic-bsp() {
 }
 
 do_compile:append:mx8x-generic-bsp() {
+    sign_common ahab
+}
+
+do_compile:append:mx9-generic-bsp() {
     sign_common ahab
 }
 
