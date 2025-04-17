@@ -113,8 +113,8 @@ do_compile:prepend:imx-generic-bsp() {
 }
 
 do_compile:prepend:k3() {
-    if [ "${TDX_K3_HSSE_ENABLE}" = "0" ] && [ "${TDX_UBOOT_HARDENING_ENABLE}" = "1" ]; then
-        bbfatal 'The combination TDX_K3_HSSE_ENABLE="0" and TDX_UBOOT_HARDENING_ENABLE="1" is not allowed:' \
+    if [ "${TDX_K3_SECBOOT_ENABLE}" = "0" ] && [ "${TDX_UBOOT_HARDENING_ENABLE}" = "1" ]; then
+        bbfatal 'The combination TDX_K3_SECBOOT_ENABLE="0" and TDX_UBOOT_HARDENING_ENABLE="1" is not allowed:' \
                 'the whitelisting feature (part of the hardening) currently relies on K3.'
     fi
 }

@@ -1,6 +1,6 @@
 update_signing_keys() {
     rm -Rf ${S}/arch/arm/mach-k3/keys
-    ln -s ${TDX_K3_HSSE_KEY_DIR} ${S}/arch/arm/mach-k3/keys
+    ln -s ${TDX_K3_SECBOOT_KEY_DIR} ${S}/arch/arm/mach-k3/keys
 }
 
 do_unpack:append() {
