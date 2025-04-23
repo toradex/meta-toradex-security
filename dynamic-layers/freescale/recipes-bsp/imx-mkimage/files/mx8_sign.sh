@@ -110,18 +110,19 @@ generate_csf_ahab() {
     sed -i "s|@@CST_KEY@@|${TDX_IMX_HAB_CST_SRK_CERT}|g" "${image_csf}"
     sed -i "s|@@CST_KIDX@@|${kidx}|g" "${image_csf}"
 
-    if [ "${TDX_IMX_HAB_CST_SRK_CERT##*_ca_}" = "crt.pem" ]; then
+    if [ "${TDX_IMX_HAB_CST_SGK_SUPP}" = "0" ] || [ "${TDX_IMX_HAB_CST_SRK_CERT##*_usr_}" = "crt.pem" ]; then
+        # SGK not supported or file name ends with "_usr_crt.pem": an SGK is not expected.
+        # Remove SGK block from CSF.
+        echo "Inferred that CA flag was not set; signing with SRK only."
+        sed -i "/#+START_SGK_BLOCK/,/#+END_SGK_BLOCK/d" "${image_csf}"
+
+    elif [ "${TDX_IMX_HAB_CST_SRK_CERT##*_ca_}" = "crt.pem" ]; then
         # File name ends with "_ca_crt.pem": an SGK is expected.
         local sgk="${TDX_IMX_HAB_CST_SGK_CERT?TDX_IMX_HAB_CST_SGK_CERT must be set}"
         echo "Inferred that CA flag was set; signing with SRK and SGK."
         sed -i "/#+START_SGK_BLOCK/d; /#+END_SGK_BLOCK/d" "${image_csf}"
         sed -i "s|@@CST_SGK@@|${sgk}|g" "${image_csf}"
 
-    elif [ "${TDX_IMX_HAB_CST_SRK_CERT##*_usr_}" = "crt.pem" ]; then
-        # File name ends with "_usr_crt.pem": an SGK is not expected.
-        # Remove SGK block from CSF.
-        echo "Inferred that CA flag was not set; signing with SRK only."
-        sed -i "/#+START_SGK_BLOCK/,/#+END_SGK_BLOCK/d" "${image_csf}"
     else
         # File name does not follow expected pattern.
         echo "Certificate file name (defined by TDX_IMX_HAB_CST_SRK_CERT)" \

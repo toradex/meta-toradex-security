@@ -23,6 +23,7 @@ sign_ahab_helper() {
         TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
         TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
         TDX_IMX_HAB_CST_SGK_CERT="${TDX_IMX_HAB_CST_SGK_CERT}" \
+        TDX_IMX_HAB_CST_SGK_SUPP="${TDX_IMX_HAB_CST_SGK_SUPP}" \
         UNSIGNED_IMAGE="${IMXBOOT_IMAGE}" \
         LOG_MKIMAGE="${MKIMAGE_BUILD_LOG}" \
         ${WORKDIR}/mx8_sign.sh -t ${target}

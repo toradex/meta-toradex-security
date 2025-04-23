@@ -114,6 +114,7 @@ def make_sub_cert_name(d, prefix, basedir):
 # - TDX_IMX_HAB_CST_CSF_CERT: Path to CSF certificate file (*); used with HAB only.
 # - TDX_IMX_HAB_CST_IMG_CERT: Path to IMG certificate file (*); used with HAB only.
 # - TDX_IMX_HAB_CST_SGK_CERT: Path to SGK certificate file (*); used with AHAB only.
+# - TDX_IMX_HAB_CST_SGK_SUPP: Whether SGK is supported by the SoC firmware ('1') or not ('0').
 #
 # (*): Notice that the CSF/IMG/SGK certificates are only ever used when the SRK
 #      certificate has the CA flag set.
@@ -125,3 +126,7 @@ TDX_IMX_HAB_CST_SRK_CERT  ?= "${@make_srk_cert_name(d, d.getVar('TDX_IMX_HAB_CST
 TDX_IMX_HAB_CST_CSF_CERT  ?= "${@make_sub_cert_name(d, 'CSF', d.getVar('TDX_IMX_HAB_CST_CERTS_DIR'))}"
 TDX_IMX_HAB_CST_IMG_CERT  ?= "${@make_sub_cert_name(d, 'IMG', d.getVar('TDX_IMX_HAB_CST_CERTS_DIR'))}"
 TDX_IMX_HAB_CST_SGK_CERT  ?= "${@make_sub_cert_name(d, 'SGK', d.getVar('TDX_IMX_HAB_CST_CERTS_DIR'))}"
+TDX_IMX_HAB_CST_SGK_SUPP  ?= "1"
+
+# Only SRK is supported in the current released firmware (April 2025) for iMX9 based SoCs
+TDX_IMX_HAB_CST_SGK_SUPP:mx9-generic-bsp ?= "0"
