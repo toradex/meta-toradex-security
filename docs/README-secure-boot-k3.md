@@ -102,8 +102,12 @@ A few variables can be used to configure its behavior:
 
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
-| `TDX_K3_HSSE_ENABLE` | Enable/disable secure boot support; allowed values: `0` or `1`. | `1` |
-| `TDX_K3_HSSE_KEY_DIR` | Location of the keys and certificates that will be used to sign the bootloader images. See the previous session for an example on how to create the keys. | `${TOPDIR}/keys/ti` |
+| `TDX_K3_SECBOOT_ENABLE` | Enable/disable secure boot support; allowed values: `0` or `1`. | `1` |
+| `TDX_K3_SECBOOT_KEY_DIR` | Location of the keys and certificates that will be used to sign the bootloader images. See the previous session for an example on how to create the keys. | `${TOPDIR}/keys/ti` |
+| `TDX_K3_SECBOOT_TARGET_HSSE_DEVICE` | Whether the build is targeting a HS-FS (`0` (development)) or HS-SE (`1` (production)) device. | `0` |
+| `TDX_K3_SUPPRESS_HSSE_WARNINGS` | Whether to suppress some warning messages about the type of device (HS-FS/HS-SE) that the generated image is targeted. | `0` |
+
+**NOTE**: Older versions of this layer provided variables `TDX_K3_HSSE_ENABLE` and `TDX_K3_HSSE_KEY_DIR` which are no longer available. The former has been replaced by `TDX_K3_SECBOOT_ENABLE` along with `TDX_K3_SECBOOT_TARGET_HSSE_DEVICE` and the latter by `TDX_K3_SECBOOT_KEY_DIR`.
 
 ### Fusing the keys into the SoC
 

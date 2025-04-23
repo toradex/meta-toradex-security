@@ -25,7 +25,7 @@ def default_tdx_uboot_hardening_enable(d):
         bb.utils.to_boolean(d.getVar('UBOOT_SIGN_ENABLE'))):
         return True
     if ('k3' in d.getVar('OVERRIDES').split(':') and
-        bb.utils.to_boolean(d.getVar('TDX_K3_HSSE_ENABLE')) and
+        bb.utils.to_boolean(d.getVar('TDX_K3_SECBOOT_ENABLE')) and
         bb.utils.to_boolean(d.getVar('UBOOT_SIGN_ENABLE'))):
         return True
     return False
