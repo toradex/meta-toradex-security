@@ -8,35 +8,42 @@ SRC_URI:append = "\
     file://mx8_template.csf \
 "
 
+sign_ahab_image() {
+    local orig_image=$1
+    local dest_image=$2
+    local make_target=$3
+
+    local logfile=${WORKDIR}/mkimage-${make_target}.log
+
+    # re-generate image and save logs
+    make SOC=${IMX_BOOT_SOC_TARGET} ${REV_OPTION} dtbs=${UBOOT_DTB_NAME_EXTRA} \
+         ${MKIMAGE_EXTRA_ARGS} ${make_target} > ${logfile} 2>&1
+
+    # sign image
+    TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
+    TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
+    TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
+    TDX_IMX_HAB_CST_SGK_CERT="${TDX_IMX_HAB_CST_SGK_CERT}" \
+    TDX_IMX_HAB_CST_SGK_SUPP="${TDX_IMX_HAB_CST_SGK_SUPP}" \
+    UNSIGNED_IMAGE="${orig_image}" \
+    LOG_MKIMAGE="${logfile}" \
+    ${WORKDIR}/mx8_sign.sh -t ${make_target}
+
+    # copy signed image
+    cp -v ${orig_image}-signed ${dest_image}
+}
+
 sign_ahab_helper() {
-    MKIMAGE_BUILD_LOG=${WORKDIR}/mkimage.log
-
+    # sign boot container
     for target in ${IMXBOOT_TARGETS}; do
-        IMXBOOT_IMAGE="${S}/${BOOT_CONFIG_MACHINE_EXTRA}-${target}"
-
-        # re-generate flash.bin and save logs
-        make SOC=${IMX_BOOT_SOC_TARGET} ${REV_OPTION} dtbs=${UBOOT_DTB_NAME_EXTRA} \
-             ${MKIMAGE_EXTRA_ARGS} ${target} > ${MKIMAGE_BUILD_LOG} 2>&1
-
-        # sign flash.bin
-        TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
-        TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
-        TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
-        TDX_IMX_HAB_CST_SGK_CERT="${TDX_IMX_HAB_CST_SGK_CERT}" \
-        TDX_IMX_HAB_CST_SGK_SUPP="${TDX_IMX_HAB_CST_SGK_SUPP}" \
-        UNSIGNED_IMAGE="${IMXBOOT_IMAGE}" \
-        LOG_MKIMAGE="${MKIMAGE_BUILD_LOG}" \
-        ${WORKDIR}/mx8_sign.sh -t ${target}
-
-        # update flash.bin to signed image
-        cp -v ${IMXBOOT_IMAGE} ${IMXBOOT_IMAGE}-unsigned
-        cp -v ${IMXBOOT_IMAGE}-signed ${IMXBOOT_IMAGE}
-
-        # create fuse commands
-        ${WORKDIR}/create_fuse_cmds.sh \
-                  ${IMX_BOOT_SOC_TARGET} ${TDX_IMX_HAB_CST_SRK_FUSE} \
-                  ${WORKDIR}/fuse-cmds.txt
+        local imgfile="${S}/${IMX_BOOT_SOC_TARGET}/flash.bin"
+        sign_ahab_image "${imgfile}" "${S}/${BOOT_CONFIG_MACHINE_EXTRA}-${target}" "${target}"
     done
+
+    # create fuse commands
+    ${WORKDIR}/create_fuse_cmds.sh \
+        ${IMX_BOOT_SOC_TARGET} ${TDX_IMX_HAB_CST_SRK_FUSE} \
+        ${WORKDIR}/fuse-cmds.txt
 }
 
 sign_habv4_helper() {
