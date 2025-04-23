@@ -36,7 +36,21 @@ sign_ahab_image() {
 sign_ahab_helper() {
     # sign boot container
     for target in ${IMXBOOT_TARGETS}; do
-        local imgfile="${S}/${IMX_BOOT_SOC_TARGET}/flash.bin"
+        local imgfile=""
+
+        # On iMX95, the u-boot-atf-container.img is generated separately
+        # and appended to flash.bin later. Therefore, it must be signed
+        # before creating and signing the final boot container image.
+        if [ "${IMX_BOOT_SOC_TARGET}" = "iMX95" ]; then
+            local imgdir="${S}/iMX95"
+            local imgname="u-boot-atf-container.img"
+            imgfile="${imgdir}/${imgname}"
+
+            rm -rf "${imgfile}"
+            sign_ahab_image "${imgfile}" "${imgfile}" "${imgname}"
+        fi
+
+        imgfile="${S}/${IMX_BOOT_SOC_TARGET}/flash.bin"
         sign_ahab_image "${imgfile}" "${S}/${BOOT_CONFIG_MACHINE_EXTRA}-${target}" "${target}"
     done
 
