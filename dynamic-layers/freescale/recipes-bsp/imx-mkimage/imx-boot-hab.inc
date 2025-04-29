@@ -8,34 +8,56 @@ SRC_URI:append = "\
     file://mx8_template.csf \
 "
 
+sign_ahab_image() {
+    local orig_image=$1
+    local dest_image=$2
+    local make_target=$3
+
+    local logfile=${WORKDIR}/mkimage-${make_target}.log
+
+    # re-generate image and save logs
+    make SOC=${IMX_BOOT_SOC_TARGET} ${REV_OPTION} dtbs=${UBOOT_DTB_NAME_EXTRA} \
+         ${MKIMAGE_EXTRA_ARGS} ${make_target} > ${logfile} 2>&1
+
+    # sign image
+    TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
+    TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
+    TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
+    TDX_IMX_HAB_CST_SGK_CERT="${TDX_IMX_HAB_CST_SGK_CERT}" \
+    TDX_IMX_HAB_CST_SGK_SUPP="${TDX_IMX_HAB_CST_SGK_SUPP}" \
+    UNSIGNED_IMAGE="${orig_image}" \
+    LOG_MKIMAGE="${logfile}" \
+    ${WORKDIR}/mx8_sign.sh -t ${make_target}
+
+    # copy signed image
+    cp -v ${orig_image}-signed ${dest_image}
+}
+
 sign_ahab_helper() {
-    MKIMAGE_BUILD_LOG=${WORKDIR}/mkimage.log
-
+    # sign boot container
     for target in ${IMXBOOT_TARGETS}; do
-        IMXBOOT_IMAGE="${S}/${BOOT_CONFIG_MACHINE_EXTRA}-${target}"
+        local imgfile=""
 
-        # re-generate flash.bin and save logs
-        make SOC=${IMX_BOOT_SOC_TARGET} ${REV_OPTION} dtbs=${UBOOT_DTB_NAME_EXTRA} \
-             ${MKIMAGE_EXTRA_ARGS} ${target} > ${MKIMAGE_BUILD_LOG} 2>&1
+        # On iMX95, the u-boot-atf-container.img is generated separately
+        # and appended to flash.bin later. Therefore, it must be signed
+        # before creating and signing the final boot container image.
+        if [ "${IMX_BOOT_SOC_TARGET}" = "iMX95" ]; then
+            local imgdir="${S}/iMX95"
+            local imgname="u-boot-atf-container.img"
+            imgfile="${imgdir}/${imgname}"
 
-        # sign flash.bin
-        TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
-        TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
-        TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
-        TDX_IMX_HAB_CST_SGK_CERT="${TDX_IMX_HAB_CST_SGK_CERT}" \
-        UNSIGNED_IMAGE="${IMXBOOT_IMAGE}" \
-        LOG_MKIMAGE="${MKIMAGE_BUILD_LOG}" \
-        ${WORKDIR}/mx8_sign.sh -t ${target}
+            rm -rf "${imgfile}"
+            sign_ahab_image "${imgfile}" "${imgfile}" "${imgname}"
+        fi
 
-        # update flash.bin to signed image
-        cp -v ${IMXBOOT_IMAGE} ${IMXBOOT_IMAGE}-unsigned
-        cp -v ${IMXBOOT_IMAGE}-signed ${IMXBOOT_IMAGE}
-
-        # create fuse commands
-        ${WORKDIR}/create_fuse_cmds.sh \
-                  ${IMX_BOOT_SOC_TARGET} ${TDX_IMX_HAB_CST_SRK_FUSE} \
-                  ${WORKDIR}/fuse-cmds.txt
+        imgfile="${S}/${IMX_BOOT_SOC_TARGET}/flash.bin"
+        sign_ahab_image "${imgfile}" "${S}/${BOOT_CONFIG_MACHINE_EXTRA}-${target}" "${target}"
     done
+
+    # create fuse commands
+    ${WORKDIR}/create_fuse_cmds.sh \
+        ${IMX_BOOT_SOC_TARGET} ${TDX_IMX_HAB_CST_SRK_FUSE} \
+        ${WORKDIR}/fuse-cmds.txt
 }
 
 sign_habv4_helper() {
@@ -53,6 +75,13 @@ sign_common() {
 
     if [ ! -e "${TDX_IMX_HAB_CST_SRK_FUSE}" ]; then
         bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
+    fi
+
+    local srk_cert=${TDX_IMX_HAB_CST_SRK_CERT}
+    if [ "${srk_cert##*_ca_}" = "crt.pem" ] && [ "${TDX_IMX_HAB_CST_SGK_SUPP}" = "0" ]; then
+        bbwarn "AHAB (Secure Boot) signing keys seem to have the CA flag enabled, but" \
+               "the build target [${MACHINE}] does not support the use of subordinate" \
+               "signing keys. Bootloader will be signed using SRK directly."
     fi
 
     # The basic structure of this comes from meta-freescale/imx-boot_*.bb:
