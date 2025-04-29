@@ -77,6 +77,13 @@ sign_common() {
         bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
     fi
 
+    local srk_cert=${TDX_IMX_HAB_CST_SRK_CERT}
+    if [ "${srk_cert##*_ca_}" = "crt.pem" ] && [ "${TDX_IMX_HAB_CST_SGK_SUPP}" = "0" ]; then
+        bbwarn "AHAB (Secure Boot) signing keys seem to have the CA flag enabled, but" \
+               "the build target [${MACHINE}] does not support the use of subordinate" \
+               "signing keys. Bootloader will be signed using SRK directly."
+    fi
+
     # The basic structure of this comes from meta-freescale/imx-boot_*.bb:
     for type in ${UBOOT_CONFIG}; do
         if [ "${@d.getVarFlags('UBOOT_DTB_NAME')}" = "None" ]; then
