@@ -34,8 +34,4 @@ verity_setup:append() {
 }
 
 # fix cyclic dependency when inheriting image_type_tezi.bbclass
-IMAGE_FSTYPES:remove = "wic.bmap wic.gz"
-DEPENDS:remove:pn-${DM_VERITY_IMAGE} = "imx-boot"
-IMAGE_BOOTFS_DEPENDS:pn-${DM_VERITY_IMAGE} = "virtual/kernel:do_build"
-IMAGE_BOOTFS_DEPENDS:mx8-generic-bsp:pn-${DM_VERITY_IMAGE} = "${@ 'imx-boot:do_build' if d.getVar('UBOOT_PROVIDES_BOOT_CONTAINER') == '0' else 'virtual/kernel:do_build'}"
-do_image_bootfs[depends] += "${IMAGE_BOOTFS_DEPENDS}"
+require ${@ 'include/signed/tdx-signed-dmverity-tezi.inc' if 'teziimg' in d.getVar('IMAGE_FSTYPES') else ''}
