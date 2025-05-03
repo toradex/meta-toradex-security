@@ -8,7 +8,7 @@ To support bootloader signature checking, such a feature needs to be available i
 
 On iMX6, iMX7 and iMX8M, this feature is available and it is called HAB (High Assurance Boot).
 
-On iMX8 and iMX8X, this feature is available and it is called AHAB (Advanced High Assurance Boot).
+On iMX8, iMX8X and iMX95, this feature is available and it is called AHAB (Advanced High Assurance Boot).
 
 ## Configuring HAB/AHAB support
 
