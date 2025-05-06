@@ -11,8 +11,11 @@ TDX_K3_SECBOOT_KEY_DIR ?= "${TOPDIR}/keys/ti"
 # variable TDX_K3_SECBOOT_TARGET_HSSE_DEVICE:
 TDX_K3_SUPPRESS_HSSE_WARNINGS ?= "0"
 
-# Use secure variant of tiboot3.bin:
-require ${@'tdx-signed-k3-secboot-tiboot3.inc' if bb.utils.to_boolean(d.getVar("TDX_K3_SECBOOT_ENABLE")) and bb.utils.to_boolean(d.getVar("TDX_K3_SECBOOT_TARGET_HSSE_DEVICE")) else ''}
+# Choose between HSSE/HSFS variants of tiboot3.bin:
+def target_hsse(d):
+    return bb.utils.to_boolean(d.getVar('TDX_K3_SECBOOT_ENABLE')) and \
+           bb.utils.to_boolean(d.getVar('TDX_K3_SECBOOT_TARGET_HSSE_DEVICE'))
+SYSFW_SUFFIX := "${@'hs' if target_hsse(d) else 'hs-fs'}"
 
 # Sanity check:
 addhandler validate_k3_secboot_variables
