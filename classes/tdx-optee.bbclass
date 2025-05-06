@@ -73,9 +73,10 @@ validate_optee_support[eventmask] = "bb.event.SanityCheck"
 python validate_optee_support() {
     supported_machines = [
         'aquila-am69',
-        'verdin-imx8mp',
-        'verdin-imx8mm',
+        'imx95-19x19-verdin',
         'verdin-am62',
+        'verdin-imx8mm',
+        'verdin-imx8mp',
     ]
 
     if e.data.getVar('TDX_OPTEE_ENABLE') == '0':
