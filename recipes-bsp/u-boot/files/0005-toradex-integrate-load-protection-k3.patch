@@ -125,13 +125,13 @@ index 8bcceb47bd7..a7bd913df13 100644
 +
 +	/*
 +	 * Ensure the end address is within the memory region and below offset
-+	 * 1G-64MB / 512M-64MB (on low-memory devices). On a 1GB/512MB device,
-+	 * this should give U-Boot 64MB to use at the end of the memory and it
-+	 * should be compatible with all Toradex boot scripts.
++	 * 1G-64MB / 512M-64MB (on low-memory devices). This should give U-Boot
++	 * 64MB to use at the end of the memory and it should be compatible with
++	 * all Toradex boot scripts.
 +	 */
 +	off = end - lmb->memory.region[rgn].base;
-+	lim = (lmb->memory.region[rgn].size >= SZ_1G) ?
-+		(SZ_1G - SZ_64M) : (SZ_512M - SZ_64M);
++	lim = min(lmb->memory.region[rgn].size, SZ_1G);
++	lim = max(lim, SZ_64M) - SZ_64M;
 +
 +	debug("Checking offset 0x%llx against limit 0x%llx; "
 +	      "memory start: 0x%llx, size: 0x%llx\n",
