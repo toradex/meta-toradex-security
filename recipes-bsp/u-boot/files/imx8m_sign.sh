@@ -10,15 +10,18 @@ UBOOT_DTB_BINARY="${UBOOT_DTB_BINARY:-u-boot.dtb.out}"
 UBOOT_CONTAINER_BINARY="${UBOOT_CONTAINER_BINARY:-flash.bin}"
 CSF_PREFIX="${CSF_PREFIX:-csf-for-}"
 
+# shellcheck disable=SC2155
 readonly FILE_SCRIPT="$(basename "$0")"
+# shellcheck disable=SC2155
 readonly DIR_SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 readonly CSF_SPL="${CSF_PREFIX}spl"
 readonly CSF_FIT="${CSF_PREFIX}fit"
 
 error() {
-    echo "***"
+    echo "***" >&2
     echo " ERROR: ${1}" >&2
-    echo "***"
+    echo "***" >&2
+    exit 1
 }
 
 help() {
@@ -76,11 +79,9 @@ check_fileref() {
     local varname="${2?variable name expected}"
     if [ -z "${file}" ]; then
         error "Please set environment variable '${varname}'"
-        help
     fi
     if [ ! -f "${file}" ]; then
         error "Could not find '${file}' referenced by variable ${varname} (CWD=$(pwd))"
-        exit 1
     fi
     echo "Verified ${varname}=${file}"
 }
@@ -125,7 +126,6 @@ generate_csf_common() {
         exit 1
     fi
 
-    # TODO: Test signing with indices other than 1.
     if [ "${kidx}" -ge 1 ] && [ "${kidx}" -le 4 ]; then
         echo "Using SRK${kidx} for signing."
     else
