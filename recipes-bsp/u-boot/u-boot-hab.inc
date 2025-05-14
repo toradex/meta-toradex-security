@@ -57,6 +57,7 @@ imx6_imx7_sign_habv4() {
     bbdebug 1 "Generating CSF for U-Boot"
     # Generate CSF file:
     TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
+    TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
     TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
     TDX_IMX_HAB_CST_IMG_CERT="${TDX_IMX_HAB_CST_IMG_CERT}" \
     TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
@@ -78,6 +79,7 @@ imx6_imx7_sign_habv4() {
     if [ -n "${SPL_BINARY}" ]; then
         bbdebug 1 "Generating CSF for the U-Boot SPL"
         TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
+        TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
         TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
         TDX_IMX_HAB_CST_IMG_CERT="${TDX_IMX_HAB_CST_IMG_CERT}" \
         TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
