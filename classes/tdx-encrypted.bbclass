@@ -7,6 +7,7 @@ DISTROOVERRIDES .= ":tdx-encrypted"
 #    cleartext -> key is stored in clear text (for testing purposes only!)
 #    caam      -> use CAAM (available only on iMX based SoMs)
 #    tpm       -> use TPM (Trusted Platform Module)
+#    tee       -> use TEE (Trusted Execution Environment)
 TDX_ENC_KEY_BACKEND ?= ""
 TDX_ENC_KEY_BACKEND:imx-generic-bsp ?= "caam"
 
@@ -64,7 +65,7 @@ python validate_enc_parameters() {
     key_backend = e.data.getVar('TDX_ENC_KEY_BACKEND')
     if key_backend == "":
         bb.fatal("Please set key backend provider via TDX_ENC_KEY_BACKEND.")
-    supported_key_backends = ['cleartext','caam','tpm']
+    supported_key_backends = ['cleartext','caam','tpm','tee']
     if key_backend not in supported_key_backends:
         bb.fatal("'%s' is invalid. Please set a valid key backend provider via TDX_ENC_KEY_BACKEND." % key_backend)
 

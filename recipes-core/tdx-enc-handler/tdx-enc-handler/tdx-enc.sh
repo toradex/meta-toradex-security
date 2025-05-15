@@ -8,7 +8,7 @@ TDX_ENC_KEY_BACKEND="@@TDX_ENC_KEY_BACKEND@@"
 # encryption key location
 TDX_ENC_KEY_LOCATION="@@TDX_ENC_KEY_LOCATION@@"
 
-# directory to store CAAM encrypted key
+# directory to store encrypted key
 TDX_ENC_KEY_DIR="@@TDX_ENC_KEY_DIR@@"
 
 # key file name
@@ -127,6 +127,23 @@ tdx_enc_prepare_tpm() {
 
     if ! echo "deadbeef" | tpm2_hash >/dev/null; then
         tdx_enc_exit_error "Hash calculation via tpm2_hash failed. TPM device might not be functional!"
+    fi
+}
+
+# TEE: prepare system
+tdx_enc_prepare_tee() {
+    tdx_enc_log "Preparing and checking system (tee)..."
+
+    if [ ! -c /dev/tee0 ]; then
+        tdx_enc_exit_error "TEE device node not found!"
+    fi
+
+    if ! pgrep "tee-supplicant" > /dev/null; then
+        tdx_enc_exit_error "TEE supplicant daemon not running!"
+    fi
+
+    if ! modprobe trusted source=tee; then
+        tdx_enc_exit_error "Error loading trusted module!"
     fi
 }
 
@@ -260,6 +277,12 @@ tdx_enc_key_gen_tpm() {
     tdx_enc_keyring_configure "trusted" "${TDX_ENC_KEY_KEYRING_NAME}" \
                               "new 32 keyhandle=$TPMKEYHANDLE" \
                               "load \$(cat ${TDX_ENC_KEY_FULLPATH})"
+}
+
+# TEE: generate/load key
+tdx_enc_key_gen_tee() {
+    tdx_enc_log "Setting up encryption key for TEE backend..."
+    tdx_enc_keyring_configure "trusted" "${TDX_ENC_KEY_KEYRING_NAME}" "new 32" "load \$(cat ${TDX_ENC_KEY_FULLPATH})"
 }
 
 # initially mount the partition if possible

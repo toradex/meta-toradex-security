@@ -58,4 +58,9 @@ do_install() {
         install -m 0644 ${WORKDIR}/99-tpm.rules ${D}${sysconfdir}/udev/rules.d/99-tpm.rules
         sed -i '/^After=/a Requires=dev-tpm0.device\nAfter=dev-tpm0.device' ${D}${systemd_system_unitdir}/tdx-enc-handler.service
     fi
+
+    if [ ${TDX_ENC_KEY_BACKEND} = "tee" ]; then
+        sed -i '/^Before=/d' ${D}${systemd_system_unitdir}/tdx-enc-handler.service
+        sed -i '/^After=/c\Requires=tee-supplicant.service\nAfter=tee-supplicant.service' ${D}${systemd_system_unitdir}/tdx-enc-handler.service
+    fi
 }

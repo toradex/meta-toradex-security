@@ -33,7 +33,7 @@ Trusted Keys make it possible to create and manage variable-length symmetric key
 
 Trusted Keys require the availability of a Trust Source for greater security. Different Trust Sources are supported, including CAAM (Cryptographic Acceleration and Assurance Module), TPM (Trusted Platform Module) and TEE (Trusted Execution Environment).
 
-This layer supports using CAAM and TPM as a source for managing the encryption key. CAAM is available on NXP iMX-based SoMs and TPM availability might depend on the selected SoM and carrier board.
+This layer supports using CAAM, TPM or TEE as a source for managing the encryption key. CAAM is available on NXP iMX-based SoMs and TPM availability might depend on the selected SoM and carrier board.
 
 ## Block device encryption
 
@@ -67,7 +67,7 @@ A few additional variables are available to customize the behavior of the data-a
 
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
-| `TDX_ENC_KEY_BACKEND` | Backend used to manage the encryption key. Allowed values: `caam`, `tpm` or `cleartext`. If configured with `caam`, it will use Trusted Keys backed by the CAAM device (available on NXP iMX-based SoMs). If configured with `tpm`, it will use Trusted Keys backed by a TPM device (availability depends on the hardware). If configured with `cleartext`, the encryption key will be stored in clear text in the file system (use `cleartext` only for testing purposes!) | `caam` on iMX based SoMs, empty otherwise |
+| `TDX_ENC_KEY_BACKEND` | Backend used to manage the encryption key. Allowed values: `caam`, `tpm`, `tee` or `cleartext`. If configured with `caam`, it will use Trusted Keys backed by the CAAM device (available on NXP iMX-based SoMs). If configured with `tpm`, it will use Trusted Keys backed by a TPM device (availability depends on the hardware). If configured with `tee`, it will use Trusted Keys backed by a Trusted Execution Environment. If configured with `cleartext`, the encryption key will be stored in clear text in the file system (use `cleartext` only for testing purposes!) | `caam` on iMX based SoMs, empty otherwise |
 | `TDX_ENC_KEY_LOCATION` | Location to store the encryption key blob. Allowed values: `filesystem` or `partition`. If configured with `filesystem`, the encryption key blob will be stored as a file in the filesystem (location defined by the `TDX_ENC_KEY_DIR` variable. If configured with `partition`, the encryption key blob will be stored in a block of the disk outside the dm-crypt partition (useful if the rootfs filesystem is read-only) | `filesystem` |
 | `TDX_ENC_KEY_DIR` | Directory to store the encryption key blob | `/var/local/private/.keys` |
 | `TDX_ENC_KEY_FILE` | File name of the encryption key blob | `tdx-enc-key.blob` |
@@ -107,6 +107,12 @@ To confirm you have a TPM to be used as a Trust Source for managing the encrypti
 ```
 
 If your hardware lacks a discrete TPM chip, you may want to consider using an fTPM (firmware-based TPM) running in OP-TEE. This layer currently supports OP-TEE and fTPM on Verdin iMX8MP. For additional details, please refer to the [fTPM session in the OP-TEE documentation](README-optee.md#ftpm-support-in-op-tee).
+
+## Notes on using TEE
+
+Before enabling the TEE backend, ensure that a Trusted Execution Environment (such as OP-TEE) is properly configured and enabled on your platform.
+
+You can use this layer to add OP-TEE support on supported hardware platforms. For more details, refer to the ([README-optee.md](README-optee.md)) documentation.
 
 ## Encrypting a partition in the eMMC
 
