@@ -198,6 +198,8 @@ tdx_enc_keyring_configure() {
 
     tdx_enc_log "Configuring key in kernel keyring (type=$TDX_ENC_KEY_KEYRING_TYPE keyname=$KEYNAME)..."
 
+    keyctl new_session ${KEYNAME}_session
+
     if [ ! -e "${TDX_ENC_KEY_FULLPATH}" ]; then
         tdx_enc_log "Key blob not found. Creating it..."
         KEYHANDLE="$(keyctl add "${TDX_ENC_KEY_KEYRING_TYPE}" "${KEYNAME}" "$(eval echo ${NEW_KEY_CMD})" @s)"
