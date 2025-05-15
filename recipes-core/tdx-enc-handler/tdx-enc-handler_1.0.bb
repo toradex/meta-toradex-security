@@ -5,6 +5,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 
 SRC_URI = "\
     file://tdx-enc.sh \
+    file://tdx-enc \
     file://tdx-enc-handler.service \
     file://99-tpm.rules \
 "
@@ -23,7 +24,10 @@ RDEPENDS_TPM = "\
 
 RDEPENDS:${PN}:append = "${@ '${RDEPENDS_TPM}' if d.getVar('TDX_ENC_KEY_BACKEND') == 'tpm' else ''}"
 
-inherit systemd
+inherit update-rc.d systemd
+
+INITSCRIPT_NAME = "tdx-enc"
+INITSCRIPT_PARAMS = "start 30 1 2 3 4 5 . stop 80 0 6 ."
 
 SYSTEMD_SERVICE:${PN} = "tdx-enc-handler.service"
 
@@ -45,6 +49,9 @@ do_install() {
 
     install -d ${D}${systemd_system_unitdir}
     install -m 0644 ${WORKDIR}/tdx-enc-handler.service ${D}${systemd_system_unitdir}
+
+    install -d ${D}${sysconfdir}/init.d
+    install -m 755 ${WORKDIR}/tdx-enc ${D}${sysconfdir}/init.d/tdx-enc
 
     if [ ${TDX_ENC_KEY_BACKEND} = "tpm" ]; then
         mkdir -p ${D}${sysconfdir}/udev/rules.d/
