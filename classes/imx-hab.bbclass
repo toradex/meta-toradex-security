@@ -45,6 +45,13 @@ TDX_IMX_HAB_CST_SRK_INDEX ?= "1"
 #
 def make_srk_cert_name(d, basedir):
     """Generate certificate name related to a Super Root Key"""
+
+    # Check use of old variable:
+    if d.getVar('TDX_IMX_HAB_CST_KEY_INDEX'):
+        bb.fatal('Variable TDX_IMX_HAB_CST_KEY_INDEX (range: 0..3) was replaced '
+                 'by TDX_IMX_HAB_CST_SRK_INDEX (now in the range 1..4); please '
+                 'update your configuration.')
+
     res = ""
     crypto = d.getVar("TDX_IMX_HAB_CST_CRYPTO")
     kidx = int(d.getVar("TDX_IMX_HAB_CST_SRK_INDEX"))
