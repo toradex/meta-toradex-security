@@ -29,7 +29,7 @@ TDX_IMX_HAB_CST_BIN ?= "${TDX_IMX_HAB_CST_DIR}/linux64/bin/cst"
 # - TDX_IMX_HAB_CST_SRK_CA: Whether or not the SRK certificates have the CA flag
 #   set as entered into the CST tool; allowed values are "0" or "1"
 #
-# - TDX_IMX_HAB_CST_KEY_INDEX: Zero-based index of the SRK to be used within the
+# - TDX_IMX_HAB_CST_SRK_INDEX: Zero-based index of the SRK to be used within the
 #   SRK table.
 #
 TDX_IMX_HAB_CST_CRYPTO    ?= "rsa"
@@ -37,7 +37,7 @@ TDX_IMX_HAB_CST_KEY_SIZE  ?= "2048"
 TDX_IMX_HAB_CST_KEY_EXP   ?= "65537"
 TDX_IMX_HAB_CST_DIG_ALGO  ?= "sha256"
 TDX_IMX_HAB_CST_SRK_CA    ?= "1"
-TDX_IMX_HAB_CST_KEY_INDEX ?= "0"
+TDX_IMX_HAB_CST_SRK_INDEX ?= "0"
 
 #
 # Helper functions
@@ -46,13 +46,13 @@ def make_srk_cert_name(d, basedir):
     """Generate certificate name related to a Super Root Key"""
     res = ""
     crypto = d.getVar("TDX_IMX_HAB_CST_CRYPTO")
-    kidx = int(d.getVar("TDX_IMX_HAB_CST_KEY_INDEX"))
+    kidx = int(d.getVar("TDX_IMX_HAB_CST_SRK_INDEX"))
     dalgo = d.getVar("TDX_IMX_HAB_CST_DIG_ALGO")
     ksize = d.getVar("TDX_IMX_HAB_CST_KEY_SIZE")
     caflg = int(d.getVar("TDX_IMX_HAB_CST_SRK_CA"))
     castr = "ca" if caflg != 0 else "usr"
     if kidx < 0 or kidx > 3:
-        bb.fatal("TDX_IMX_HAB_CST_KEY_INDEX must be in the range [0,3]")
+        bb.fatal("TDX_IMX_HAB_CST_SRK_INDEX must be in the range [0,3]")
     if crypto == "rsa":
         kexp = d.getVar("TDX_IMX_HAB_CST_KEY_EXP")
         res = f"SRK{kidx+1}_{dalgo}_{ksize}_{kexp}_v3_{castr}_crt.pem"
@@ -72,12 +72,12 @@ def make_sub_cert_name(d, prefix, basedir):
     """Generate certificate name related to a subordinate key"""
     res = ""
     crypto = d.getVar("TDX_IMX_HAB_CST_CRYPTO")
-    kidx = int(d.getVar("TDX_IMX_HAB_CST_KEY_INDEX"))
+    kidx = int(d.getVar("TDX_IMX_HAB_CST_SRK_INDEX"))
     dalgo = d.getVar("TDX_IMX_HAB_CST_DIG_ALGO")
     ksize = d.getVar("TDX_IMX_HAB_CST_KEY_SIZE")
     caflg = int(d.getVar("TDX_IMX_HAB_CST_SRK_CA"))
     if kidx < 0 or kidx > 3:
-        bb.fatal("TDX_IMX_HAB_CST_KEY_INDEX must be in the range [0,3]")
+        bb.fatal("TDX_IMX_HAB_CST_SRK_INDEX must be in the range [0,3]")
     if caflg == 0:
         # Subordinate keys/certs only exist when the SRK cert has the CA flag set.
         pass
