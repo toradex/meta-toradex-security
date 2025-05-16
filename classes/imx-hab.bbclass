@@ -5,9 +5,10 @@ TDX_IMX_HAB_CST_DIR ?= "${TOPDIR}/keys/cst"
 TDX_IMX_HAB_CST_BIN ?= "${TDX_IMX_HAB_CST_DIR}/linux64/bin/cst"
 
 #
-# Main variables that control the automatic certificate names generation; users
-# will likely want to change these; they should match the answers/parameters
-# given to the CST tool when generating the keys and certificates.
+# Variables that control the automatic certificate names generation; those names
+# are used when signing with the CST tool. Users will likely want to change
+# these; they should match the answers/parameters given to the CST tool when
+# generating the keys and certificates.
 #
 # Explanation:
 #
@@ -21,29 +22,22 @@ TDX_IMX_HAB_CST_BIN ?= "${TDX_IMX_HAB_CST_DIR}/linux64/bin/cst"
 #   named "SRK1_sha256_secp384r1_v3_ca_crt.pem" (found in the certificates
 #   directory) the present variable would be set to "secp384r1".
 #
+# - TDX_IMX_HAB_CST_KEY_EXP: Key exponent for RSA keys (only).
+#
 # - TDX_IMX_HAB_CST_DIG_ALGO: Digest algorithm as entered into the CST tool.
 #
 # - TDX_IMX_HAB_CST_SRK_CA: Whether or not the SRK certificates have the CA flag
 #   set as entered into the CST tool; allowed values are "0" or "1"
 #
+# - TDX_IMX_HAB_CST_KEY_INDEX: Zero-based index of the SRK to be used within the
+#   SRK table.
+#
 TDX_IMX_HAB_CST_CRYPTO    ?= "rsa"
 TDX_IMX_HAB_CST_KEY_SIZE  ?= "2048"
+TDX_IMX_HAB_CST_KEY_EXP   ?= "65537"
 TDX_IMX_HAB_CST_DIG_ALGO  ?= "sha256"
 TDX_IMX_HAB_CST_SRK_CA    ?= "1"
-
-#
-# Secondary parameters for automaticaly generating certificate file names:
-#
-# Explanation:
-#
-# - TDX_IMX_HAB_CST_KEY_INDEX: Zero-based index of the SRK to be used within the
-#   SRK table. NOTE: This is not fully handled yet so it should be set to 0.
-# - TDX_IMX_HAB_CST_KEY_EXP: Key exponent for RSA keys (only).
-#
-
-# TODO: Handle the key index when generating the CSF files for HABv4 and AHAB.
 TDX_IMX_HAB_CST_KEY_INDEX ?= "0"
-TDX_IMX_HAB_CST_KEY_EXP   ?= "65537"
 
 #
 # Helper functions
