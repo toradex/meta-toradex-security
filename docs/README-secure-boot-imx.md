@@ -28,8 +28,10 @@ After that, configure the various variables listed below to match your choices; 
 | `TDX_IMX_HAB_CST_CERTS_DIR` | Location of the certificates directory. The associated private keys must be located in a directory called `keys` at the same level as the `crts` directory (this is a requirement for the CST tool to work properly). | `${TDX_IMX_HAB_CST_DIR}/crts` |
 | `TDX_IMX_HAB_CST_CRYPTO` | Type of cryptographic keys in use; allowed values: `rsa` or `ecdsa`. This should be set to `ecdsa` if (and only if) you selected "Elliptic Curve Cryptography" when generating the keys/certificates with the CST tool. | `rsa` |
 | `TDX_IMX_HAB_CST_KEY_SIZE` | For **RSA** keys, this would be the key length (in bits) as entered into the CST tool. For **ECDSA**, this would be a string determined from the generated certificate file name; for example, for a file named `SRK1_sha256_secp384r1_v3_ca_crt.pem` (found in the certificates directory) the present variable would be set to `secp384r1`. | `2048` |
+| `TDX_IMX_HAB_CST_KEY_EXP` | Key exponent for RSA keys (only). | `65537` |
 | `TDX_IMX_HAB_CST_DIG_ALGO` | Digest algorithm as entered into the CST tool. | `sha256` |
 | `TDX_IMX_HAB_CST_SRK_CA` | Whether or not the SRK certificates have the CA flag set as entered into the CST tool; allowed values: `0` or `1`. | `1` |
+| `TDX_IMX_HAB_CST_SRK_INDEX` | Index of the SRK to be used for signing within the SRK table; allowed values: `1`..`4`, corresponding to `SRK1`..`SRK4`, respectively. | `1` |
 
 The complete list of variables can be found in the `imx-hab.bbclass` file.
 
