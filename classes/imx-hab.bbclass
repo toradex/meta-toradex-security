@@ -29,15 +29,16 @@ TDX_IMX_HAB_CST_BIN ?= "${TDX_IMX_HAB_CST_DIR}/linux64/bin/cst"
 # - TDX_IMX_HAB_CST_SRK_CA: Whether or not the SRK certificates have the CA flag
 #   set as entered into the CST tool; allowed values are "0" or "1"
 #
-# - TDX_IMX_HAB_CST_SRK_INDEX: Zero-based index of the SRK to be used within the
-#   SRK table.
+# - TDX_IMX_HAB_CST_SRK_INDEX: Index of the SRK to be used for signing (1..4).
+#   This number decremented by one will be used in the CSF file to select the
+#   proper "Source Index" (which is a 0-based index in the range 0..3).
 #
 TDX_IMX_HAB_CST_CRYPTO    ?= "rsa"
 TDX_IMX_HAB_CST_KEY_SIZE  ?= "2048"
 TDX_IMX_HAB_CST_KEY_EXP   ?= "65537"
 TDX_IMX_HAB_CST_DIG_ALGO  ?= "sha256"
 TDX_IMX_HAB_CST_SRK_CA    ?= "1"
-TDX_IMX_HAB_CST_SRK_INDEX ?= "0"
+TDX_IMX_HAB_CST_SRK_INDEX ?= "1"
 
 #
 # Helper functions
@@ -51,16 +52,16 @@ def make_srk_cert_name(d, basedir):
     ksize = d.getVar("TDX_IMX_HAB_CST_KEY_SIZE")
     caflg = int(d.getVar("TDX_IMX_HAB_CST_SRK_CA"))
     castr = "ca" if caflg != 0 else "usr"
-    if kidx < 0 or kidx > 3:
-        bb.fatal("TDX_IMX_HAB_CST_SRK_INDEX must be in the range [0,3]")
+    if kidx < 1 or kidx > 4:
+        bb.fatal("TDX_IMX_HAB_CST_SRK_INDEX must be in the range [1,4]")
     if crypto == "rsa":
         kexp = d.getVar("TDX_IMX_HAB_CST_KEY_EXP")
-        res = f"SRK{kidx+1}_{dalgo}_{ksize}_{kexp}_v3_{castr}_crt.pem"
+        res = f"SRK{kidx}_{dalgo}_{ksize}_{kexp}_v3_{castr}_crt.pem"
     elif crypto == "ecdsa":
         if ksize.isdigit():
             bb.warn("TDX_IMX_HAB_CST_KEY_SIZE is likely not set correctly;"
                     "check the documentation to understand how to set this variable for ECDSA.")
-        res = f"SRK{kidx+1}_{dalgo}_{ksize}_v3_{castr}_crt.pem"
+        res = f"SRK{kidx}_{dalgo}_{ksize}_v3_{castr}_crt.pem"
     else:
         bb.fatal('TDX_IMX_HAB_CST_CRYPTO is not set correctly'
                  '(its value must be either "rsa" or "ecdsa")')
@@ -76,19 +77,19 @@ def make_sub_cert_name(d, prefix, basedir):
     dalgo = d.getVar("TDX_IMX_HAB_CST_DIG_ALGO")
     ksize = d.getVar("TDX_IMX_HAB_CST_KEY_SIZE")
     caflg = int(d.getVar("TDX_IMX_HAB_CST_SRK_CA"))
-    if kidx < 0 or kidx > 3:
-        bb.fatal("TDX_IMX_HAB_CST_SRK_INDEX must be in the range [0,3]")
+    if kidx < 1 or kidx > 4:
+        bb.fatal("TDX_IMX_HAB_CST_SRK_INDEX must be in the range [1,4]")
     if caflg == 0:
         # Subordinate keys/certs only exist when the SRK cert has the CA flag set.
         pass
     elif crypto == "rsa":
         kexp = d.getVar("TDX_IMX_HAB_CST_KEY_EXP")
-        res = f"{prefix}{kidx+1}_1_{dalgo}_{ksize}_{kexp}_v3_usr_crt.pem"
+        res = f"{prefix}{kidx}_1_{dalgo}_{ksize}_{kexp}_v3_usr_crt.pem"
     elif crypto == "ecdsa":
         if ksize.isdigit():
             bb.warn("TDX_IMX_HAB_CST_KEY_SIZE is likely not set correctly;"
                     "check the documentation to understand how to set this variable for ECDSA.")
-        res = f"{prefix}{kidx+1}_1_{dalgo}_{ksize}_v3_usr_crt.pem"
+        res = f"{prefix}{kidx}_1_{dalgo}_{ksize}_v3_usr_crt.pem"
     else:
         bb.fatal('TDX_IMX_HAB_CST_CRYPTO is not set correctly'
                  '(its value must be either "rsa" or "ecdsa")')
