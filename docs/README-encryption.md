@@ -10,6 +10,7 @@ Encryption is currently supported on the following SoMs:
 - Colibri iMX6ULL (1GB eMMC variant only)
 - Colibri iMX7D (1GB eMMC variant only)
 - Colibri iMX8X
+- iMX95 Verdin EVK
 - Verdin AM62 (requires the availability of a TPM)
 - Verdin iMX8MM
 - Verdin iMX8MP
@@ -33,7 +34,7 @@ Trusted Keys make it possible to create and manage variable-length symmetric key
 
 Trusted Keys require the availability of a Trust Source for greater security. Different Trust Sources are supported, including CAAM (Cryptographic Acceleration and Assurance Module), TPM (Trusted Platform Module) and TEE (Trusted Execution Environment).
 
-This layer supports using CAAM, TPM or TEE as a source for managing the encryption key. CAAM is available on NXP iMX-based SoMs and TPM availability might depend on the selected SoM and carrier board.
+This layer supports using CAAM, TPM or TEE as a source for managing the encryption key. CAAM is available on NXP iMX-based SoMs (except for iMX95 and iMX6ULL) and TPM availability might depend on the selected SoM and carrier board.
 
 ## Block device encryption
 
@@ -55,7 +56,7 @@ Also, it is mandatory to set the `TDX_ENC_STORAGE_LOCATION` variable to the disk
 TDX_ENC_STORAGE_LOCATION = "/dev/sdb1"
 ```
 
-The `TDX_ENC_KEY_BACKEND` variable can be used to configure the trust source for managing the encryption key. If you plan to use CAAM on NXP iMX-based SoMs, you don't have to configure this variable, as it is automatically configured with `caam`. If you plan to use a TPM, you need to configure it as in the example below:
+The `TDX_ENC_KEY_BACKEND` variable can be used to configure the trust source for managing the encryption key. If you plan to use CAAM (available on most NXP iMX-based SoMs), you don't have to configure this variable, as it is automatically configured with `caam`. If you plan to use a TPM or TEE as the backend, you need to configure it. For example, to use a TPM as the backend (i.e. trust source for the Trusted Keys subsystem):
 
 ```
 TDX_ENC_KEY_BACKEND:forcevariable = "tpm"
@@ -79,7 +80,8 @@ A few additional variables are available to customize the behavior of the data-a
 
 IMPORTANT:
 
-- The service that mounts the encrypted partition (`tdx-enc-handler.service`) runs early in the boot process, where not necessarily udev has run/settled. For that reason, it is recommended to use the name of the partition as assigned by the kernel (e.g. `/dev/sdb1`). If one wants to set a name that relies on udev rules then one must review the systemd dependencies of the service to ensure the name is available.
+- When using a SysVinit-based init system, the encryption handler script will execute at runlevel 30 during startup. If necessary, you can adjust the runlevel by creating an append file for the `tdx-enc-handler` recipe and overriding the `INITSCRIPT_PARAMS` variable.
+- When using systemd as the init system, the service that mounts the encrypted partition (`tdx-enc-handler.service`) runs early in the boot process, where not necessarily udev has run/settled. For that reason, it is recommended to use the name of the partition as assigned by the kernel (e.g. `/dev/sdb1`). If one wants to set a name that relies on udev rules then one must review the systemd dependencies of the service to ensure the name is available.
 - Similarly, the location where the encrypted key blob is stored must also be available to the to service; currently the service definition includes dependencies to ensure `/var` is available so that the default configuration works; if storing the key blob outside of `/var` one must review the service definition.
 
 ## Notes on using CAAM
