@@ -50,17 +50,28 @@ do_install() {
     install -d ${D}${systemd_system_unitdir}
     install -m 0644 ${WORKDIR}/tdx-enc-handler.service ${D}${systemd_system_unitdir}
 
+    # setup systemd service dependencies
+    if [ ${TDX_ENC_KEY_BACKEND} = "tpm" ]; then
+        dep_bef="Before=local-fs.target"
+        dep_aft="After=systemd-remount-fs.service dev-tpm0.device"
+        dep_req="Requires=dev-tpm0.device"
+        dep_all="${dep_bef}\n${dep_aft}\n${dep_req}"
+    elif [ ${TDX_ENC_KEY_BACKEND} = "tee" ]; then
+        dep_aft="After=tee-supplicant.service"
+        dep_req="Requires=tee-supplicant.service"
+        dep_all="${dep_aft}\n${dep_req}"
+    else
+        dep_bef="Before=local-fs.target"
+        dep_aft="After=systemd-remount-fs.service"
+        dep_all="${dep_bef}\n${dep_aft}"
+    fi
+    sed -i "/^@@DEPENDENCIES@@/c${dep_all}" ${D}${systemd_system_unitdir}/tdx-enc-handler.service
+
     install -d ${D}${sysconfdir}/init.d
     install -m 755 ${WORKDIR}/tdx-enc ${D}${sysconfdir}/init.d/tdx-enc
 
     if [ ${TDX_ENC_KEY_BACKEND} = "tpm" ]; then
         mkdir -p ${D}${sysconfdir}/udev/rules.d/
         install -m 0644 ${WORKDIR}/99-tpm.rules ${D}${sysconfdir}/udev/rules.d/99-tpm.rules
-        sed -i '/^After=/a Requires=dev-tpm0.device\nAfter=dev-tpm0.device' ${D}${systemd_system_unitdir}/tdx-enc-handler.service
-    fi
-
-    if [ ${TDX_ENC_KEY_BACKEND} = "tee" ]; then
-        sed -i '/^Before=/d' ${D}${systemd_system_unitdir}/tdx-enc-handler.service
-        sed -i '/^After=/c\Requires=tee-supplicant.service\nAfter=tee-supplicant.service' ${D}${systemd_system_unitdir}/tdx-enc-handler.service
     fi
 }
