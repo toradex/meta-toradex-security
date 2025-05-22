@@ -1,6 +1,7 @@
 update_signing_keys() {
-    rm -Rf ${S}/keys
-    ln -s ${TDX_K3_SECBOOT_KEY_DIR} ${S}/keys
+    echo "Updating signing keys directory '${S}/keys'"
+    rm -Rf "${S}/keys"
+    cp -rv ${TDX_K3_SECBOOT_KEY_DIR} "${S}/keys"
 }
 
 do_unpack:append() {
