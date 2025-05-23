@@ -209,7 +209,11 @@ generate_spl_csf_and_update_container() {
     sed -i "/Blocks = / s@.*@    Blocks = ${spl_block_base} 0x0 ${spl_block_size} \"${UBOOT_CONTAINER_BINARY}\"@" "${CSF_SPL}.csf"
 
     # Generate CSF blob:
-    "${TDX_IMX_HAB_CST_BIN}" -i "${CSF_SPL}.csf" -o "${CSF_SPL}.bin" > "${CSF_SPL}.log" 2>&1
+    if ! "${TDX_IMX_HAB_CST_BIN}" -i "${CSF_SPL}.csf" -o "${CSF_SPL}.bin" > "${CSF_SPL}.log" 2>&1; then
+        echo "CST execution log:" >&2
+        cat "${CSF_SPL}.log" | sed 's@^@|@' >&2
+        error "CST failed to execute; please check logs."
+    fi
     cat "${CSF_SPL}.log"
 
     # Patch CSF blob into flash.bin:
@@ -274,7 +278,11 @@ generate_fit_csf_and_update_container() {
     dd if=ivt.bin of="${UBOOT_CONTAINER_BINARY}" bs=1 seek=${ivt_block_offset} conv=notrunc
 
     # Generate CSF blob:
-    "${TDX_IMX_HAB_CST_BIN}" -i "${CSF_FIT}.csf" -o "${CSF_FIT}.bin" > "${CSF_FIT}.log" 2>&1
+    if ! "${TDX_IMX_HAB_CST_BIN}" -i "${CSF_FIT}.csf" -o "${CSF_FIT}.bin" > "${CSF_FIT}.log" 2>&1; then
+        echo "CST execution log:" >&2
+        cat "${CSF_FIT}.log" | sed 's@^@|@' >&2
+        error "CST failed to execute; please check logs."
+    fi
     cat "${CSF_FIT}.log"
 
     # Comment from doc/imx/habv4/csf_examples/mx8m/csf.sh:
