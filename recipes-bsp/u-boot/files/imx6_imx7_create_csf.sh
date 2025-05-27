@@ -14,9 +14,9 @@ CSF=""
 TEMPLATE_FILE=""
 
 error() {
-    echo "***"
+    echo "***" >&2
     echo " ERROR: ${1}" >&2
-    echo "***"
+    echo "***" >&2
     exit 1
 }
 
@@ -105,17 +105,17 @@ set_template_file() {
     case ${MACHINE} in
         "IMX6ULL")
             TEMPLATE_FILE="imx6ull_template.csf"
-	    ;;
-	"IMX7")
-	    TEMPLATE_FILE="imx7_template.csf"
-	    ;;
-	"IMX6")
+            ;;
+        "IMX7")
+            TEMPLATE_FILE="imx7_template.csf"
+            ;;
+        "IMX6")
             TEMPLATE_FILE="imx6_template.csf"
-	    ;;
+            ;;
         *)
-	    echo "Invalid SoC!"
-	    return 1
-	    ;;
+            echo "Invalid SoC!"
+            return 1
+            ;;
     esac
 }
 
@@ -206,7 +206,11 @@ generate_csf() {
     echo "    Blocks = $(grep 'HAB Blocks' "${HAB_LOG}" | awk '{print $3, $4, $5}') \"${IMXBOOT}\"" >> "${image_csf}"
 
     # Generate Binary
-    ${TDX_IMX_HAB_CST_BIN} -i "${image_csf}" -o "${CSF}.bin" > "${CSF}.log" 2>&1
+    if ! ${TDX_IMX_HAB_CST_BIN} -i "${image_csf}" -o "${CSF}.bin" > "${CSF}.log" 2>&1; then
+        echo "CST execution log:" >&2
+        cat "${CSF}.log" | sed 's@^@|@' >&2
+        error "CST failed to execute; please check logs."
+    fi
     cat "${CSF}.log"
 }
 
