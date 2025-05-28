@@ -6,6 +6,9 @@ DEPENDS += "util-linux-native"
 # Need this for the xxd and fdtget utilities used by imx8m_sign.sh
 DEPENDS += "xxd-native dtc-native"
 
+# Need this to create deterministic CSF binaries when running the NXP Code Signing Tool
+DEPENDS += "libfaketime-native"
+
 SRC_URI:append = "\
     file://u-boot-hab.cfg \
     file://create_fuse_cmds.sh \
@@ -49,6 +52,7 @@ imx6_imx7_sign_habv4() {
 
     bbdebug 1 "Generating CSF for U-Boot"
     # Generate CSF file:
+    LIBFAKETIME_PATH="${STAGING_LIBDIR_NATIVE}/faketime/libfaketime.so.1" \
     TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
     TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
     TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
@@ -71,6 +75,7 @@ imx6_imx7_sign_habv4() {
     # Repeat the process for SPL if SPL was also built.
     if [ -n "${SPL_BINARY}" ]; then
         bbdebug 1 "Generating CSF for the U-Boot SPL"
+        LIBFAKETIME_PATH="${STAGING_LIBDIR_NATIVE}/faketime/libfaketime.so.1" \
         TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
         TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
         TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
@@ -109,6 +114,7 @@ imx8m_sign_habv4() {
     cp "flash.bin" "flash.bin-unsigned"
 
     # Sign the bootloader container (in-place)
+    LIBFAKETIME_PATH="${STAGING_LIBDIR_NATIVE}/faketime/libfaketime.so.1" \
     TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
     TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
     TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \

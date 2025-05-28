@@ -12,6 +12,12 @@ readonly DIR_SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 &&
 MACHINE=""
 CSF=""
 TEMPLATE_FILE=""
+LIBFAKETIME_PATH="${LIBFAKETIME_PATH}"
+
+# Timestamp to be used by libfaketime. The date itself isn't important, but this needs
+# to be constant between builds in order to generate deterministic CSF binaries
+# Default value is: November 6, 2024 (12:00 PM UTC)
+FAKETIME=${FAKETIME:-1730894400}
 
 error() {
     echo "***" >&2
@@ -40,6 +46,11 @@ help() {
     echo "    IMXBOOT                   Path to unsigned imx-boot image"
     echo "                              e.g. u-boot.imx"
     echo "    HAB_LOG                   Path to u-boot build log file containing hab info"
+    echo
+    echo " Optional Environment Variables:"
+    echo
+    echo "    LIBFAKETIME_PATH          Path to libfaketime library (needed for reproducible CSF binary builds)"
+    echo "                              default: unset"
     echo
     echo " required arguments:"
     echo "    -m --machine              target SoC (i.e IMX6, IMX7, IMX6ULL)"
@@ -206,7 +217,11 @@ generate_csf() {
     echo "    Blocks = $(grep 'HAB Blocks' "${HAB_LOG}" | awk '{print $3, $4, $5}') \"${IMXBOOT}\"" >> "${image_csf}"
 
     # Generate Binary
-    if ! ${TDX_IMX_HAB_CST_BIN} -i "${image_csf}" -o "${CSF}.bin" > "${CSF}.log" 2>&1; then
+    if ! env ${LIBFAKETIME_PATH+LD_PRELOAD="${LIBFAKETIME_PATH}"
+                                FAKETIME_FMT="%s"
+                                FAKETIME="@${FAKETIME}"} \
+             "${TDX_IMX_HAB_CST_BIN}" -i "${image_csf}" -o "${CSF}.bin" > "${CSF}.log" 2>&1
+    then
         echo "CST execution log:" >&2
         cat "${CSF}.log" | sed 's@^@|@' >&2
         error "CST failed to execute; please check logs."
