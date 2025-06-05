@@ -35,6 +35,8 @@ After that, configure the various variables listed below to match your choices; 
 
 The complete list of variables can be found in the `imx-hab.bbclass` file.
 
+**NOTE**: For HAB signing, [libfaketime](https://github.com/wolfcw/libfaketime) is used when generating the CSF binaries with CST in order to create reproducible bootloader image builds.
+
 ### Known issues
 
 - Starting from version 4.0.0, the NXP CST tool may not work as expected on older Linux distributions (e.g., Ubuntu 20.04). If you are using NXP CST 4.0.0 or later, it is recommended to use a more recent Linux distribution (e.g., Ubuntu 24.04) to ensure compatibility and avoid potential issues.

@@ -9,6 +9,12 @@ UBOOT_SPL_DDR_BINARY="${UBOOT_SPL_DDR_BINARY:-u-boot-spl-ddr.bin}"
 UBOOT_DTB_BINARY="${UBOOT_DTB_BINARY:-u-boot.dtb.out}"
 UBOOT_CONTAINER_BINARY="${UBOOT_CONTAINER_BINARY:-flash.bin}"
 CSF_PREFIX="${CSF_PREFIX:-csf-for-}"
+LIBFAKETIME_PATH="${LIBFAKETIME_PATH}"
+
+# Timestamp to be used by libfaketime. The date itself isn't important, but this needs
+# to be constant between builds in order to generate deterministic CSF binaries
+# Default value is: November 6, 2024 (12:00 PM UTC)
+FAKETIME=${FAKETIME:-1730894400}
 
 # shellcheck disable=SC2155
 readonly FILE_SCRIPT="$(basename "$0")"
@@ -52,6 +58,8 @@ help() {
     echo "                              default: flash.bin"
     echo "    CSF_PREFIX                Prefix for CSF files to be produced"
     echo "                              default: csf-for-"
+    echo "    LIBFAKETIME_PATH          Path to libfaketime library (needed for reproducible CSF binary builds)"
+    echo "                              default: unset"
     echo
     echo " Optional switches:"
     echo "    -h --help            display this Help message"
@@ -209,7 +217,11 @@ generate_spl_csf_and_update_container() {
     sed -i "/Blocks = / s@.*@    Blocks = ${spl_block_base} 0x0 ${spl_block_size} \"${UBOOT_CONTAINER_BINARY}\"@" "${CSF_SPL}.csf"
 
     # Generate CSF blob:
-    if ! "${TDX_IMX_HAB_CST_BIN}" -i "${CSF_SPL}.csf" -o "${CSF_SPL}.bin" > "${CSF_SPL}.log" 2>&1; then
+    if ! env ${LIBFAKETIME_PATH+LD_PRELOAD="${LIBFAKETIME_PATH}"
+                                FAKETIME_FMT="%s"
+                                FAKETIME="@${FAKETIME}"} \
+             "${TDX_IMX_HAB_CST_BIN}" -i "${CSF_SPL}.csf" -o "${CSF_SPL}.bin" > "${CSF_SPL}.log" 2>&1
+    then
         echo "CST execution log:" >&2
         cat "${CSF_SPL}.log" | sed 's@^@|@' >&2
         error "CST failed to execute; please check logs."
@@ -278,7 +290,11 @@ generate_fit_csf_and_update_container() {
     dd if=ivt.bin of="${UBOOT_CONTAINER_BINARY}" bs=1 seek=${ivt_block_offset} conv=notrunc
 
     # Generate CSF blob:
-    if ! "${TDX_IMX_HAB_CST_BIN}" -i "${CSF_FIT}.csf" -o "${CSF_FIT}.bin" > "${CSF_FIT}.log" 2>&1; then
+    if ! env ${LIBFAKETIME_PATH+LD_PRELOAD="${LIBFAKETIME_PATH}"
+                                FAKETIME_FMT="%s"
+                                FAKETIME="@${FAKETIME}"} \
+             "${TDX_IMX_HAB_CST_BIN}" -i "${CSF_FIT}.csf" -o "${CSF_FIT}.bin" > "${CSF_FIT}.log" 2>&1
+    then
         echo "CST execution log:" >&2
         cat "${CSF_FIT}.log" | sed 's@^@|@' >&2
         error "CST failed to execute; please check logs."
