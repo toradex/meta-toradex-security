@@ -67,6 +67,9 @@ inherit ${@ 'tdx-tezi-data-partition' if 'teziimg' in d.getVar('IMAGE_FSTYPES') 
             'tdx-signed-dmverity' in d.getVar('OVERRIDES').split(':') and \
             d.getVar('TDX_OPTEE_FS_RPMB') == '0' else ''}
 
+# machine-specific fixups for OP-TEE
+include include/optee/machine/${MACHINE}.inc
+
 # validate optee support
 addhandler validate_optee_support
 validate_optee_support[eventmask] = "bb.event.SanityCheck"
