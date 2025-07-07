@@ -141,6 +141,11 @@ check_dotconfig_compat() {
     fi
 }
 
+TDX_DISABLE_UNSUPP_BOOTMETH ?= "0"
+SRC_URI:append = "\
+    ${@oe.utils.conditional('TDX_DISABLE_UNSUPP_BOOTMETH', '1', 'file://disable-bootmeths.cfg', '', d)} \
+"
+
 do_compile:prepend() {
     if [ "${TDX_UBOOT_HARDENING_ENABLE_DBG}" != "0" ]; then
         bbwarn 'Debugging of the hardening feature is enabled; be sure to disable it for production.'
