@@ -99,6 +99,53 @@ amend_secboot_dtsi() {
     fi
 }
 
+TDX_CHECK_UNSUPP_BOOTMETH ?= "1"
+do_configure[postfuncs] += "\
+    ${@oe.utils.conditional('TDX_CHECK_UNSUPP_BOOTMETH', '1', 'check_dotconfig_compat_all', '', d)} \
+"
+check_dotconfig_compat_all() {
+    if [ -n "${UBOOT_CONFIG}" ]; then
+        unset i j
+        for config in ${UBOOT_MACHINE}; do
+            i=$(expr $i + 1);
+            for type in ${UBOOT_CONFIG}; do
+                j=$(expr $j + 1);
+                if [ $j -eq $i ]; then
+                    check_dotconfig_compat $config $type
+                fi
+            done
+            unset j
+        done
+        unset i
+    else
+        check_dotconfig_compat
+    fi
+}
+
+check_dotconfig_compat() {
+    config=$1
+    dotconfig="${B}/${config}/.config"
+
+    # TODO: Consider performing the checks only if CONFIG_BOOTSTD=y (Standard Boot enabled).
+    # NOTE: Currently only the "Script" bootmeth is supported.
+    bootmeth_allow='^\(CONFIG_BOOTMETH_SCRIPT\)$'
+    bootmeth_inuse=$(cat "${dotconfig}" | \
+                     sed -ne 's#^\(CONFIG_BOOTMETH_[A-Z_0-9]\+\)=y#\1#p')
+    bootmeth_forbidden=$(echo "${bootmeth_inuse}" | sed "/${bootmeth_allow}/d")
+    # Drop spaces:
+    bootmeth_forbidden=$(echo ${bootmeth_forbidden})
+
+    if [ -n "${bootmeth_forbidden}" ]; then
+        bbfatal "The config option(s) [${bootmeth_forbidden}] are enabled in" \
+                "U-Boot but are not supported by the hardening."
+    fi
+}
+
+TDX_DISABLE_UNSUPP_BOOTMETH ?= "0"
+SRC_URI:append = "\
+    ${@oe.utils.conditional('TDX_DISABLE_UNSUPP_BOOTMETH', '1', 'file://disable-bootmeths.cfg', '', d)} \
+"
+
 do_compile:prepend() {
     if [ "${TDX_UBOOT_HARDENING_ENABLE_DBG}" != "0" ]; then
         bbwarn 'Debugging of the hardening feature is enabled; be sure to disable it for production.'

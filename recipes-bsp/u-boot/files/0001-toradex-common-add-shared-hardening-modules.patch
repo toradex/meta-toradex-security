@@ -1,4 +1,4 @@
-From db448debd4eb9788d597c7894f25b07be15d3122 Mon Sep 17 00:00:00 2001
+From eaeb62c8a0dd6e9af9f65ad2136bd9933809eeb2 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:28:50 -0300
 Subject: [PATCH 1/2] toradex: common: add shared hardening modules
@@ -42,15 +42,20 @@ v2:
   wants to ensure the protection is compiled in without having to close
   the device.
 
+v3:
+
+- Add the bootflow command to the whitelist; also ensure no unsupported
+  bootmeths are enabled.
+
 Upstream-Status: Inappropriate [Torizon OS specific]
 
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
- common/tdx-harden.c                           | 485 ++++++++++
- common/whitelist.c                            | 878 ++++++++++++++++++
- .../dt-bindings/secure-boot/cmd-categories.h  | 110 +++
+ common/tdx-harden.c                           | 497 ++++++++++
+ common/whitelist.c                            | 887 ++++++++++++++++++
+ .../dt-bindings/secure-boot/cmd-categories.h  | 111 +++
  include/tdx-harden.h                          |  59 ++
- 4 files changed, 1532 insertions(+)
+ 4 files changed, 1554 insertions(+)
  create mode 100644 common/tdx-harden.c
  create mode 100644 common/whitelist.c
  create mode 100644 include/dt-bindings/secure-boot/cmd-categories.h
@@ -58,10 +63,10 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 
 diff --git a/common/tdx-harden.c b/common/tdx-harden.c
 new file mode 100644
-index 00000000000..d325620e998
+index 00000000000..f508cf183fe
 --- /dev/null
 +++ b/common/tdx-harden.c
-@@ -0,0 +1,485 @@
+@@ -0,0 +1,497 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2023 Toradex
@@ -547,12 +552,24 @@ index 00000000000..d325620e998
 +/* Self-updates are likely not safe. */
 +#error Toradex hardening assumes CONFIG_UPDATE_TFTP is not set
 +#endif
++
++#if (defined(CONFIG_BOOTMETH_ANDROID) ||       \
++     defined(CONFIG_BOOTMETH_CROS) ||          \
++     defined(CONFIG_BOOTMETH_DISTRO) ||        \
++     defined(CONFIG_BOOTMETH_EFILOADER) ||     \
++     defined(CONFIG_BOOTMETH_EXTLINUX) ||      \
++     defined(CONFIG_BOOTMETH_EXTLINUX_PXE) ||  \
++     defined(CONFIG_BOOTMETH_GLOBAL) ||        \
++     defined(CONFIG_BOOTMETH_SANDBOX) ||       \
++     defined(CONFIG_BOOTMETH_VBE))
++#error With the Toradex hardening, the only bootmeth that can be enabled is BOOTMETH_SCRIPT
++#endif
 diff --git a/common/whitelist.c b/common/whitelist.c
 new file mode 100644
-index 00000000000..40ed5596333
+index 00000000000..b94586cea6d
 --- /dev/null
 +++ b/common/whitelist.c
-@@ -0,0 +1,878 @@
+@@ -0,0 +1,887 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2023 Toradex
@@ -671,7 +688,16 @@ index 00000000000..40ed5596333
 +	{ { "bootefi", ALL }, { CMD_CAT_EXEC } },
 +	{ { "bootelf", ALL }, { CMD_CAT_EXEC } },
 +#ifdef CONFIG_CMD_BOOTFLOW
-+	{ { "bootflow", ALL }, { CMD_CAT_BOOTFLOW } },
++	{ { "bootflow", "scan", ALL }, { CMD_CAT_BOOTFLOW_CONTROL, CMD_CAT_EXEC, CMD_CAT_NEEDED } },
++#ifdef CONFIG_CMD_BOOTFLOW_FULL
++	{ { "bootflow", "list", ALL }, { CMD_CAT_BOOTFLOW_DIAG } },
++	{ { "bootflow", "select", ALL }, { CMD_CAT_BOOTFLOW_CONTROL } },
++	{ { "bootflow", "info", ALL }, { CMD_CAT_BOOTFLOW_DIAG } },
++	{ { "bootflow", "read", ALL }, { CMD_CAT_BOOTFLOW_CONTROL } },
++	{ { "bootflow", "boot", ALL }, { CMD_CAT_BOOTFLOW_CONTROL, CMD_CAT_EXEC } },
++	// { { "bootflow", "menu", ALL }, { CMD_CAT_BOOTFLOW__TBD } },
++	// { { "bootflow", "cmdline", ALL }, { CMD_CAT_BOOTFLOW__TBD } },
++#endif
 +#endif
 +	{ { "booti", ALL }, { CMD_CAT_EXEC } },
 +	{ { "bootm", ALL }, { CMD_CAT_EXEC, CMD_CAT_NEEDED } },
@@ -1433,10 +1459,10 @@ index 00000000000..40ed5596333
 +}
 diff --git a/include/dt-bindings/secure-boot/cmd-categories.h b/include/dt-bindings/secure-boot/cmd-categories.h
 new file mode 100644
-index 00000000000..8f6b9c96079
+index 00000000000..ce92cb8a17d
 --- /dev/null
 +++ b/include/dt-bindings/secure-boot/cmd-categories.h
-@@ -0,0 +1,110 @@
+@@ -0,0 +1,111 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * This header provides constants for command categories used with the whitelist
@@ -1460,7 +1486,8 @@ index 00000000000..8f6b9c96079
 +#define CMD_CAT_BLKCACHE_CONTROL	40
 +#define CMD_CAT_BLKCACHE_DIAG		41
 +#define CMD_CAT_BMODE			44
-+#define CMD_CAT_BOOTFLOW		45
++#define CMD_CAT_BOOTFLOW_CONTROL	45
++#define CMD_CAT_BOOTFLOW_DIAG		46
 +#define CMD_CAT_BOOTROM			50
 +#define CMD_CAT_CFGBLOCK_DIAG		60
 +#define CMD_CAT_CFGBLOCK_WRITE		61
