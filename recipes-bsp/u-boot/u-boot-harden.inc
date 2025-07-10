@@ -141,7 +141,7 @@ check_dotconfig_compat() {
     fi
 }
 
-TDX_DISABLE_UNSUPP_BOOTMETH ?= "0"
+TDX_DISABLE_UNSUPP_BOOTMETH ?= "1"
 SRC_URI:append = "\
     ${@oe.utils.conditional('TDX_DISABLE_UNSUPP_BOOTMETH', '1', 'file://disable-bootmeths.cfg', '', d)} \
 "
