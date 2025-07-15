@@ -9,6 +9,7 @@ TEE might be a good solution to store and manage secrets (e.g. encryption keys) 
 This layer provides support for running OP-TEE on the following SoMs:
 
 - Aquila AM69
+- Colibri iMX6
 - iMX95 Verdin EVK
 - Verdin AM62
 - Verdin iMX8MP
@@ -157,6 +158,10 @@ Using slot 0 with a present token (0x0)
 ```
 
 For additional details on how the PKCS#11 Trusted Application works, refer to the [OP-TEE official documentation](https://optee.readthedocs.io/en/latest/building/userland_integration.html#pkcs-11-driver).
+
+## Limitations
+
+Currently, OP-TEE cannot be used in conjunction with HAB on Colibri iMX6 due to a limitation in the signing process. A different U-Boot image is generated when OP-TEE is enabled, and the signing scripts need to be adapted to handle it.
 
 ## Important note
 

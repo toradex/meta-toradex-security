@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/*
+ * Copyright 2025 Toradex
+ */
+
+#include <config.h>
+
+/ {
+#if defined(CONFIG_SPL_OPTEE_IMAGE)
+	binman {
+		fit {
+			description = "FIT image with OP-TEE";
+			fit,fdt-list = "of-list";
+			#address-cells = <1>;
+			filename = "u-boot.itb";
+			images {
+				u-boot {
+					description = "U-Boot";
+					type = "standalone";
+					os = "U-Boot";
+					arch = "arm";
+					compression = "none";
+					load = <CONFIG_TEXT_BASE>;
+					entry = <CONFIG_TEXT_BASE>;
+					u-boot-nodtb {
+					};
+				};
+				op-tee {
+					description = "OP-TEE";
+					type = "tee";
+					arch = "arm";
+					os = "tee";
+					compression = "none";
+					load = <@@TDX_OPTEE_ADDR_LOAD@@>;
+					entry = <@@TDX_OPTEE_ADDR_LOAD@@>;
+					tee-os {
+					};
+				};
+				@fdt-SEQ {
+					description = "fdt-NAME";
+					compression = "none";
+					type = "flat_dt";
+					arch = "arm";
+				};
+			};
+			configurations {
+				default = "@config-DEFAULT-SEQ";
+				@config-SEQ {
+					description = "NAME.dtb";
+					fdt = "fdt-SEQ";
+					fit,firmware = "op-tee", "u-boot";
+					fit,loadables;
+				};
+			};
+		};
+	};
+#endif
+};

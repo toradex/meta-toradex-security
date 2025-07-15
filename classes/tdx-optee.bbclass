@@ -67,12 +67,16 @@ inherit ${@ 'tdx-tezi-data-partition' if 'teziimg' in d.getVar('IMAGE_FSTYPES') 
             'tdx-signed-dmverity' in d.getVar('OVERRIDES').split(':') and \
             d.getVar('TDX_OPTEE_FS_RPMB') == '0' else ''}
 
+# machine-specific fixups for OP-TEE
+include include/optee/machine/${MACHINE}.inc
+
 # validate optee support
 addhandler validate_optee_support
 validate_optee_support[eventmask] = "bb.event.SanityCheck"
 python validate_optee_support() {
     supported_machines = [
         'aquila-am69',
+        'colibri-imx6',
         'imx95-19x19-verdin',
         'verdin-am62',
         'verdin-imx8mm',
@@ -90,4 +94,10 @@ python validate_optee_support() {
         bb.warn("The factory mode for OP-TEE RPMB support is intended for " \
                 "secure factory provisioning environments, and it should " \
                 "never be used outside of a trusted, secure factory setup!")
+
+    # Currently, OP-TEE cannot be used in conjunction with HAB on Colibri iMX6 due to a limitation
+    # in the signing process. A different U-Boot image is generated when OP-TEE is enabled, and the
+    # signing scripts need to be adapted to handle it.
+    if e.data.getVar('MACHINE') == 'colibri-imx6' and e.data.getVar('TDX_IMX_HAB_ENABLE') == '1':
+        bb.fatal("Currenly, OP-TEE cannot be used together with HAB on colibri-imx6!")
 }
