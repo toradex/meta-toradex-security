@@ -13,11 +13,11 @@ SRC_URI:append:mx6-generic-bsp = "\
     file://imx-v6-v7-optee.dtsi \
 "
 
-SRC_URI:append:colibri-imx6 = "\
-    file://optee-colibri-imx6.cfg \
+SRC_URI:append:mx6-generic-bsp = "\
+    file://optee-imx6.cfg \
 "
 
-EXTRA_OEMAKE:append:colibri-imx6 = " TEE=tee.bin"
+EXTRA_OEMAKE:append:mx6-generic-bsp = " TEE=tee.bin"
 
 copy_optee_binary_to_uboot() {
     if [ -n "${UBOOT_CONFIG}" ]; then
