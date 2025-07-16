@@ -8,6 +8,7 @@ TEE might be a good solution to store and manage secrets (e.g. encryption keys) 
 
 This layer provides support for running OP-TEE on the following SoMs:
 
+- Apalis iMX6
 - Aquila AM69
 - Colibri iMX6
 - iMX95 Verdin EVK
