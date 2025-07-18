@@ -13,7 +13,7 @@
 # UBOOT_SIGN_ENABLE are set, by default.
 #
 def default_tdx_uboot_hardening_enable(d):
-    unsupported_machines = ["aquila-am69", "imx95-19x19-verdin"]
+    unsupported_machines = ["imx95-19x19-verdin"]
     for machine in unsupported_machines:
         if (machine in d.getVar('OVERRIDES').split(':')):
             bb.warnonce("%s machine requires some additional work to have "\
