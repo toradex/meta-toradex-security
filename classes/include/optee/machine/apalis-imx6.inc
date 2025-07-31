@@ -1,8 +1,3 @@
-# uboot configuration
-UBOOT_CONFIG[optee] = "apalis_imx6_defconfig,,u-boot.itb"
-UBOOT_CONFIG = "optee"
-UBOOT_SUFFIX = "itb"
-
 # extension to append to optee binary
 OPTEE_BIN_EXT = "bin"
 
