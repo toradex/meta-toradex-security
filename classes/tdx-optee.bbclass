@@ -78,6 +78,7 @@ python validate_optee_support() {
         'apalis-imx6',
         'aquila-am69',
         'colibri-imx6',
+        'colibri-imx7-emmc',
         'imx95-19x19-verdin',
         'verdin-am62',
         'verdin-imx8mm',
