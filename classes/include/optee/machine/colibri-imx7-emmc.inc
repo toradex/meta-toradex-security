@@ -2,7 +2,7 @@
 OPTEE_BIN_EXT = "bin"
 
 # OP-TEE load address
-TDX_OPTEE_ADDR_LOAD = "0x1c000000"
+TDX_OPTEE_ADDR_LOAD = "0x8c000000"
 
 # OP-TEE reserved memory
 TDX_OPTEE_ADDR_SIZE ?= "0x1000000"

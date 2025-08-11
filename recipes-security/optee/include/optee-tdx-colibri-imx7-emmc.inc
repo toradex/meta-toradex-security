@@ -1,11 +1,11 @@
 # compatible machine in OP-TEE source code
-OPTEEMACHINE = "imx-mx6qsabresd"
+OPTEEMACHINE = "imx-mx7dsabresd"
 
 # required by NXP OP-TEE recipe
-PLATFORM_FLAVOR = "mx6qsabresd"
+PLATFORM_FLAVOR = "mx7dsabresd"
 
 # uart base address (to print debug messages)
-UART_BASE_ADDR = "0x02020000"
+UART_BASE_ADDR = "0x30860000"
 
 # extra arguments to build OP-TEE OS
 OPTEE_OS_EXTRA_MACHINE_ARGS = "\
