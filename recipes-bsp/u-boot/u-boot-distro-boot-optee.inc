@@ -9,6 +9,8 @@ setenv kernel_addr_r ${tee_addr_r}; \
 bootm"
 KERNEL_BOOTCMD:mx6-generic-bsp = "${KERNEL_BOOTCMD_OPTEE}"
 KERNEL_BOOTCMD:mx7-generic-bsp = "${KERNEL_BOOTCMD_OPTEE}"
+KERNEL_BOOTCMD:colibri-imx8x = "${KERNEL_BOOTCMD_OPTEE}"
+KERNEL_BOOTCMD:apalis-imx8 = "${KERNEL_BOOTCMD_OPTEE}"
 
 # DTB_PREFIX is an internal recipe variable used to append a value
 # to the FIT image configuration node that will be used to boot.
@@ -17,3 +19,5 @@ KERNEL_BOOTCMD:mx7-generic-bsp = "${KERNEL_BOOTCMD_OPTEE}"
 DTB_PREFIX_OPTEE = "optee_"
 DTB_PREFIX:prepend:mx6-generic-bsp = "${DTB_PREFIX_OPTEE}"
 DTB_PREFIX:prepend:mx7-generic-bsp = "${DTB_PREFIX_OPTEE}"
+DTB_PREFIX:prepend:colibri-imx8x = "${DTB_PREFIX_OPTEE}"
+DTB_PREFIX:prepend:apalis-imx8 = "${DTB_PREFIX_OPTEE}"

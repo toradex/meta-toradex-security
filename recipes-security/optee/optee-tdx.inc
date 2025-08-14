@@ -29,4 +29,24 @@ EXTRA_OEMAKE:append:pn-optee-os = "\
     ${OPTEE_OS_EXTRA_MACHINE_ARGS} \
 "
 
+generate_optee_uimage() {
+    oe_runmake uTee
+}
+do_compile:append:pn-optee-os:colibri-imx8x() {
+    generate_optee_uimage
+}
+do_compile:append:pn-optee-os:apalis-imx8() {
+    generate_optee_uimage
+}
+
+copy_optee_uimage() {
+    cp ${B}/core/uTee ${DEPLOYDIR}/uTee-${OPTEE_BIN_EXT}
+}
+do_deploy:append:pn-optee-os:colibri-imx8x() {
+    copy_optee_uimage
+}
+do_deploy:append:pn-optee-os:apalis-imx8() {
+    copy_optee_uimage
+}
+
 require ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB', '1', 'optee-fs-rpmb.inc', '', d)}
