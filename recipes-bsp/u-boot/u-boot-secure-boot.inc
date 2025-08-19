@@ -13,6 +13,7 @@ TDX_UBOOT_SECBOOT_PATCHES_UPSTREAM = " \
 # NOTE: NXP downstream does not need patch "lmb: prevent alloc overlap with reserved regions"
 TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM = " \
     ${TDX_UBOOT_SECBOOT_PATCHES_COMMON} \
+    file://0001-toradex-add-helper-to-detect-closed-iMX95-downstream.patch \
     file://0001-toradex-integrate-shared-secboot-module-downstream.patch \
 "
 
