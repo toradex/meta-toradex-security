@@ -1,0 +1,60 @@
+From 7d915ad9914da448a3e02bc93ffd7cc258c5e25d Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Mon, 18 Aug 2025 17:38:56 -0300
+Subject: [PATCH] toradex: add helper to detect closed iMX95 (downstream)
+
+---
+ arch/arm/mach-imx/ele_ahab.c | 37 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+
+diff --git a/arch/arm/mach-imx/ele_ahab.c b/arch/arm/mach-imx/ele_ahab.c
+index cdf73ba3041..acefc62b526 100644
+--- a/arch/arm/mach-imx/ele_ahab.c
++++ b/arch/arm/mach-imx/ele_ahab.c
+@@ -460,6 +460,43 @@ static void display_life_cycle(u32 lc)
+ 		break;
+ 	}
+ }
++
++int tdx_secboot_ele_ahab_dev_is_closed(void)
++{
++	u32 lc;
++	/* Read life cycle status (as done by ele_hab.c) */
++	lc = readl(FSB_BASE_ADDR + FSB_LC_OFFSET);
++	lc &= 0x3ff;
++	switch (lc) {
++	case 0x1:	/* Blank */
++	case 0x2:	/* FAB Default */
++	case 0x4:	/* FAB */
++	case 0x8:	/* NXP Provisioned */
++		debug("Device is in a pre OEM-open state! (lc=0x%x)\n", lc);
++		return 0;
++	case 0x10:	/* OEM Open */
++		debug("Device is in OEM-open state!\n");
++		return 0;
++	case 0x20:	/* OEM secure world closed */
++	case 0x40:	/* OEM closed */
++		debug("Device is in closed state! (lc=0x%x)\n", lc);
++		return 1;
++	case 0x80:	/* OEM locked */
++		/* Undocumented state: in doubt we take it as closed. */
++		debug("Device is OEM Locked state! (lc=0x%x)\n", lc);
++		return 1;
++	case 0x100:	/* Field Return OEM */
++	case 0x200:	/* Field Return NXP */
++	case 0x400:	/* Bricked */
++		debug("Device is in some 'return' state!\n");
++		/* Note: no software runs in return states. */
++		return 0;
++	default:
++		/* Unknown state: in doubt we take it as closed. */
++		debug("Device is in an unknown state! (lc=0x%x)\n", lc);
++		return 1;
++	}
++}
+ #else
+ #define FSB_LC_OFFSET 0x41c
+ #define LC_OEM_OPEN 0x8
+-- 
+2.34.1
+
