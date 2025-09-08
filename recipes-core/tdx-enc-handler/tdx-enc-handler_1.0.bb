@@ -75,3 +75,10 @@ do_install() {
         install -m 0644 ${WORKDIR}/99-tpm.rules ${D}${sysconfdir}/udev/rules.d/99-tpm.rules
     fi
 }
+
+# HW offload is not working properly on Verdin AM62P when trying to mount a partition
+# with dm-crypt, so let's disable it as a workaround for now.
+do_install:append:verdin-am62p() {
+    install -d ${D}${sysconfdir}/modprobe.d/
+    echo "blacklist sa2ul" > ${D}${sysconfdir}/modprobe.d/sa2ul.conf
+}
