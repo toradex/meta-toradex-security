@@ -11,7 +11,8 @@ Encryption is currently supported on the following SoMs:
 - Colibri iMX7D (1GB eMMC variant only)
 - Colibri iMX8X
 - iMX95 Verdin EVK
-- Verdin AM62 (requires the availability of a TPM)
+- Verdin AM62
+- Verdin AM62P
 - Verdin iMX8MM
 - Verdin iMX8MP
 
