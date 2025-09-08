@@ -57,8 +57,8 @@ do_install() {
         dep_req="Requires=dev-tpm0.device"
         dep_all="${dep_bef}\n${dep_aft}\n${dep_req}"
     elif [ ${TDX_ENC_KEY_BACKEND} = "tee" ]; then
-        dep_aft="After=tee-supplicant.service"
-        dep_req="Requires=tee-supplicant.service"
+        dep_aft="After=tee-supplicant@teepriv0.service"
+        dep_req="Requires=tee-supplicant@teepriv0.service"
         dep_all="${dep_aft}\n${dep_req}"
     else
         dep_bef="Before=local-fs.target"
