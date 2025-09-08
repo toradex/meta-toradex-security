@@ -4,6 +4,12 @@ SRC_URI += "\
     file://tee-supplicant.rules \
 "
 
+# UNPACKDIR is a new variable introduced in Styhead, but optee-client recipe
+# from meta-freescale is already using it, and this is breaking the build, so
+# so lets make sure it points to WORKDIR. This can probably be removed as soon
+# as we move to Styhead or later version.
+UNPACKDIR = "${WORKDIR}"
+
 # The optee-client upstream recipe installs a tee-supplicant template unit
 # that requires an udev rule to start the tee supplicant daemon automatically
 do_install:append() {
