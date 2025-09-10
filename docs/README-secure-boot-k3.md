@@ -118,5 +118,28 @@ OTP Key Writer is a single firmware image that has three components:
 Also, the VPP pin from the SoC requires 1.8v while programming OTP eFuses and should be floating when not programming. That means the hardware needs to be designed in a way that the state of the VPP pin can be controlled by the OTP Key Writer firmware (e.g. via GPIO pin).
 
 The [OTP Keywriter Tutorial](https://dev.ti.com/tirex/explore/node?node=A__AagJ-8QGXM582KzTgxFZbA__AM62-ACADEMY__uiYMDcq__LATEST) provided by TI might help to understand how to implement the OTP KeyWriter software.
+Toradex also provides a [detailed guide to creating the Keywriter software](https://developer.toradex.com/torizon/security/secure-boot-on-am62/) for the AM62 on the developer docs portal.
 
 Additional documentation and sample code are provided by Texas Instruments, but only under NDA. It is recommended to get in touch with a TI Sales representative to get access to it.
+
+### Keywriting failure recovery
+
+As mentioned above, the *VPP* pins require 1.8v while programming. We are aware of reports from users performing key fusing at scale where some devices failed to fully write the keys to the OTP fuses, most likely due to inconsistent voltage on the VPP pins.
+
+In this case, the modules appeared to be in an unrecoverable state: the keys were _partially, but not fully_ written. Using the default Keywriter application a second time to attempt to finish the process was not successful. However, it is actually possible to recover and finish the keywriting process *in this particular failure mode*. The OTP fuses are protected from bits being flipped 1 to 0, but a bit that has not yet been programmed can, at the hardware level, still be programmed. However, to permit the keywriter application to use it, the certificate with the keys to be fused must have some extra override options added.
+
+If you need to recover a module from this partially-programmed state, you can add the following override options when generating the certificate:
+
+```
+--msv-ovrd -s-ovrd --smek-ovrd -b-ovrd --bmek-ovrd --keycnt-ovrd --keyrev-ovrd
+```
+
+For example, if your original certificate generation command was as follows:
+```
+$ ./gen_keywr_cert.sh -t tifek/ti_fek_public.pem --msv 0xC0FFE -a ~/keys/ti/aes256.key -s ~/keys/ti/custMpk.pem --smek ~/keys/ti/smek.key -b ~/keys/ti/backMpk.pem --bmek ~/keys/ti/bmek.key --keycnt 2 --keyrev 1
+```
+
+You would instead use:
+```
+./gen_keywr_cert.sh -t tifek/ti_fek_public.pem --msv 0xC0FFE --msv-ovrd -a ~/keys/ti/aes256.key -s ~/keys/ti/custMpk.pem -s-ovrd --smek ~/keys/ti/smek.key --smek-ovrd -b ~/keys/ti/backMpk.pem -b-ovrd --bmek ~/keys/ti/bmek.key --bmek-ovrd --keycnt 2 --keycnt-ovrd --keyrev 1 --keyrev-ovrd
+```
