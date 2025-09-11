@@ -57,8 +57,8 @@ do_install() {
         dep_req="Requires=dev-tpm0.device"
         dep_all="${dep_bef}\n${dep_aft}\n${dep_req}"
     elif [ ${TDX_ENC_KEY_BACKEND} = "tee" ]; then
-        dep_aft="After=tee-supplicant.service"
-        dep_req="Requires=tee-supplicant.service"
+        dep_aft="After=tee-supplicant@teepriv0.service"
+        dep_req="Requires=tee-supplicant@teepriv0.service"
         dep_all="${dep_aft}\n${dep_req}"
     else
         dep_bef="Before=local-fs.target"
@@ -74,4 +74,11 @@ do_install() {
         mkdir -p ${D}${sysconfdir}/udev/rules.d/
         install -m 0644 ${WORKDIR}/99-tpm.rules ${D}${sysconfdir}/udev/rules.d/99-tpm.rules
     fi
+}
+
+# HW offload is not working properly on Verdin AM62P when trying to mount a partition
+# with dm-crypt, so let's disable it as a workaround for now.
+do_install:append:verdin-am62p() {
+    install -d ${D}${sysconfdir}/modprobe.d/
+    echo "blacklist sa2ul" > ${D}${sysconfdir}/modprobe.d/sa2ul.conf
 }
