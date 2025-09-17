@@ -11,11 +11,12 @@ Secure boot is currently supported on the following SoMs:
 - Colibri iMX6ULL (1GB eMMC variant only)
 - Colibri iMX7D (1GB eMMC variant only)
 - Colibri iMX8X
+- iMX95 Verdin EVK
+- SMARC iMX8MP
 - Verdin AM62
 - Verdin AM62P
 - Verdin iMX8MM
 - Verdin iMX8MP
-- iMX95 Verdin EVK
 
 ## Secure boot implementation
 

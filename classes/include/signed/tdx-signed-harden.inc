@@ -52,6 +52,7 @@ TDX_SECBOOT_REQUIRED_BOOTARGS:verdin-am62 ?= "ro rootwait console=tty1 console=t
 TDX_SECBOOT_REQUIRED_BOOTARGS:verdin-am62p ?= "ro rootwait console=tty1 console=ttyS2,115200"
 TDX_SECBOOT_REQUIRED_BOOTARGS:aquila-am69 ?= "ro rootwait console=tty1 console=ttyS2,115200"
 TDX_SECBOOT_REQUIRED_BOOTARGS:toradex-smarc-imx95 ?= "ro rootwait console=tty1 console=ttyLP1,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS:toradex-smarc-imx8mp ?= "ro rootwait console=tty1 console=ttymxc1,115200"
 
 # Name of the overlay file (without extension) that will contain the fixed part
 # of the kernel command line; this will be stored inside the FIT image; notice
