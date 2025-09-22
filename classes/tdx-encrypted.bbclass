@@ -5,11 +5,13 @@ DISTROOVERRIDES .= ":tdx-encrypted"
 # This variable defines how the encryption key is managed
 # Available options:
 #    cleartext -> key is stored in clear text (for testing purposes only!)
-#    caam      -> use CAAM (available only on iMX based SoMs)
+#    caam      -> use CAAM (available only on iMX6/7/8 based SoMs)
 #    tpm       -> use TPM (Trusted Platform Module)
 #    tee       -> use TEE (Trusted Execution Environment)
 TDX_ENC_KEY_BACKEND ?= ""
-TDX_ENC_KEY_BACKEND:imx-generic-bsp ?= "caam"
+TDX_ENC_KEY_BACKEND:mx6-generic-bsp ?= "caam"
+TDX_ENC_KEY_BACKEND:mx7-generic-bsp ?= "caam"
+TDX_ENC_KEY_BACKEND:mx8-generic-bsp ?= "caam"
 
 # Encryption key blob location
 # This variable defines where the encrypted key will be stored
