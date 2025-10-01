@@ -14,6 +14,7 @@ This layer provides support for running OP-TEE on the following SoMs:
 - Colibri iMX7D (1GB eMMC variant only)
 - iMX95 Verdin EVK
 - SMARC iMX8MP
+- SMARC iMX95
 - Verdin AM62
 - Verdin AM62P
 - Verdin iMX8MP

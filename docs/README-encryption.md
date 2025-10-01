@@ -12,6 +12,7 @@ Encryption is currently supported on the following SoMs:
 - Colibri iMX8X
 - iMX95 Verdin EVK
 - SMARC iMX8MP
+- SMARC iMX95
 - Verdin AM62
 - Verdin AM62P
 - Verdin iMX8MM
@@ -70,7 +71,7 @@ A few additional variables are available to customize the behavior of the data-a
 
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
-| `TDX_ENC_KEY_BACKEND` | Backend used to manage the encryption key. Allowed values: `caam`, `tpm`, `tee` or `cleartext`. If configured with `caam`, it will use Trusted Keys backed by the CAAM device (available on NXP iMX-based SoMs). If configured with `tpm`, it will use Trusted Keys backed by a TPM device (availability depends on the hardware). If configured with `tee`, it will use Trusted Keys backed by a Trusted Execution Environment. If configured with `cleartext`, the encryption key will be stored in clear text in the file system (use `cleartext` only for testing purposes!) | `caam` on iMX based SoMs, empty otherwise |
+| `TDX_ENC_KEY_BACKEND` | Backend used to manage the encryption key. Allowed values: `caam`, `tpm`, `tee` or `cleartext`. If configured with `caam`, it will use Trusted Keys backed by the CAAM device (available on NXP iMX-based SoMs). If configured with `tpm`, it will use Trusted Keys backed by a TPM device (availability depends on the hardware). If configured with `tee`, it will use Trusted Keys backed by a Trusted Execution Environment. If configured with `cleartext`, the encryption key will be stored in clear text in the file system (use `cleartext` only for testing purposes!) | `caam` on iMX6/7/8 based SoMs, empty otherwise |
 | `TDX_ENC_KEY_LOCATION` | Location to store the encryption key blob. Allowed values: `filesystem` or `partition`. If configured with `filesystem`, the encryption key blob will be stored as a file in the filesystem (location defined by the `TDX_ENC_KEY_DIR` variable. If configured with `partition`, the encryption key blob will be stored in a block of the disk outside the dm-crypt partition (useful if the rootfs filesystem is read-only) | `filesystem` |
 | `TDX_ENC_KEY_DIR` | Directory to store the encryption key blob | `/var/local/private/.keys` |
 | `TDX_ENC_KEY_FILE` | File name of the encryption key blob | `tdx-enc-key.blob` |
