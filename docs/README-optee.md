@@ -19,6 +19,7 @@ This layer provides support for running OP-TEE on the following SoMs:
 - Verdin AM62P
 - Verdin iMX8MP
 - Verdin iMX8MM
+- Verdin iMX95
 
 ## Enabling OP-TEE
 
