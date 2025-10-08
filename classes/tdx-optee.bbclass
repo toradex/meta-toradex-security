@@ -86,6 +86,7 @@ python validate_optee_support() {
         'verdin-am62p',
         'verdin-imx8mm',
         'verdin-imx8mp',
+        'verdin-imx95',
     ]
 
     if e.data.getVar('TDX_OPTEE_ENABLE') == '0':

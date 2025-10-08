@@ -17,6 +17,7 @@ Encryption is currently supported on the following SoMs:
 - Verdin AM62P
 - Verdin iMX8MM
 - Verdin iMX8MP
+- Verdin iMX95
 
 ## Data-at-rest encryption implementation
 
