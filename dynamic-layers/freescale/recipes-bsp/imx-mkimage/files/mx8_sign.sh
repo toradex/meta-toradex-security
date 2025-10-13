@@ -34,6 +34,10 @@ help() {
     echo "    UNSIGNED_IMAGE            Path to unsigned image"
     echo "    LOG_MKIMAGE               Path to mkimage log file"
     echo
+    echo " Optional Environment Variables:"
+    echo
+    echo "    TDX_IMX_HAB_CST_ARGS      Additional parameters to be passed to the CST tool"
+    echo
     echo " required arguments:"
     echo "    -t --target               imx-boot target, e.g. imx8mn-var-som-sd.bin-flash_ddr4_evk"
     echo
@@ -161,7 +165,7 @@ generate_csf_ahab() {
     echo "CSF location: '${image_csf}'"
 
     # Sign:
-    "${TDX_IMX_HAB_CST_BIN}" -i "${image_csf}" -o "${UNSIGNED_IMAGE}-signed"
+    "${TDX_IMX_HAB_CST_BIN}" ${TDX_IMX_HAB_CST_ARGS} -i "${image_csf}" -o "${UNSIGNED_IMAGE}-signed"
 }
 
 parse_args "$@"

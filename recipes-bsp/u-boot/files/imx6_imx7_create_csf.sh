@@ -49,6 +49,7 @@ help() {
     echo
     echo " Optional Environment Variables:"
     echo
+    echo "    TDX_IMX_HAB_CST_ARGS      Additional parameters to be passed to the CST tool"
     echo "    LIBFAKETIME_PATH          Path to libfaketime library (needed for reproducible CSF binary builds)"
     echo "                              default: unset"
     echo
@@ -220,7 +221,7 @@ generate_csf() {
     if ! env ${LIBFAKETIME_PATH+LD_PRELOAD="${LIBFAKETIME_PATH}"
                                 FAKETIME_FMT="%s"
                                 FAKETIME="@${FAKETIME}"} \
-             "${TDX_IMX_HAB_CST_BIN}" -i "${image_csf}" -o "${CSF}.bin" > "${CSF}.log" 2>&1
+             "${TDX_IMX_HAB_CST_BIN}" ${TDX_IMX_HAB_CST_ARGS} -i "${image_csf}" -o "${CSF}.bin" > "${CSF}.log" 2>&1
     then
         echo "CST execution log:" >&2
         cat "${CSF}.log" | sed 's@^@|@' >&2

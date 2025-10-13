@@ -25,6 +25,8 @@ After that, configure the various variables listed below to match your choices; 
 | :------- | :---------- | :------------ |
 | `TDX_IMX_HAB_ENABLE` | Enable/disable HAB/AHAB support; allowed values: `0` or `1`. | `1` |
 | `TDX_IMX_HAB_CST_DIR` | Location of the CST tool. | `${TOPDIR}/keys/cst` |
+| `TDX_IMX_HAB_CST_BIN` | Name of the CST binary tool. | `${TDX_IMX_HAB_CST_DIR}/linux64/bin/cst` |
+| `TDX_IMX_HAB_CST_ARGS` | Additional parameters to be passed to the CST tool | Empty |
 | `TDX_IMX_HAB_CST_CERTS_DIR` | Location of the certificates directory. The associated private keys must be located in a directory called `keys` at the same level as the `crts` directory (this is a requirement for the CST tool to work properly). | `${TDX_IMX_HAB_CST_DIR}/crts` |
 | `TDX_IMX_HAB_CST_CRYPTO` | Type of cryptographic keys in use; allowed values: `rsa` or `ecdsa`. This should be set to `ecdsa` if (and only if) you selected "Elliptic Curve Cryptography" when generating the keys/certificates with the CST tool. | `rsa` |
 | `TDX_IMX_HAB_CST_KEY_SIZE` | For **RSA** keys, this would be the key length (in bits) as entered into the CST tool. For **ECDSA**, this would be a string determined from the generated certificate file name; for example, for a file named `SRK1_sha256_secp384r1_v3_ca_crt.pem` (found in the certificates directory) the present variable would be set to `secp384r1`. | `2048` |
