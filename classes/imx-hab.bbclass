@@ -4,6 +4,9 @@
 TDX_IMX_HAB_CST_DIR ?= "${TOPDIR}/keys/cst"
 TDX_IMX_HAB_CST_BIN ?= "${TDX_IMX_HAB_CST_DIR}/linux64/bin/cst"
 
+# additional parameters to be passed to the CST tool
+TDX_IMX_HAB_CST_ARGS ?= ""
+
 #
 # Variables that control the automatic certificate names generation; those names
 # are used when signing with the CST tool. Users will likely want to change

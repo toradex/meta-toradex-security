@@ -58,6 +58,7 @@ imx6_imx7_sign_habv4() {
     TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
     TDX_IMX_HAB_CST_IMG_CERT="${TDX_IMX_HAB_CST_IMG_CERT}" \
     TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
+    TDX_IMX_HAB_CST_ARGS="${TDX_IMX_HAB_CST_ARGS}" \
     IMXBOOT="${UBOOT_BINARY_HAB}" \
     HAB_LOG="${UBOOT_BINARY_HAB}.log" \
     ${WORKDIR}/imx6_imx7_create_csf.sh -m "${soc}" -c "csf_uboot"
@@ -81,6 +82,7 @@ imx6_imx7_sign_habv4() {
         TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
         TDX_IMX_HAB_CST_IMG_CERT="${TDX_IMX_HAB_CST_IMG_CERT}" \
         TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
+        TDX_IMX_HAB_CST_ARGS="${TDX_IMX_HAB_CST_ARGS}" \
         IMXBOOT="${SPL_BINARY}" \
         HAB_LOG="${SPL_BINARY}.log" \
         ${WORKDIR}/imx6_imx7_create_csf.sh -m "${soc}" -c "csf_SPL"
@@ -120,6 +122,7 @@ imx8m_sign_habv4() {
     TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
     TDX_IMX_HAB_CST_IMG_CERT="${TDX_IMX_HAB_CST_IMG_CERT}" \
     TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
+    TDX_IMX_HAB_CST_ARGS="${TDX_IMX_HAB_CST_ARGS}" \
     ${WORKDIR}/imx8m_sign.sh
 
     # Create fuse commands
