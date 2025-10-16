@@ -76,9 +76,9 @@ do_install() {
     fi
 }
 
-# HW offload is not working properly on Verdin AM62P when trying to mount a partition
+# HW offload is not working properly on K3 platforms when trying to mount a partition
 # with dm-crypt, so let's disable it as a workaround for now.
-do_install:append:verdin-am62p() {
+do_install:append:k3() {
     install -d ${D}${sysconfdir}/modprobe.d/
     echo "blacklist sa2ul" > ${D}${sysconfdir}/modprobe.d/sa2ul.conf
 }
