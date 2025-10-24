@@ -12,8 +12,12 @@ require ${@ 'include/signed/tdx-signed-imx-hab.inc' if 'imx-generic-bsp' in d.ge
 require ${@ 'include/signed/tdx-signed-k3-secboot.inc' if 'k3r5' in d.getVar('OVERRIDES').split(':') else ''}
 require ${@ 'include/signed/tdx-signed-k3-secboot.inc' if 'k3' in d.getVar('OVERRIDES').split(':') else ''}
 
-# Hardening configuration
+# hardening configuration
 require include/signed/tdx-signed-harden.inc
 
 # machine-specific fixups for the signed image
 include include/signed/machine/${MACHINE}.inc
+
+# signing class name (informational, may be displayed to users);
+# derived classes should override this
+TDX_SIGNING_CLASS = "tdx-signed"
