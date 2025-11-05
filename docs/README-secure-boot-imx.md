@@ -74,3 +74,19 @@ fuse prog -y 7 3 0x9CE57582
 # this bit, the SOM will not boot anymore!
 fuse prog -y 1 3 0x02000000
 ```
+
+Alongside `fuse-cmds.txt`, the build also generates `imx-config.fuse`. This file contains the same fusing configuration, but in a machine-readable format, intended for programmatic consumption by other tools or recipes.
+
+```
+$ cat deploy/images/verdin-imx8mp/imx-config.fuse
+H:T:HAB
+H:F:6:0:0xB9BB8A0C
+H:F:6:1:0x2FF6C619
+H:F:6:2:0x79B3A9F0
+H:F:6:3:0x9D426FE6
+H:F:7:0:0x92523418
+H:F:7:1:0xD01D4E2B
+H:F:7:2:0xA23CCF8C
+H:F:7:3:0x3D794BAC
+H:C:1:3:0x02000000
+```
