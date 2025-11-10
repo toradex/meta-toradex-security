@@ -34,6 +34,7 @@ After that, configure the various variables listed below to match your choices; 
 | `TDX_IMX_HAB_CST_DIG_ALGO` | Digest algorithm as entered into the CST tool. | `sha256` |
 | `TDX_IMX_HAB_CST_SRK_CA` | Whether or not the SRK certificates have the CA flag set as entered into the CST tool; allowed values: `0` or `1`. | `1` |
 | `TDX_IMX_HAB_CST_SRK_INDEX` | Index of the SRK to be used for signing within the SRK table; allowed values: `1`..`4`, corresponding to `SRK1`..`SRK4`, respectively. | `1` |
+| `TDX_IMX_HAB_GEN_UBOOT_FUSING_CMD` | Add a function called `prog_secure_boot_fuses` to U-Boot's environment to program the secure boot fuses. Since this is intended mostly for development/tests, the function will only program the fuses but not close the device. If you enable it and run the function inside U-Boot, be aware that it will write to One-Time Programmable e-fuses, and the operation is irreversible! Allowed values are: `0` (disabled) or `1` (enabled). | `0` |
 
 The complete list of variables can be found in the `imx-hab.bbclass` file.
 
@@ -73,4 +74,20 @@ fuse prog -y 7 3 0x9CE57582
 # anything in the previous steps wasn't done correctly, after writing
 # this bit, the SOM will not boot anymore!
 fuse prog -y 1 3 0x02000000
+```
+
+Alongside `fuse-cmds.txt`, the build also generates `imx-config.fuse`. This file contains the same fusing configuration, but in a machine-readable format, intended for programmatic consumption by other tools or recipes.
+
+```
+$ cat deploy/images/verdin-imx8mp/imx-config.fuse
+H:T:HAB
+H:F:6:0:0xB9BB8A0C
+H:F:6:1:0x2FF6C619
+H:F:6:2:0x79B3A9F0
+H:F:6:3:0x9D426FE6
+H:F:7:0:0x92523418
+H:F:7:1:0xD01D4E2B
+H:F:7:2:0xA23CCF8C
+H:F:7:3:0x3D794BAC
+H:C:1:3:0x02000000
 ```

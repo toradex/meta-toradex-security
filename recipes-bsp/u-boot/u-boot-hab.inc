@@ -1,7 +1,7 @@
 inherit imx-hab
 
-# Need this for hexdump utility which is used in create_fuse_cmds.sh
-DEPENDS += "util-linux-native"
+# Need this for the create_fuse_cmds.sh script
+DEPENDS += "imx-fuses-native"
 
 # Need this for the xxd and fdtget utilities used by imx8m_sign.sh
 DEPENDS += "xxd-native dtc-native"
@@ -11,7 +11,6 @@ DEPENDS += "libfaketime-native"
 
 SRC_URI:append = "\
     file://u-boot-hab.cfg \
-    file://create_fuse_cmds.sh \
 "
 
 TDX_IMX6_IMX7_CSF_ARTIFACTS = "\
@@ -96,9 +95,11 @@ imx6_imx7_sign_habv4() {
     fi
 
     # Create fuse commands
-    ${WORKDIR}/create_fuse_cmds.sh "${soc}" \
-                                   "${TDX_IMX_HAB_CST_SRK_FUSE}" \
-                                   "${WORKDIR}/fuse-cmds.txt"
+    ${STAGING_BINDIR_NATIVE}/create_fuse_cmds.sh \
+        "${soc}" \
+        "${TDX_IMX_HAB_CST_SRK_FUSE}" \
+        "${WORKDIR}/fuse-cmds.txt" \
+        "${RECIPE_SYSROOT_NATIVE}${datadir}/imx-fuses"
 }
 
 # Sign U-Boot binary and/or SPL (this works with i.MX8M).
@@ -126,9 +127,11 @@ imx8m_sign_habv4() {
     ${WORKDIR}/imx8m_sign.sh
 
     # Create fuse commands
-    ${WORKDIR}/create_fuse_cmds.sh "${soc}" \
-                                   "${TDX_IMX_HAB_CST_SRK_FUSE}" \
-                                   "${WORKDIR}/fuse-cmds.txt"
+    ${STAGING_BINDIR_NATIVE}/create_fuse_cmds.sh \
+        "${soc}" \
+        "${TDX_IMX_HAB_CST_SRK_FUSE}" \
+        "${WORKDIR}/fuse-cmds.txt" \
+        "${RECIPE_SYSROOT_NATIVE}${datadir}/imx-fuses"
 }
 
 uboot_assemble_fitimage_helper:append:mx6dl-generic-bsp() {
@@ -165,5 +168,6 @@ do_deploy:append() {
     if [ -e ${WORKDIR}/fuse-cmds.txt ]; then
         install -d ${DEPLOYDIR}
         install -m 0644 ${WORKDIR}/fuse-cmds.txt ${DEPLOYDIR}
+        install -m 0644 ${WORKDIR}/imx-config.fuse ${DEPLOYDIR}
     fi
 }

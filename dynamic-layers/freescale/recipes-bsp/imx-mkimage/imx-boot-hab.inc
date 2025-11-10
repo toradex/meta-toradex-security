@@ -2,8 +2,10 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 inherit imx-hab
 
+# Need this for the create_fuse_cmds.sh script
+DEPENDS += "imx-fuses-native"
+
 SRC_URI:append = "\
-    file://create_fuse_cmds.sh \
     file://mx8_sign.sh \
     file://mx8_template.csf \
 "
@@ -56,9 +58,11 @@ sign_ahab_helper() {
     done
 
     # create fuse commands
-    ${WORKDIR}/create_fuse_cmds.sh \
-        ${IMX_BOOT_SOC_TARGET} ${TDX_IMX_HAB_CST_SRK_FUSE} \
-        ${WORKDIR}/fuse-cmds.txt
+    ${STAGING_BINDIR_NATIVE}/create_fuse_cmds.sh \
+        "${IMX_BOOT_SOC_TARGET}" \
+        "${TDX_IMX_HAB_CST_SRK_FUSE}" \
+        "${WORKDIR}/fuse-cmds.txt" \
+        "${RECIPE_SYSROOT_NATIVE}${datadir}/imx-fuses"
 }
 
 sign_habv4_helper() {
@@ -156,5 +160,6 @@ do_deploy:append() {
     if [ -e ${WORKDIR}/fuse-cmds.txt ]; then
         install -d ${DEPLOYDIR}
         install -m 0644 ${WORKDIR}/fuse-cmds.txt ${DEPLOYDIR}
+        install -m 0644 ${WORKDIR}/imx-config.fuse ${DEPLOYDIR}
     fi
 }
