@@ -1,5 +1,7 @@
 #!/bin/bash
 
+[ "${XTRACE}" = "1" ] && set -x
+
 set -e
 
 # parameters
@@ -35,6 +37,8 @@ fuse_write_line() {
 create_fuse_cmds() {
     local template_file="$1"
 
+    echo "Generating fusing files using template [$template_file]."
+
     if [ ! -e "$template_file" ]; then
         echo "Template file not found [$template_file]!"
         return 1
@@ -42,6 +46,8 @@ create_fuse_cmds() {
 
     cp "$template_file" "$FUSE_INFO_FILE"
     echo "${WARNING1}" > "$FUSE_CMDS_FILE"
+
+    echo "Writing fusing commands..."
 
     for hexval in $(hexdump -e '/4 "0x"' -e '/4 "%X""\n"' "${SRK_FUSE_FILE}"); do
         fuse_info=$(grep -m 1 "^H:F:.*:$" "$FUSE_INFO_FILE")
@@ -59,6 +65,8 @@ create_fuse_cmds() {
 
     echo -e "\n${WARNING2}" >> "$FUSE_CMDS_FILE"
 
+    echo "Writing 'close' command..."
+
     if grep -q "H:T:HAB" "$FUSE_INFO_FILE"; then
         fuse_info=$(grep "^H:C:" "$FUSE_INFO_FILE")
         bank=$(echo "$fuse_info" | cut -d: -f3)
@@ -68,7 +76,12 @@ create_fuse_cmds() {
     else
         echo "ahab_close" >> "$FUSE_CMDS_FILE"
     fi
+
+    echo "Fusing files successfully generated!"
 }
+
+# Print command for Yocto logs
+echo "$0" "$@"
 
 case ${SOC} in
     "IMX6ULL"|"IMX6")
