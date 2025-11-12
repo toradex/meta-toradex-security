@@ -23,6 +23,8 @@ Additional variables can be used to customize the behavior of this feature:
 | :------- | :---------- | :------------ |
 | `TDX_TEZI_DATA_PARTITION_TYPE` | Data partition filesystem type. Supported values are `ext2`, `ext3`, `ext4`, `fat` and `ubifs`. The supported values are limited to what Toradex Easy Installer supports | `ext4` |
 | `TDX_TEZI_DATA_PARTITION_LABEL` | Label that will be used to format and mount the data partition | `DATA` |
+| `TDX_TEZI_DATA_PARTITION_SIZE_NOMINAL` | Nominal size of the data partition in MB. This is the actual partition size when `TDX_TEZI_DATA_PARTITION_WANT_MAXIMIZED` is set to `0`, or the minimum size when set to `1` | `512` |
+| `TDX_TEZI_DATA_PARTITION_WANT_MAXIMIZED` | Set to `1` to maximize partition size if multiple partitions share this setting distributing remaining space evenly, or `0` to use only the nominal size specified by `TDX_TEZI_DATA_PARTITION_SIZE_NOMINAL` | `1` |
 | `TDX_TEZI_DATA_PARTITION_AUTOMOUNT` | Set to `1` to automatically mount the data partition at boot time, or `0` to disable automouting the partition; when set to `-1` the partition won't even be listed in fstab (it should be mounted by other means) | `-1` if class `tdx-encrypted` is in use or `1` otherwise |
 | `TDX_TEZI_DATA_PARTITION_MOUNTPOINT` | Directory where the data partition should be mounted | `/data` |
 | `TDX_TEZI_DATA_PARTITION_MOUNT_FLAGS` | Flags used to mount the data partition. See the `mount` man page for more information on the available mount flags | `rw,nosuid,nodev,noatime, errors=remount-ro` |

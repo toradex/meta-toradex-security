@@ -28,10 +28,21 @@ TDX_TEZI_DATA_PARTITION_MOUNTPOINT ?= "/data"
 # data partition mount flags
 TDX_TEZI_DATA_PARTITION_MOUNT_FLAGS ?= "rw,nosuid,nodev,noatime,errors=remount-ro"
 
+# data partition nominal size in MB
+TDX_TEZI_DATA_PARTITION_SIZE_NOMINAL ?= "512"
+
+# data partition want_maximized setting
+# "0": do not maximize partition
+# "1": maximize partition size if multiple partitions share this setting
+#      distributing remaining space evenly
+TDX_TEZI_DATA_PARTITION_WANT_MAXIMIZED ?= "1"
+
 # image_type_tezi.bbclass configuration
 TEZI_DATA_ENABLED = "1"
 TEZI_DATA_FSTYPE = "${TDX_TEZI_DATA_PARTITION_TYPE}"
 TEZI_DATA_LABEL = "${TDX_TEZI_DATA_PARTITION_LABEL}"
+TEZI_DATA_PART_SIZE = "${TDX_TEZI_DATA_PARTITION_SIZE_NOMINAL}"
+TEZI_DATA_WANT_MAXIMIZED = "${TDX_TEZI_DATA_PARTITION_WANT_MAXIMIZED}"
 
 # check if tezi image is enabled
 addhandler validate_tezi_support
