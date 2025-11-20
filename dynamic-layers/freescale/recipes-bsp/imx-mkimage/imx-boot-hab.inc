@@ -15,11 +15,21 @@ sign_ahab_image() {
     local dest_image=$2
     local make_target=$3
 
+    echo "======================== sign_ahab_image 1 ======================================="
+
     local logfile=${WORKDIR}/mkimage-${make_target}.log
 
     # re-generate image and save logs
+    echo make SOC=${IMX_BOOT_SOC_TARGET} ${REV_OPTION} dtbs=${UBOOT_DTB_NAME_EXTRA} \
+         ${MKIMAGE_EXTRA_ARGS} ${make_target}
     make SOC=${IMX_BOOT_SOC_TARGET} ${REV_OPTION} dtbs=${UBOOT_DTB_NAME_EXTRA} \
          ${MKIMAGE_EXTRA_ARGS} ${make_target} > ${logfile} 2>&1
+    
+    echo "======================== logfile 1 ======================================="
+    cat ${logfile}
+    echo "======================== logfile 2 ======================================="
+
+    echo "======================== sign_ahab_image 2 ======================================="
 
     # sign image
     TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
@@ -31,6 +41,7 @@ sign_ahab_image() {
     UNSIGNED_IMAGE="${orig_image}" \
     LOG_MKIMAGE="${logfile}" \
     ${WORKDIR}/mx8_sign.sh -t ${make_target}
+    echo ${WORKDIR}/mx8_sign.sh -t ${make_target}
 
     # copy signed image
     cp -v ${orig_image}-signed ${dest_image}

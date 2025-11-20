@@ -165,6 +165,7 @@ generate_csf_ahab() {
     echo "CSF location: '${image_csf}'"
 
     # Sign:
+    echo "${TDX_IMX_HAB_CST_BIN}" ${TDX_IMX_HAB_CST_ARGS} -i "${image_csf}" -o "${UNSIGNED_IMAGE}-signed"
     "${TDX_IMX_HAB_CST_BIN}" ${TDX_IMX_HAB_CST_ARGS} -i "${image_csf}" -o "${UNSIGNED_IMAGE}-signed"
 }
 

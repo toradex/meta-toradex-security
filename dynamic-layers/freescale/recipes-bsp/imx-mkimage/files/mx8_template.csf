@@ -13,6 +13,7 @@ Source index = @@CST_KIDX@@
 Source set = OEM
 # bitmask of the revoked SRKs
 Revocations = 0x0
+# Check All Signatures = All
 
 #+START_SGK_BLOCK (this block may be removed by the signing script).
 # Optional subordinate SGK key
