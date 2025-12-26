@@ -38,22 +38,24 @@ TDX_UBOOT_HARDENING_ENABLE_DBG ?= "0"
 # fixed part of the bootargs are saved into the FIT image and checked against
 # the "bootargs" environment variable at runtime (by U-Boot).
 #
-# TODO: Ensure bootargs are set correctly on all machines.
-TDX_SECBOOT_REQUIRED_BOOTARGS ?= ""
-TDX_SECBOOT_REQUIRED_BOOTARGS:apalis-imx6 ?= "ro rootwait console=tty1 console=ttymxc0,115200"
-TDX_SECBOOT_REQUIRED_BOOTARGS:colibri-imx6 ?= "ro rootwait console=tty1 console=ttymxc0,115200"
-TDX_SECBOOT_REQUIRED_BOOTARGS:colibri-imx6ull-emmc ?= "ro rootwait console=tty1 console=ttymxc0,115200"
-TDX_SECBOOT_REQUIRED_BOOTARGS:colibri-imx7-emmc ?= "ro rootwait console=tty1 console=ttymxc0,115200"
-TDX_SECBOOT_REQUIRED_BOOTARGS:apalis-imx8 ?= "ro rootwait console=tty1 console=ttyLP1,115200"
-TDX_SECBOOT_REQUIRED_BOOTARGS:verdin-imx8mm ?= "ro rootwait console=tty1 console=ttymxc0,115200"
-TDX_SECBOOT_REQUIRED_BOOTARGS:verdin-imx8mp ?= "ro rootwait console=tty1 console=ttymxc2,115200"
-TDX_SECBOOT_REQUIRED_BOOTARGS:colibri-imx8x ?= "ro rootwait console=tty1 console=ttyLP3,115200"
-TDX_SECBOOT_REQUIRED_BOOTARGS:verdin-am62 ?= "ro rootwait console=tty1 console=ttyS2,115200"
-TDX_SECBOOT_REQUIRED_BOOTARGS:verdin-am62p ?= "ro rootwait console=tty1 console=ttyS2,115200"
-TDX_SECBOOT_REQUIRED_BOOTARGS:aquila-am69 ?= "ro rootwait console=tty1 console=ttyS2,115200"
-TDX_SECBOOT_REQUIRED_BOOTARGS:toradex-smarc-imx95 ?= "ro rootwait console=tty1 console=ttyLP1,115200"
-TDX_SECBOOT_REQUIRED_BOOTARGS:toradex-smarc-imx8mp ?= "ro rootwait console=tty1 console=ttymxc1,115200"
-TDX_SECBOOT_REQUIRED_BOOTARGS:verdin-imx95 ?= "ro rootwait console=tty1 console=ttyLP2,115200"
+# Per-machine default bootargs for BSP images:
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT ?= ""
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:apalis-imx6 ?= "ro rootwait console=tty1 console=ttymxc0,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:colibri-imx6 ?= "ro rootwait console=tty1 console=ttymxc0,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:colibri-imx6ull-emmc ?= "ro rootwait console=tty1 console=ttymxc0,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:colibri-imx7-emmc ?= "ro rootwait console=tty1 console=ttymxc0,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:apalis-imx8 ?= "ro rootwait console=tty1 console=ttyLP1,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:verdin-imx8mm ?= "ro rootwait console=tty1 console=ttymxc0,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:verdin-imx8mp ?= "ro rootwait console=tty1 console=ttymxc2,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:colibri-imx8x ?= "ro rootwait console=tty1 console=ttyLP3,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:verdin-am62 ?= "ro rootwait console=tty1 console=ttyS2,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:verdin-am62p ?= "ro rootwait console=tty1 console=ttyS2,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:aquila-am69 ?= "ro rootwait console=tty1 console=ttyS2,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:toradex-smarc-imx95 ?= "ro rootwait console=tty1 console=ttyLP1,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:toradex-smarc-imx8mp ?= "ro rootwait console=tty1 console=ttymxc1,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:verdin-imx95 ?= "ro rootwait console=tty1 console=ttyLP2,115200"
+# Bootargs for BSP images; users should override this one when needed:
+TDX_SECBOOT_REQUIRED_BOOTARGS ?= "${TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT}"
 
 # Name of the overlay file (without extension) that will contain the fixed part
 # of the kernel command line; this will be stored inside the FIT image; notice
