@@ -8,9 +8,11 @@ DEPENDS += "imx-fuses-native"
 SRC_URI:append = "\
     file://mx8_sign.sh \
     file://mx8_template.csf \
+    file://mx9_template.csf \
 "
 
 TDX_IMX_HAB_CST_TEMPLATE:mx8-generic-bsp = "mx8_template.csf"
+TDX_IMX_HAB_CST_TEMPLATE:mx9-generic-bsp = "mx9_template.csf"
 
 sign_ahab_image() {
     local orig_image=$1
