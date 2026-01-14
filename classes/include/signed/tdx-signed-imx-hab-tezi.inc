@@ -4,7 +4,7 @@ TDX_IMX_HAB_GEN_UBOOT_FUSING_CMD ?= "0"
 # this is mostly intended for development/tests, so it will only program
 # the fuses but not close the device
 add_fusing_cmd_to_uboot_env() {
-    uboot_cmd="prog_secure_boot_fuses=echo Programming fuses..."
+    uboot_cmd="prog_secure_boot_fuses=echo Programming fuses...; setenv force_prog_ecc y"
     for line in $(grep "^H:F:" ${DEPLOY_DIR_IMAGE}/imx-config.fuse); do
         bank=$(echo "$line" | cut -d: -f3)
         word=$(echo "$line" | cut -d: -f4)
