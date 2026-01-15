@@ -31,6 +31,7 @@ help() {
     echo "                              e.g. SRK1_sha256_2048_65537_v3_usr_crt.pem (when CA flag is not set)"
     echo "    TDX_IMX_HAB_CST_SGK_CERT  Path to SGK public key certificate (needed only if CA flag is set for SRK)"
     echo "                              e.g. SGK1_1_sha256_2048_65537_v3_usr_crt.pem"
+    echo "    TDX_IMX_HAB_CST_TEMPLATE  Name of the Command Sequence File (CSF) file"
     echo "    UNSIGNED_IMAGE            Path to unsigned image"
     echo "    LOG_MKIMAGE               Path to mkimage log file"
     echo
@@ -90,6 +91,7 @@ validate_environ() {
     if [ "${TDX_IMX_HAB_CST_SRK_CERT##*_ca_}" = "crt.pem" ]; then
         check_fileref "${TDX_IMX_HAB_CST_SGK_CERT}" "TDX_IMX_HAB_CST_SGK_CERT"
     fi
+    check_fileref "${TDX_IMX_HAB_CST_TEMPLATE}" "TDX_IMX_HAB_CST_TEMPLATE"
     check_fileref "${UNSIGNED_IMAGE}" "UNSIGNED_IMAGE"
     check_fileref "${LOG_MKIMAGE}" "LOG_MKIMAGE"
 }
@@ -100,7 +102,7 @@ generate_csf_ahab() {
 
     # Copy template file:
     echo "Creating CSF file: ${image_csf}"
-    cp "${DIR_SCRIPT}/mx8_template.csf" "${image_csf}"
+    cp "${DIR_SCRIPT}/${TDX_IMX_HAB_CST_TEMPLATE}" "${image_csf}"
 
     # Determine key index (use file name):
     local kidx
