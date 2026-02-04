@@ -16,8 +16,8 @@ When the `tdx-signed` class is inherited, signing bootloader images via HAB/AHAB
 
 Before using this feature, it is required to:
 
-1. Download NXP CST tool from https://www.nxp.com/webapp/sps/download/license.jsp?colCode=IMX_CST_TOOL_NEW.
-2. Follow the NXP documentation to generate the keys, certificates, SRK tables and Efuse Hash (the documentation can be found inside the CST tool in `docs/CST_UG.pdf`); be sure to take note of your answers to the key generation script.
+1. Download NXP CST tool from https://www.nxp.com/webapp/Download?colCode=IMX_CST_TOOL_NEW.
+2. Follow the CST User Guide (available in the `docs` directory) to generate the keys, certificates, SRK tables, and eFuse hash. Make sure to take note of your responses to the key-generation script, as you'll need them later.
 
 After that, configure the various variables listed below to match your choices; pay special attention to the ones depending on your answers to the NXP key generation script.
 
@@ -44,7 +44,6 @@ The complete list of variables can be found in the `imx-hab.bbclass` file.
 
 - Starting from version 4.0.0, the NXP CST tool may not work as expected on older Linux distributions (e.g., Ubuntu 20.04). If you are using NXP CST 4.0.0 or later, it is recommended to use a more recent Linux distribution (e.g., Ubuntu 24.04) to ensure compatibility and avoid potential issues.
 - As of April 2025, SGK is not supported in the current firmware for SoCs using the EdgeLock Secure Enclave (ELE), which includes iMX8ULP and iMX9x. Consequently, when building for machines based on these SoCs, the use of subordinate signing keys (SGK) will be disabled, and the boot container will be signed directly with the Super Root Keys (SRK).
-- On i.MX95 silicon revisions A0 and A1, the fuse command in U-Boot does not work with the latest Toradex BSP. If you are using one of these early silicon revisions and encounter issues when programming fuses, try using an older Toradex Easy Installer release (prior to August). If the problem persists, please open an issue in this repository or contact the Toradex support team for assistance.
 
 ### Closing the device
 
