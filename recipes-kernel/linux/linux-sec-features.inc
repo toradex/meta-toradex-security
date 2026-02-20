@@ -8,3 +8,6 @@ require ${@ 'linux-dm-crypt.inc' if 'tdx-encrypted' in d.getVar('OVERRIDES').spl
 
 # op-tee support
 require ${@ 'linux-optee.inc' if d.getVar('TDX_OPTEE_ENABLE') == '1' else ''}
+
+# FIT image signing using an HSM
+require ${@oe.utils.conditional('TDX_SIGNED_HSM', '1', 'linux-signed-hsm.inc', '', d)}
