@@ -31,6 +31,11 @@ help() {
     echo "                              e.g. SRK1_sha256_2048_65537_v3_usr_crt.pem (when CA flag is not set)"
     echo "    TDX_IMX_HAB_CST_SGK_CERT  Path to SGK public key certificate (needed only if CA flag is set for SRK)"
     echo "                              e.g. SGK1_1_sha256_2048_65537_v3_usr_crt.pem"
+    echo "    TDX_IMX_HAB_CST_HSM       Enable usage of HSM (via PKCS11) when set to 1"
+    echo "    TDX_IMX_HAB_CST_SRK_CA    Whether or not the SRK certificates have the CA flag"
+    echo "                              Only used when HSM is enabled (TDX_IMX_HAB_CST_HSM=1)"
+    echo "    TDX_IMX_HAB_CST_SRK_INDEX Index of the SRK to be used for signing (1..4)"
+    echo "                              Only used when HSM is enabled (TDX_IMX_HAB_CST_HSM=1)"
     echo "    TDX_IMX_HAB_CST_TEMPLATE  Name of the Command Sequence File (CSF) file"
     echo "    UNSIGNED_IMAGE            Path to unsigned image"
     echo "    LOG_MKIMAGE               Path to mkimage log file"
@@ -87,13 +92,27 @@ validate_environ() {
     fi
     check_fileref "${TDX_IMX_HAB_CST_BIN}" "TDX_IMX_HAB_CST_BIN"
     check_fileref "${TDX_IMX_HAB_CST_SRK}" "TDX_IMX_HAB_CST_SRK"
-    check_fileref "${TDX_IMX_HAB_CST_SRK_CERT}" "TDX_IMX_HAB_CST_SRK_CERT"
-    if [ "${TDX_IMX_HAB_CST_SRK_CERT##*_ca_}" = "crt.pem" ]; then
-        check_fileref "${TDX_IMX_HAB_CST_SGK_CERT}" "TDX_IMX_HAB_CST_SGK_CERT"
+
+    # Only check certificates if HSM is disabled (when HSM is used, these
+    # variables are actually PKCS11 URIs)
+    if [ "${TDX_IMX_HAB_CST_HSM}" = 0 ]; then
+        check_fileref "${TDX_IMX_HAB_CST_SRK_CERT}" "TDX_IMX_HAB_CST_SRK_CERT"
+        if [ "${TDX_IMX_HAB_CST_SRK_CERT##*_ca_}" = "crt.pem" ]; then
+            check_fileref "${TDX_IMX_HAB_CST_SGK_CERT}" "TDX_IMX_HAB_CST_SGK_CERT"
+        fi
     fi
+
     check_fileref "${TDX_IMX_HAB_CST_TEMPLATE}" "TDX_IMX_HAB_CST_TEMPLATE"
     check_fileref "${UNSIGNED_IMAGE}" "UNSIGNED_IMAGE"
     check_fileref "${LOG_MKIMAGE}" "LOG_MKIMAGE"
+
+    # Add "-b pkcs11" if HSM is enabled and it's not already present
+    if [ "${TDX_IMX_HAB_CST_HSM}" = 1 ]; then
+        case " ${TDX_IMX_HAB_CST_ARGS} " in
+            *" -b pkcs11 "*) ;;
+            *) TDX_IMX_HAB_CST_ARGS="${TDX_IMX_HAB_CST_ARGS} -b pkcs11" ;;
+        esac
+    fi
 }
 
 # Generate a CSF text file (to be used as input to the CST tool) based on a template.
@@ -104,11 +123,16 @@ generate_csf_ahab() {
     echo "Creating CSF file: ${image_csf}"
     cp "${DIR_SCRIPT}/${TDX_IMX_HAB_CST_TEMPLATE}" "${image_csf}"
 
-    # Determine key index (use file name):
+    # Determine key index
     local kidx
-    kidx=${TDX_IMX_HAB_CST_SRK_CERT##*/}
-    kidx=${kidx##SRK}
-    kidx=${kidx%%_*}
+    if [ "${TDX_IMX_HAB_CST_HSM}" = 1 ]; then
+        kidx=${TDX_IMX_HAB_CST_SRK_INDEX}
+    else
+        kidx=${TDX_IMX_HAB_CST_SRK_CERT##*/}
+        kidx=${kidx##SRK}
+        kidx=${kidx%%_*}
+    fi
+
     if [ "${#kidx}" != 1 ]; then
         echo "Certificate file name (defined by TDX_IMX_HAB_CST_SRK_CERT) does" \
              "not match expected pattern - could not determine SRK key index."
@@ -125,7 +149,9 @@ generate_csf_ahab() {
 
     # Determine whether or not the CA flag was set:
     local ca
-    if [ "${TDX_IMX_HAB_CST_SRK_CERT##*_ca_}" = "crt.pem" ]; then
+    if [ "${TDX_IMX_HAB_CST_HSM}" = 1 ]; then
+        ca=${TDX_IMX_HAB_CST_SRK_CA}
+    elif [ "${TDX_IMX_HAB_CST_SRK_CERT##*_ca_}" = "crt.pem" ]; then
         ca=1
     elif [ "${TDX_IMX_HAB_CST_SRK_CERT##*_usr_}" = "crt.pem" ]; then
         ca=0

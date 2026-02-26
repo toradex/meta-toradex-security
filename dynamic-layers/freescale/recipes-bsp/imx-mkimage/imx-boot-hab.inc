@@ -33,6 +33,9 @@ sign_ahab_image() {
     TDX_IMX_HAB_CST_SGK_CERT="${TDX_IMX_HAB_CST_SGK_CERT}" \
     TDX_IMX_HAB_CST_SGK_SUPP="${TDX_IMX_HAB_CST_SGK_SUPP}" \
     TDX_IMX_HAB_CST_TEMPLATE="${TDX_IMX_HAB_CST_TEMPLATE}" \
+    TDX_IMX_HAB_CST_HSM="${TDX_SIGNED_HSM}" \
+    TDX_IMX_HAB_CST_SRK_CA="${TDX_IMX_HAB_CST_SRK_CA}" \
+    TDX_IMX_HAB_CST_SRK_INDEX="${TDX_IMX_HAB_CST_SRK_INDEX}" \
     UNSIGNED_IMAGE="${orig_image}" \
     LOG_MKIMAGE="${logfile}" \
     ${WORKDIR}/mx8_sign.sh -t ${make_target}
@@ -87,8 +90,22 @@ sign_common() {
         bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
     fi
 
-    local srk_cert=${TDX_IMX_HAB_CST_SRK_CERT}
-    if [ "${srk_cert##*_ca_}" = "crt.pem" ] && [ "${TDX_IMX_HAB_CST_SGK_SUPP}" = "0" ]; then
+    # show warning if CA flag is enabled but not supported
+    # when an HSM is used, the TDX_IMX_HAB_CST_SRK_CERT is actually a PKCS#11 URI and
+    # cannot be used to check if the CA flag is enabled, so in this case we use the
+    # TDX_IMX_HAB_CST_SRK_CA variable to check if CA is enabled
+    local ca_flag_warn=0
+    if [ "${TDX_SIGNED_HSM}" = "1" ]; then
+        if [ "${TDX_IMX_HAB_CST_SRK_CA}" = "1" ] && [ "${TDX_IMX_HAB_CST_SGK_SUPP}" = "0" ]; then
+            ca_flag_warn=1
+        fi
+    else
+        local srk_cert=${TDX_IMX_HAB_CST_SRK_CERT}
+        if [ "${srk_cert##*_ca_}" = "crt.pem" ] && [ "${TDX_IMX_HAB_CST_SGK_SUPP}" = "0" ]; then
+            ca_flag_warn=1
+        fi
+    fi
+    if [ "${ca_flag_warn}" = "1" ]; then
         bbwarn "AHAB (Secure Boot) signing keys seem to have the CA flag enabled, but" \
                "the build target [${MACHINE}] does not support the use of subordinate" \
                "signing keys. Bootloader will be signed using SRK directly."
@@ -168,3 +185,5 @@ do_deploy:append() {
         install -m 0644 ${WORKDIR}/imx-config.fuse ${DEPLOYDIR}
     fi
 }
+
+require ${@oe.utils.conditional('TDX_SIGNED_HSM', '1', 'imx-boot-hab-hsm.inc', '', d)}
