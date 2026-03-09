@@ -60,11 +60,15 @@ TDX_SECBOOT_WL_DENY_CLOSED_CATEG ?= ""
 TDX_SECBOOT_WL_NEEDED_CATEG ?= ""
 # TODO: Consider new variable to configure 'enable-cli-when-closed' property.
 
+inherit cml1
+
+TDX_SECBOOT_DEVICE_TREE_INCLUDES = "tdx-secboot.dtsi"
+
 do_patch[postfuncs] += "amend_secboot_dtsi"
 amend_secboot_dtsi_cell_prop() {
     prop="$1"
     value="$2"
-    dtsi="${S}/arch/arm/dts/tdx-secboot.dtsi"
+    dtsi="${S}/arch/arm/dts/${TDX_SECBOOT_DEVICE_TREE_INCLUDES}"
 
     if ! grep -q "${prop} = <.*>" "${dtsi}"; then
         bbwarn "Property '${prop}' will not be honored because it is not present in '${dtsi}'"
@@ -74,6 +78,7 @@ amend_secboot_dtsi_cell_prop() {
     bbnote "Amending '${prop}' property in '${dtsi}'"
     sed -i -Ee "s#^([[:space:]]*)(// )?(${prop} = )<.*>#\1\3<${value}>#" "${dtsi}"
 }
+
 amend_secboot_dtsi() {
     if [ -n "${TDX_SECBOOT_WL_ALLOW_OPEN_CATEG}" ]; then
         amend_secboot_dtsi_cell_prop \
@@ -99,6 +104,65 @@ amend_secboot_dtsi() {
         amend_secboot_dtsi_cell_prop \
 	    "needed" "${TDX_SECBOOT_WL_NEEDED_CATEG}"
     fi
+}
+
+do_configure:append() {
+    if [ -n "${UBOOT_CONFIG}" ]; then
+        unset i j
+        for config in ${UBOOT_MACHINE}; do
+            i=$(expr $i + 1);
+            for type in ${UBOOT_CONFIG}; do
+                j=$(expr $j + 1);
+                if [ $j -eq $i ]; then
+                    extend_device_tree_includes_config $config $type
+                fi
+            done
+            unset j
+        done
+        unset i
+    else
+        extend_device_tree_includes
+    fi
+}
+
+_make_dt_includes_fragment() {
+    config_file=$1
+    frag_file=$2
+
+    # Get original includes (if any):
+    incs=""
+    if grep -q '^CONFIG_DEVICE_TREE_INCLUDES=' "${config_file}"; then
+        incs=$(sed -n -e 's/^CONFIG_DEVICE_TREE_INCLUDES="\(.*\)"/\1/p' "${config_file}")
+    fi
+    bbdebug 1 "Original value of CONFIG_DEVICE_TREE_INCLUDES='${incs}' in '${config_file}'"
+
+    # Append the desired includes:
+    [ -n "${incs}" ] && incs="${incs} "
+    incs="${incs}${TDX_SECBOOT_DEVICE_TREE_INCLUDES}"
+
+    bbdebug 1 "Updated value of CONFIG_DEVICE_TREE_INCLUDES='${incs}'"
+    bbdebug 1 "Writing fragment file into '${frag_file}'"
+
+    echo "CONFIG_DEVICE_TREE_INCLUDES=\"${incs}\"" > "${frag_file}"
+}
+
+extend_device_tree_includes_config() {
+    config=$1
+    type=$2
+
+    frag="${WORKDIR}/.add-dt-includes-${type}.cfg"
+    _make_dt_includes_fragment "${B}/${config}/.config" "${frag}"
+
+    merge_config.sh -m -O "${B}/${config}" "${B}/${config}/.config" "${frag}"
+    oe_runmake -C "${S}" O="${B}/${config}" oldconfig
+}
+
+extend_device_tree_includes() {
+    frag="${WORKDIR}/.add-dt-includes.cfg"
+    _make_dt_includes_fragment ".config" "${frag}"
+
+    merge_config.sh -m ".config" "${frag}"
+    cml1_do_configure
 }
 
 TDX_CHECK_UNSUPP_BOOTMETH ?= "1"
