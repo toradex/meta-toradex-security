@@ -56,6 +56,7 @@ TDX_UBOOT_HARDENING_PATCHES:k3r5 = ""
 SRC_URI:append = "\
     file://u-boot-harden.cfg \
     ${@oe.utils.conditional('TDX_UBOOT_HARDENING_ENABLE_DBG', '1', 'file://u-boot-harden-dbg.cfg', '', d)} \
+    ${@oe.utils.conditional('TDX_UBOOT_HARDENING_ENABLE_CP_PROT', '1', 'file://u-boot-harden-cp-prot.cfg', '', d)} \
     ${TDX_UBOOT_HARDENING_PATCHES} \
 "
 
@@ -218,9 +219,20 @@ SRC_URI:append = "\
     ${@oe.utils.conditional('TDX_DISABLE_UNSUPP_BOOTMETH', '1', 'file://disable-bootmeths.cfg', '', d)} \
 "
 
+CP_PROT_SUPPORTED ?= "0"
+CP_PROT_SUPPORTED:verdin-imx8mm ?= "1"
+CP_PROT_SUPPORTED:verdin-imx8mp ?= "1"
+
 do_compile:prepend() {
     if [ "${TDX_UBOOT_HARDENING_ENABLE_DBG}" != "0" ]; then
         bbwarn 'Debugging of the hardening feature is enabled; be sure to disable it for production.'
+    fi
+    if [ "${TDX_UBOOT_HARDENING_ENABLE_CP_PROT}" != "0" ]; then
+        if [ "${CP_PROT_SUPPORTED}" != "1" ]; then
+            bbfatal '"cp" command protection is not supported/tested on the current machine' \
+                    '(set CP_PROT_SUPPORTED="1" to bypass this error check at your own risk).'
+        fi
+        bbwarn 'Hardening of the "cp" command is enabled; do this only when strictly required.'
     fi
 }
 
