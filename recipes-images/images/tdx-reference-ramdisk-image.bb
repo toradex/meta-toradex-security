@@ -45,7 +45,7 @@ DEPENDS:remove = "\
 
 # rootfs should be built before the ramdisk so we have
 # dm-verity.env to add to the ramdisk
-do_rootfs[depends] += "${DM_VERITY_IMAGE}:do_image_${DM_VERITY_IMAGE_TYPE}"
+do_rootfs[depends] += "${DM_VERITY_IMAGE}:do_image_${@d.getVar('DM_VERITY_IMAGE_TYPE').replace('-', '_')}"
 
 # ensure dm-verity.env is updated also when rebuilding DM_VERITY_IMAGE
 do_image[nostamp] = "1"
