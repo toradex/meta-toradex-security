@@ -29,7 +29,7 @@ Additional variables can be used to customize the behavior of this feature:
 | `TDX_TEZI_DATA_PARTITION_MOUNTPOINT` | Directory where the data partition should be mounted | `/data` |
 | `TDX_TEZI_DATA_PARTITION_MOUNT_FLAGS` | Flags used to mount the data partition. See the `mount` man page for more information on the available mount flags | `rw,nosuid,nodev,noatime, errors=remount-ro` |
 
-Additional variables from the `image_type_tezi` class in the `meta-toradex-bsp-common` layer can be used to customize the creation of the data partition. Please see the [source code of this class](https://git.toradex.com/cgit/meta-toradex-bsp-common.git/tree/classes/image_type_tezi.bbclass?h=kirkstone-6.x.y#n37) for more information.
+Additional variables from the `image_type_tezi` class in the `meta-toradex-bsp-common` layer can be used to customize the creation of the data partition. Please see the [source code of this class](https://git.toradex.com/cgit/meta-toradex-bsp-common.git/tree/classes/image_type_tezi.bbclass?h=scarthgap-7.x.y#n38) for more information.
 
 ## Encrypting the data partition
 
