@@ -9,6 +9,9 @@ DEPENDS += "xxd-native dtc-native"
 # Need this to create deterministic CSF binaries when running the NXP Code Signing Tool
 DEPENDS += "libfaketime-native"
 
+# build CST binary from sources
+DEPENDS += "${@ 'imx-code-signing-tool-native' if d.getVar('TDX_IMX_HAB_CST_BUILD_FROM_SOURCE') == '1' else '' }"
+
 SRC_URI:append = "\
     file://u-boot-hab.cfg \
 "

@@ -5,6 +5,9 @@ inherit imx-hab
 # Need this for the create_fuse_cmds.sh script
 DEPENDS += "imx-fuses-native"
 
+# build CST binary from sources
+DEPENDS += "${@ 'imx-code-signing-tool-native' if d.getVar('TDX_IMX_HAB_CST_BUILD_FROM_SOURCE') == '1' else '' }"
+
 SRC_URI:append = "\
     file://mx8_sign.sh \
     file://mx8_template.csf \
