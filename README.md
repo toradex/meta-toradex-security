@@ -16,6 +16,11 @@ layers: meta
 branch: scarthgap
 revision: HEAD
 
+URI: git://git.openembedded.org/meta-openembedded
+layers: meta-oe
+branch: scarthgap
+revision: HEAD
+
 URI: git://git.yoctoproject.org/meta-security
 branch: scarthgap
 revision: HEAD

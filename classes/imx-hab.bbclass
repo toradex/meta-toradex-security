@@ -6,6 +6,7 @@ TDX_IMX_HAB_CST_DIR ?= "${TOPDIR}/keys/cst"
 # If built from source, recipes needing it must depend on imx-code-signing-tool-native
 # so the tool is present in the native sysroot.
 TDX_IMX_HAB_CST_BUILD_FROM_SOURCE ?= "0"
+TDX_IMX_HAB_CST_BUILD_WITH_PKCS11 ?= "0"
 TDX_IMX_HAB_CST_BIN ?= "${@ '${RECIPE_SYSROOT_NATIVE}/usr/bin/cst' \
                         if d.getVar('TDX_IMX_HAB_CST_BUILD_FROM_SOURCE') == '1' \
                         else '${TDX_IMX_HAB_CST_DIR}/linux64/bin/cst' }"
