@@ -57,6 +57,7 @@ SRC_URI:append = "\
     file://u-boot-harden.cfg \
     ${@oe.utils.conditional('TDX_UBOOT_HARDENING_ENABLE_DBG', '1', 'file://u-boot-harden-dbg.cfg', '', d)} \
     ${@oe.utils.conditional('TDX_UBOOT_HARDENING_ENABLE_CP_PROT', '1', 'file://u-boot-harden-cp-prot.cfg', '', d)} \
+    ${@oe.utils.conditional('TDX_UBOOT_HARDENING_ENABLE_FB_PROT', '1', 'file://u-boot-harden-fb-prot.cfg', '', d)} \
     ${TDX_UBOOT_HARDENING_PATCHES} \
 "
 
@@ -223,6 +224,10 @@ CP_PROT_SUPPORTED ?= "0"
 CP_PROT_SUPPORTED:verdin-imx8mm ?= "1"
 CP_PROT_SUPPORTED:verdin-imx8mp ?= "1"
 
+FB_PROT_SUPPORTED ?= "0"
+FB_PROT_SUPPORTED:verdin-imx8mm ?= "1"
+FB_PROT_SUPPORTED:verdin-imx8mp ?= "1"
+
 do_compile:prepend() {
     if [ "${TDX_UBOOT_HARDENING_ENABLE_DBG}" != "0" ]; then
         bbwarn 'Debugging of the hardening feature is enabled; be sure to disable it for production.'
@@ -233,6 +238,13 @@ do_compile:prepend() {
                     '(set CP_PROT_SUPPORTED="1" to bypass this error check at your own risk).'
         fi
         bbwarn 'Hardening of the "cp" command is enabled; do this only when strictly required.'
+    fi
+    if [ "${TDX_UBOOT_HARDENING_ENABLE_FB_PROT}" != "0" ]; then
+        if [ "${FB_PROT_SUPPORTED}" != "1" ]; then
+            bbfatal 'Fastboot protection is not supported/tested on the current machine' \
+                    '(set FB_PROT_SUPPORTED="1" to bypass this error check at your own risk).'
+        fi
+        bbwarn 'Hardening of Fastboot is enabled; do this only when strictly required.'
     fi
 }
 
