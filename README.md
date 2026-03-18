@@ -13,11 +13,16 @@ This layer depends on:
 ```
 URI: git://git.openembedded.org/openembedded-core
 layers: meta
-branch: kirkstone
+branch: scarthgap
+revision: HEAD
+
+URI: git://git.openembedded.org/meta-openembedded
+layers: meta-oe
+branch: scarthgap
 revision: HEAD
 
 URI: git://git.yoctoproject.org/meta-security
-branch: kirkstone
+branch: scarthgap
 revision: HEAD
 ```
 
@@ -27,11 +32,11 @@ This layer recommends:
 
 ```
 URI: git://git.toradex.com/meta-toradex-nxp.git
-branch: kirkstone
+branch: scarthgap
 revision: HEAD
 
 URI: git://git.toradex.com/meta-toradex-ti.git
-branch: kirkstone
+branch: scarthgap
 revision: HEAD
 ```
 

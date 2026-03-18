@@ -1,8 +1,15 @@
-# NXP CST Tool
-# Cannot be automatically downloaded because it requires a registration
-# Download from https://www.nxp.com/webapp/sps/download/license.jsp?colCode=IMX_CST_TOOL_NEW
+# NXP CST Tool root directory
+# Can be downloaded from https://www.nxp.com/webapp/sps/download/license.jsp?colCode=IMX_CST_TOOL_NEW
 TDX_IMX_HAB_CST_DIR ?= "${TOPDIR}/keys/cst"
-TDX_IMX_HAB_CST_BIN ?= "${TDX_IMX_HAB_CST_DIR}/linux64/bin/cst"
+
+# The CST binary can be provided by the user (prebuilt) or built from source.
+# If built from source, recipes needing it must depend on imx-code-signing-tool-native
+# so the tool is present in the native sysroot.
+TDX_IMX_HAB_CST_BUILD_FROM_SOURCE ?= "0"
+TDX_IMX_HAB_CST_BUILD_WITH_PKCS11 ?= "0"
+TDX_IMX_HAB_CST_BIN ?= "${@ '${RECIPE_SYSROOT_NATIVE}/usr/bin/cst' \
+                        if d.getVar('TDX_IMX_HAB_CST_BUILD_FROM_SOURCE') == '1' \
+                        else '${TDX_IMX_HAB_CST_DIR}/linux64/bin/cst' }"
 
 # additional parameters to be passed to the CST tool
 TDX_IMX_HAB_CST_ARGS ?= ""
