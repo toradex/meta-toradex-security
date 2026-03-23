@@ -25,8 +25,8 @@ After that, configure the various variables listed below to match your choices; 
 | :------- | :---------- | :------------ |
 | `TDX_IMX_HAB_ENABLE` | Enable/disable HAB/AHAB support; allowed values: `0` or `1`. | `1` |
 | `TDX_IMX_HAB_CST_DIR` | Location of the CST tool. | `${TOPDIR}/keys/cst` |
-| `TDX_IMX_HAB_CST_BUILD_FROM_SOURCE` | Build the CST binary tool from source code. Allowed values are: `0` (disabled) or `1` (enabled). | `0` |
-| `TDX_IMX_HAB_CST_BUILD_WITH_PKCS11` | Enable PKCS#11 support when building the CST binary from source. This variable is only applicable when `TDX_IMX_HAB_CST_BUILD_FROM_SOURCE` = `1`. Allowed values are: `0` (disabled) or `1` (enabled). | `0` |
+| `TDX_IMX_HAB_CST_BUILD_FROM_SOURCE` | Build the CST binary tool from source code. Allowed values are: `0` (disabled) or `1` (enabled). | `1` when `TDX_SIGNED_HSM` is enabled, `0` otherwise |
+| `TDX_IMX_HAB_CST_BUILD_WITH_PKCS11` | Enable PKCS#11 support when building the CST binary from source. This variable is only applicable when `TDX_IMX_HAB_CST_BUILD_FROM_SOURCE` = `1`. Allowed values are: `0` (disabled) or `1` (enabled). | `1` when `TDX_SIGNED_HSM` is enabled, `0` otherwise |
 | `TDX_IMX_HAB_CST_BIN` | Name of the CST binary tool. | `${TDX_IMX_HAB_CST_DIR}/linux64/bin/cst` if using prebuilt binary or `${RECIPE_SYSROOT_NATIVE}/usr/bin/cst` if building from source code |
 | `TDX_IMX_HAB_CST_ARGS` | Additional parameters to be passed to the CST tool | Empty |
 | `TDX_IMX_HAB_CST_CERTS_DIR` | Location of the certificates directory. The associated private keys must be located in a directory called `keys` at the same level as the `crts` directory (this is a requirement for the CST tool to work properly). | `${TDX_IMX_HAB_CST_DIR}/crts` |

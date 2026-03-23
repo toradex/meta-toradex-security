@@ -139,6 +139,16 @@ DM_VERITY_IMAGE = "my-custom-image"
 
 In case you don't want to boot a signed rootfs image, then instead of inheriting `tdxref-signed`, you should inherit `tdx-signed`. When inheriting `tdx-signed` the bootloader and the FIT image will be signed, but the rootfs image signing process with `dm-verity` will be skipped.
 
+## HSM-backed image signing
+
+By default, `meta-toradex-security` performs signing operations using private keys stored as files on the build host filesystem. This is the simplest setup and works well for development, since the signing tools can directly read the key material from the configured paths.
+
+However, this approach also has some drawbacks. Private keys must be present on the machine running the build, which increases the risk of accidental exposure, improper copying, insecure backups, or misuse in shared development and CI environments. It also makes key management more difficult, especially when stronger access control, auditability, or centralized signing infrastructure is required.
+
+To address these limitations, `meta-toradex-security` also supports HSM-backed signing through PKCS#11. With this flow, private key operations are delegated to a PKCS#11-compatible HSM or token instead of using private key files stored on the build host.
+
+For the more information on using an HSM to sign secure boot images, including the list of supported variables and usage examples, refer to [README-secure-boot-hsm.md](README-secure-boot-hsm.md).
+
 ## Additional partition for persistent data
 
 When `tdxref-signed` is used to enable secure boot, the rootfs image is generated using the `dm-verity` kernel feature.
