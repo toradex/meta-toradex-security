@@ -25,6 +25,7 @@ tdx_signed_hsm_vars_export() {
 
     # PKCS#11 module
     export PKCS11_MODULE_PATH="${RECIPE_SYSROOT_NATIVE}/${TDX_SIGNED_HSM_PKCS11_MODULE_PATH}"
+    export PKCS11_PROVIDER_MODULE="${PKCS11_MODULE_PATH}"
     [ -r "${PKCS11_MODULE_PATH}" ] || bbfatal "PKCS#11 module missing or not readable: ${PKCS11_MODULE_PATH}"
 
     # SoftHSM configuration

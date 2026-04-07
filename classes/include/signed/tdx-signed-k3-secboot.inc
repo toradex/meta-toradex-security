@@ -7,6 +7,10 @@ TDX_K3_SECBOOT_TARGET_HSSE_DEVICE ?= "0"
 # Signing keys location.
 TDX_K3_SECBOOT_KEY_DIR ?= "${TOPDIR}/keys/ti"
 
+# Signing key name
+# It can be a path to a PEM file or a PKCS#11 URI if signing via an HSM is enabled
+TDX_K3_SECBOOT_KEY_NAME ?= "custMpk.pem"
+
 # Whether to show warnings about the generated image with regards to
 # variable TDX_K3_SECBOOT_TARGET_HSSE_DEVICE:
 TDX_K3_SUPPRESS_HSSE_WARNINGS ?= "0"

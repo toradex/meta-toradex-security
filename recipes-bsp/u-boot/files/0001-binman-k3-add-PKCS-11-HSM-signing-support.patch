@@ -1,0 +1,478 @@
+From 998e68843f91a608e02cbc66347f94186ec58304 Mon Sep 17 00:00:00 2001
+From: Sergio Prado <sergio.prado@e-labworks.com>
+Date: Tue, 7 Apr 2026 07:06:19 -0300
+Subject: [PATCH] binman: k3: add PKCS#11/HSM signing support
+
+Allow K3 boot artifacts to be signed using a key stored in an HSM
+instead of a plain PEM file on disk, by adding PKCS#11 URI support
+to the binman signing pipeline.
+
+Changes:
+- binman/btool/openssl.py: add _pkcs11_use_provider() to detect
+  whether the OpenSSL pkcs11-provider is available (falling back to
+  the legacy engine for OpenSSL < 3.1), _build_key_args() to build
+  the correct openssl CLI arguments for PEM or PKCS#11 keys (injecting
+  pin-value from PKCS11_PIN env var if set), and _run_cmd_pkcs11() to
+  optionally set PKCS11_MODULE_PATH/PKCS11_PROVIDER_MODULE before
+  invoking openssl
+- binman/etype/x509_cert.py: read optional pkcs11-module entry
+  argument and pass it through to all openssl signing calls
+- arch/arm/mach-k3/Kconfig: add default "custMpk.pem" to
+  SYS_K3_KEY and update help text to document PKCS#11 URI support
+- arch/arm/dts/k3-binman.dtsi,
+  arch/arm/dts/k3-am625-verdin-wifi-dev-binman.dtsi: replace
+  hardcoded keyfile = "custMpk.pem" with CONFIG_SYS_K3_KEY
+
+To sign with an HSM, set CONFIG_SYS_K3_KEY to the PKCS#11 URI and
+optionally provide the PIN and module path via PKCS11_PIN,
+PKCS11_MODULE_PATH and PKCS11_PROVIDER_MODULE environment variables.
+
+Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
+---
+ .../dts/k3-am625-verdin-wifi-dev-binman.dtsi  |  12 +-
+ arch/arm/dts/k3-binman.dtsi                   |  16 +--
+ arch/arm/mach-k3/Kconfig                      |   6 +-
+ tools/binman/btool/openssl.py                 | 105 +++++++++++++++---
+ tools/binman/etype/x509_cert.py               |  21 +++-
+ 5 files changed, 122 insertions(+), 38 deletions(-)
+
+diff --git a/arch/arm/dts/k3-am625-verdin-wifi-dev-binman.dtsi b/arch/arm/dts/k3-am625-verdin-wifi-dev-binman.dtsi
+index 3955b2e586e4..c1a4bedb4d54 100644
+--- a/arch/arm/dts/k3-am625-verdin-wifi-dev-binman.dtsi
++++ b/arch/arm/dts/k3-am625-verdin-wifi-dev-binman.dtsi
+@@ -16,7 +16,7 @@
+ 			combined;
+ 			dm-data;
+ 			sysfw-inner-cert;
+-			keyfile = "custMpk.pem";
++			keyfile = CONFIG_SYS_K3_KEY;
+ 			sw-rev = <1>;
+ 			content-sbl = <&u_boot_spl>;
+ 			content-sysfw = <&ti_fs_enc>;
+@@ -62,7 +62,7 @@
+ 			combined;
+ 			dm-data;
+ 			sysfw-inner-cert;
+-			keyfile = "custMpk.pem";
++			keyfile = CONFIG_SYS_K3_KEY;
+ 			sw-rev = <1>;
+ 			content-sbl = <&u_boot_spl_fs>;
+ 			content-sysfw = <&ti_fs_enc_fs>;
+@@ -158,7 +158,7 @@
+ 			core = "secure";
+ 			load = <0x40000>;
+ 			sw-rev = <CONFIG_K3_X509_SWRV>;
+-			keyfile = "custMpk.pem";
++			keyfile = CONFIG_SYS_K3_KEY;
+ 			countersign;
+ 			tifsstub;
+ 		};
+@@ -254,7 +254,7 @@
+ 				dm {
+ 					ti-secure {
+ 						content = <&dm>;
+-						keyfile = "custMpk.pem";
++						keyfile = CONFIG_SYS_K3_KEY;
+ 					};
+ 					dm: ti-dm {
+ 						filename = "ti-dm.bin";
+@@ -268,7 +268,7 @@
+ 					compression = "none";
+ 					ti-secure {
+ 						content = <&spl_verdin_am62_dtb>;
+-						keyfile = "custMpk.pem";
++						keyfile = CONFIG_SYS_K3_KEY;
+ 					};
+ 					spl_verdin_am62_dtb: blob-ext {
+ 						filename = SPL_VERDIN_AM62_DTB;
+@@ -308,7 +308,7 @@
+ 					compression = "none";
+ 					ti-secure {
+ 						content = <&verdin_am62_dtb>;
+-						keyfile = "custMpk.pem";
++						keyfile = CONFIG_SYS_K3_KEY;
+ 					};
+ 					verdin_am62_dtb: blob-ext {
+ 						filename = VERDIN_AM62_DTB;
+diff --git a/arch/arm/dts/k3-binman.dtsi b/arch/arm/dts/k3-binman.dtsi
+index 621653e94718..3d1ea7f21fd4 100644
+--- a/arch/arm/dts/k3-binman.dtsi
++++ b/arch/arm/dts/k3-binman.dtsi
+@@ -137,7 +137,7 @@
+ 					compression = "none";
+ 					ti-secure {
+ 						content = <&board_cfg>;
+-						keyfile = "custMpk.pem";
++						keyfile = CONFIG_SYS_K3_KEY;
+ 					};
+ 					board_cfg: board-cfg {
+ 						filename = "board-cfg.bin";
+@@ -152,7 +152,7 @@
+ 					compression = "none";
+ 					ti-secure {
+ 						content = <&pm_cfg>;
+-						keyfile = "custMpk.pem";
++						keyfile = CONFIG_SYS_K3_KEY;
+ 					};
+ 					pm_cfg: pm-cfg {
+ 						filename = "pm-cfg.bin";
+@@ -166,7 +166,7 @@
+ 					compression = "none";
+ 					ti-secure {
+ 						content = <&rm_cfg>;
+-						keyfile = "custMpk.pem";
++						keyfile = CONFIG_SYS_K3_KEY;
+ 					};
+ 					rm_cfg: rm-cfg {
+ 						filename = "rm-cfg.bin";
+@@ -180,7 +180,7 @@
+ 					compression = "none";
+ 					ti-secure {
+ 						content = <&sec_cfg>;
+-						keyfile = "custMpk.pem";
++						keyfile = CONFIG_SYS_K3_KEY;
+ 					};
+ 					sec_cfg: sec-cfg {
+ 						filename = "sec-cfg.bin";
+@@ -274,7 +274,7 @@
+ 					entry = <CONFIG_K3_ATF_LOAD_ADDR>;
+ 					ti-secure {
+ 						content = <&atf>;
+-						keyfile = "custMpk.pem";
++						keyfile = CONFIG_SYS_K3_KEY;
+ 					};
+ 					atf: atf-bl31 {
+ 					};
+@@ -290,7 +290,7 @@
+ 					entry = <CONFIG_K3_OPTEE_LOAD_ADDR>;
+ 					ti-secure {
+ 						content = <&tee>;
+-						keyfile = "custMpk.pem";
++						keyfile = CONFIG_SYS_K3_KEY;
+ 					};
+ 					tee: tee-os {
+ 					};
+@@ -316,7 +316,7 @@
+ 					entry = <CONFIG_SPL_TEXT_BASE>;
+ 					ti-secure {
+ 						content = <&u_boot_spl_nodtb>;
+-						keyfile = "custMpk.pem";
++						keyfile = CONFIG_SYS_K3_KEY;
+ 
+ 					};
+ 					u_boot_spl_nodtb: blob-ext {
+@@ -404,7 +404,7 @@
+ 					load = <CONFIG_TEXT_BASE>;
+ 					ti-secure {
+ 						content = <&u_boot_nodtb>;
+-						keyfile = "custMpk.pem";
++						keyfile = CONFIG_SYS_K3_KEY;
+ 					};
+ 					u_boot_nodtb: u-boot-nodtb {
+ 					};
+diff --git a/arch/arm/mach-k3/Kconfig b/arch/arm/mach-k3/Kconfig
+index 22efbbfc5f0e..e0bedf2bc019 100644
+--- a/arch/arm/mach-k3/Kconfig
++++ b/arch/arm/mach-k3/Kconfig
+@@ -94,10 +94,12 @@ config SYS_K3_BOOT_PARAM_TABLE_INDEX
+ 
+ config SYS_K3_KEY
+ 	string "Key used to generate x509 certificate"
++	default "custMpk.pem"
+ 	help
+ 	  This option enables to provide a custom key that can be used for
+-	  generating x509 certificate for spl binary. If not needed leave
+-	  it blank so that a random key is generated and used.
++	  generating x509 certificate for signing K3 boot artifacts. It can be
++	  a path to a PEM file or a PKCS#11 URI (pkcs11:token=...;object=...;
++	  type=private) for signing via an HSM.
+ 
+ config SYS_K3_BOOT_CORE_ID
+ 	int
+diff --git a/tools/binman/btool/openssl.py b/tools/binman/btool/openssl.py
+index c6df64c5316d..9459ef96adc5 100644
+--- a/tools/binman/btool/openssl.py
++++ b/tools/binman/btool/openssl.py
+@@ -11,6 +11,7 @@ Source code is at https://www.openssl.org/
+ """
+ 
+ import hashlib
++import os
+ 
+ from binman import bintool
+ from u_boot_pylib import tools
+@@ -35,18 +36,83 @@ class Bintoolopenssl(bintool.Bintool):
+         super().__init__(
+             name, 'openssl cryptography toolkit',
+             version_regex=r'OpenSSL (.*) \(', version_args='version')
++        self._use_provider = None
++
++    def _pkcs11_use_provider(self):
++        """Return True if the provider API should be used for PKCS#11 signing.
++
++        Checks whether the pkcs11 provider is available by running
++        'openssl list -providers'. The result is cached after the first call
++        to avoid spawning a subprocess on every signing operation.
++
++        Returns:
++            bool: True if provider should be used, False if engine should be used
++        """
++        if self._use_provider is None:
++            out = self.run_cmd('list', '-providers') or ''
++            self._use_provider = 'pkcs11' in out
++        return self._use_provider
++
++    def _build_key_args(self, key_fname):
++        """Build openssl CLI arguments for the signing key.
++
++        Always add '-key key_fname', and for a PKCS#11 URI (pkcs11:...),
++        prepends either '-provider default -provider pkcs11' (if provider API
++        is available) or '-engine pkcs11 -keyform engine' (legacy fallback).
++        If the PKCS11_PIN environment variable is set, appends ?pin-value=<pin>
++        to the URI.
++
++        Args:
++            key_fname (str): Filename of .pem file or PKCS#11 URI
++
++        Returns:
++            list: openssl arguments for the key selection
++        """
++        if key_fname.startswith('pkcs11:'):
++            pin = os.environ.get('PKCS11_PIN')
++            if pin:
++                key_fname = f'{key_fname}?pin-value={pin}'
++            if self._pkcs11_use_provider():
++                args = ['-provider', 'default', '-provider', 'pkcs11', '-key', key_fname]
++            else:
++                args = ['-engine', 'pkcs11', '-keyform', 'engine', '-key', key_fname]
++        else:
++            args = ['-key', key_fname]
++        return args
++
++    def _run_cmd_pkcs11(self, pkcs11_module, *args):
++        """Run an openssl command, optionally setting the PKCS#11 module env vars.
++
++        When pkcs11_module is set, both PKCS11_MODULE_PATH (engine) and
++        PKCS11_PROVIDER_MODULE (provider) are exported before invoking openssl.
++        If already configured via openssl.cnf or the calling environment,
++        pkcs11_module can be None.
++
++        Args:
++            pkcs11_module (str or None): Path to the PKCS#11 shared library
++            *args: Arguments forwarded to run_cmd
++
++        Returns:
++            str: openssl output
++        """
++        if pkcs11_module:
++            os.environ['PKCS11_MODULE_PATH'] = pkcs11_module
++            os.environ['PKCS11_PROVIDER_MODULE'] = pkcs11_module
++        return self.run_cmd(*args)
+ 
+     def x509_cert(self, cert_fname, input_fname, key_fname, cn, revision,
+-                  config_fname):
++                  config_fname, pkcs11_module=None):
+         """Create a certificate
+ 
+         Args:
+             cert_fname (str): Filename of certificate to create
+             input_fname (str): Filename containing data to sign
+-            key_fname (str): Filename of .pem file
++            key_fname (str): Filename of .pem file or PKCS#11 URI
+             cn (str): Common name
+             revision (int): Revision number
+             config_fname (str): Filename to write fconfig into
++            pkcs11_module (str or None): Path to PKCS#11 shared library, or
++                None if already configured via openssl.cnf or the environment
+ 
+         Returns:
+             str: Tool output
+@@ -76,19 +142,20 @@ shaType                = OID:2.16.840.1.101.3.4.2.3
+ shaValue               = FORMAT:HEX,OCT:{hashval}
+ imageSize              = INTEGER:{len(indata)}
+ ''', file=outf)
+-        args = ['req', '-new', '-x509', '-key', key_fname, '-nodes',
++        args = ['req', '-new', '-x509', *self._build_key_args(key_fname), '-nodes',
+                 '-outform', 'DER', '-out', cert_fname, '-config', config_fname,
+                 '-sha512']
+-        return self.run_cmd(*args)
++        return self._run_cmd_pkcs11(pkcs11_module, *args)
+ 
+     def x509_cert_sysfw(self, cert_fname, input_fname, key_fname, sw_rev,
+-                  config_fname, req_dist_name_dict, firewall_cert_data):
++                  config_fname, req_dist_name_dict, firewall_cert_data,
++                  pkcs11_module=None):
+         """Create a certificate to be booted by system firmware
+ 
+         Args:
+             cert_fname (str): Filename of certificate to create
+             input_fname (str): Filename containing data to sign
+-            key_fname (str): Filename of .pem file
++            key_fname (str): Filename of .pem file or PKCS#11 URI
+             sw_rev (int): Software revision
+             config_fname (str): Filename to write fconfig into
+             req_dist_name_dict (dict): Dictionary containing key-value pairs of
+@@ -101,6 +168,8 @@ imageSize              = INTEGER:{len(indata)}
+                 extended certificate
+               - certificate (str): Extended firewall certificate with
+                 the information for the firewall configurations.
++            pkcs11_module (str or None): Path to PKCS#11 shared library, or
++                None if already configured via openssl.cnf or the environment
+ 
+         Returns:
+             str: Tool output
+@@ -146,20 +215,20 @@ authInPlace = INTEGER:{hex(firewall_cert_data['auth_in_place'])}
+ numFirewallRegions = INTEGER:{firewall_cert_data['num_firewalls']}
+ {firewall_cert_data['certificate']}
+ ''', file=outf)
+-        args = ['req', '-new', '-x509', '-key', key_fname, '-nodes',
++        args = ['req', '-new', '-x509', *self._build_key_args(key_fname), '-nodes',
+                 '-outform', 'DER', '-out', cert_fname, '-config', config_fname,
+                 '-sha512']
+-        return self.run_cmd(*args)
++        return self._run_cmd_pkcs11(pkcs11_module, *args)
+ 
+     def x509_cert_rom(self, cert_fname, input_fname, key_fname, sw_rev,
+                   config_fname, req_dist_name_dict, cert_type, bootcore,
+-                  bootcore_opts, load_addr, sha):
++                  bootcore_opts, load_addr, sha, pkcs11_module=None):
+         """Create a certificate
+ 
+         Args:
+             cert_fname (str): Filename of certificate to create
+             input_fname (str): Filename containing data to sign
+-            key_fname (str): Filename of .pem file
++            key_fname (str): Filename of .pem file or PKCS#11 URI
+             sw_rev (int): Software revision
+             config_fname (str): Filename to write fconfig into
+             req_dist_name_dict (dict): Dictionary containing key-value pairs of
+@@ -170,6 +239,8 @@ numFirewallRegions = INTEGER:{firewall_cert_data['num_firewalls']}
+             bootcore_opts(int): Booting core option, lockstep (0) or split (2) mode
+             load_addr (int): Load address of image
+             sha (int): Hash function
++            pkcs11_module (str or None): Path to PKCS#11 shared library, or
++                None if already configured via openssl.cnf or the environment
+ 
+         Returns:
+             str: Tool output
+@@ -227,10 +298,10 @@ emailAddress           = {req_dist_name_dict['emailAddress']}
+  coreDbgEn = INTEGER:0
+  coreDbgSecEn = INTEGER:0
+ ''', file=outf)
+-        args = ['req', '-new', '-x509', '-key', key_fname, '-nodes',
++        args = ['req', '-new', '-x509', *self._build_key_args(key_fname), '-nodes',
+                 '-outform', 'DER', '-out', cert_fname, '-config', config_fname,
+                 '-sha512']
+-        return self.run_cmd(*args)
++        return self._run_cmd_pkcs11(pkcs11_module, *args)
+ 
+     def x509_cert_rom_combined(self, cert_fname, input_fname, key_fname, sw_rev,
+                   config_fname, req_dist_name_dict, load_addr, sha, total_size, num_comps,
+@@ -238,13 +309,13 @@ emailAddress           = {req_dist_name_dict['emailAddress']}
+                   imagesize_sbl, hashval_sbl, load_addr_sysfw, imagesize_sysfw,
+                   hashval_sysfw, load_addr_sysfw_data, imagesize_sysfw_data,
+                   hashval_sysfw_data, sysfw_inner_cert_ext_boot_block,
+-                  dm_data_ext_boot_block, bootcore_opts):
++                  dm_data_ext_boot_block, bootcore_opts, pkcs11_module=None):
+         """Create a certificate
+ 
+         Args:
+             cert_fname (str): Filename of certificate to create
+             input_fname (str): Filename containing data to sign
+-            key_fname (str): Filename of .pem file
++            key_fname (str): Filename of .pem file or PKCS#11 URI
+             sw_rev (int): Software revision
+             config_fname (str): Filename to write fconfig into
+             req_dist_name_dict (dict): Dictionary containing key-value pairs of
+@@ -255,6 +326,8 @@ emailAddress           = {req_dist_name_dict['emailAddress']}
+             load_addr (int): Load address of image
+             sha (int): Hash function
+             bootcore_opts (int): Booting core option, lockstep (0) or split (2) mode
++            pkcs11_module (str or None): Path to PKCS#11 shared library, or
++                None if already configured via openssl.cnf or the environment
+ 
+         Returns:
+             str: Tool output
+@@ -334,10 +407,10 @@ coreDbgSecEn = INTEGER:0
+ 
+ {dm_data_ext_boot_block}
+         ''', file=outf)
+-        args = ['req', '-new', '-x509', '-key', key_fname, '-nodes',
++        args = ['req', '-new', '-x509', *self._build_key_args(key_fname), '-nodes',
+                 '-outform', 'DER', '-out', cert_fname, '-config', config_fname,
+                 '-sha512']
+-        return self.run_cmd(*args)
++        return self._run_cmd_pkcs11(pkcs11_module, *args)
+ 
+     def fetch(self, method):
+         """Fetch handler for openssl
+diff --git a/tools/binman/etype/x509_cert.py b/tools/binman/etype/x509_cert.py
+index 29630d1b86c8..6aefc1ccb4ef 100644
+--- a/tools/binman/etype/x509_cert.py
++++ b/tools/binman/etype/x509_cert.py
+@@ -52,6 +52,7 @@ class Entry_x509_cert(Entry_collection):
+         self.sysfw_inner_cert_ext_boot_block = None
+         self.dm_data_ext_boot_block = None
+         self.firewall_cert_data = None
++        self.pkcs11_module = None
+ 
+     def ReadNode(self):
+         super().ReadNode()
+@@ -60,6 +61,12 @@ class Entry_x509_cert(Entry_collection):
+         self.key_fname = self.GetEntryArgsOrProps([
+             EntryArg('keyfile', str)], required=True)[0]
+         self.sw_rev = fdt_util.GetInt(self._node, 'sw-rev', 1)
++        # Path to the PKCS#11 shared library (.so). Only needed when keyfile
++        # is a PKCS#11 URI and the module is not already configured via
++        # openssl.cnf or PKCS11_MODULE_PATH in the environment.
++        # Supports -a pkcs11-module=... on the binman command line.
++        self.pkcs11_module = self.GetEntryArgsOrProps([
++            EntryArg('pkcs11-module', str)], required=False)[0]
+ 
+     def GetCertificate(self, required, type='generic'):
+         """Get the contents of this entry
+@@ -91,7 +98,8 @@ class Entry_x509_cert(Entry_collection):
+                 key_fname=self.key_fname,
+                 cn=self._cert_ca,
+                 revision=self._cert_rev,
+-                config_fname=config_fname)
++                config_fname=config_fname,
++                pkcs11_module=self.pkcs11_module)
+         elif type == 'sysfw':
+             stdout = self.openssl.x509_cert_sysfw(
+                 cert_fname=output_fname,
+@@ -100,7 +108,8 @@ class Entry_x509_cert(Entry_collection):
+                 config_fname=config_fname,
+                 sw_rev=self.sw_rev,
+                 req_dist_name_dict=self.req_dist_name,
+-                firewall_cert_data=self.firewall_cert_data)
++                firewall_cert_data=self.firewall_cert_data,
++                pkcs11_module=self.pkcs11_module)
+         elif type == 'rom':
+             stdout = self.openssl.x509_cert_rom(
+                 cert_fname=output_fname,
+@@ -113,8 +122,8 @@ class Entry_x509_cert(Entry_collection):
+                 bootcore=self.bootcore,
+                 bootcore_opts=self.bootcore_opts,
+                 load_addr=self.load_addr,
+-                sha=self.sha
+-            )
++                sha=self.sha,
++                pkcs11_module=self.pkcs11_module)
+         elif type == 'rom-combined':
+             stdout = self.openssl.x509_cert_rom_combined(
+                 cert_fname=output_fname,
+@@ -139,8 +148,8 @@ class Entry_x509_cert(Entry_collection):
+                 hashval_sysfw_data=self.hashval_sysfw_data,
+                 sysfw_inner_cert_ext_boot_block=self.sysfw_inner_cert_ext_boot_block,
+                 dm_data_ext_boot_block=self.dm_data_ext_boot_block,
+-                bootcore_opts=self.bootcore_opts
+-            )
++                bootcore_opts=self.bootcore_opts,
++                pkcs11_module=self.pkcs11_module)
+         if stdout is not None:
+             data = tools.read_file(output_fname)
+         else:
+-- 
+2.34.1
+
