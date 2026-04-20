@@ -61,11 +61,21 @@ SRC_URI:append = "\
     ${TDX_UBOOT_HARDENING_PATCHES} \
 "
 
-TDX_SECBOOT_WL_ALLOW_OPEN_CATEG ?= ""
-TDX_SECBOOT_WL_ALLOW_CLOSED_CATEG ?= ""
-TDX_SECBOOT_WL_DENY_OPEN_CATEG ?= ""
-TDX_SECBOOT_WL_DENY_CLOSED_CATEG ?= ""
-TDX_SECBOOT_WL_NEEDED_CATEG ?= ""
+# Default values for the various whitelist categories; these can be overriden by
+# other layers without impacting the final user-overridable variables below.
+TDX_SECBOOT_WL_ALLOW_OPEN_CATEG_DEFAULT ?= ""
+TDX_SECBOOT_WL_ALLOW_CLOSED_CATEG_DEFAULT ?= ""
+TDX_SECBOOT_WL_DENY_OPEN_CATEG_DEFAULT ?= ""
+TDX_SECBOOT_WL_DENY_CLOSED_CATEG_DEFAULT ?= ""
+TDX_SECBOOT_WL_NEEDED_CATEG_DEFAULT ?= ""
+
+# User-overridable command categories for the whitelist feature; when empty the
+# default set in the code (U-Boot will be used).
+TDX_SECBOOT_WL_ALLOW_OPEN_CATEG ?= "${TDX_SECBOOT_WL_ALLOW_OPEN_CATEG_DEFAULT}"
+TDX_SECBOOT_WL_ALLOW_CLOSED_CATEG ?= "${TDX_SECBOOT_WL_ALLOW_CLOSED_CATEG_DEFAULT}"
+TDX_SECBOOT_WL_DENY_OPEN_CATEG ?= "${TDX_SECBOOT_WL_DENY_OPEN_CATEG_DEFAULT}"
+TDX_SECBOOT_WL_DENY_CLOSED_CATEG ?= "${TDX_SECBOOT_WL_DENY_CLOSED_CATEG_DEFAULT}"
+TDX_SECBOOT_WL_NEEDED_CATEG ?= "${TDX_SECBOOT_WL_NEEDED_CATEG_DEFAULT}"
 # TODO: Consider new variable to configure 'enable-cli-when-closed' property.
 
 inherit cml1
