@@ -73,6 +73,7 @@ A few additional variables are available to customize the behavior of the data-a
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
 | `TDX_ENC_KEY_BACKEND` | Backend used to manage the encryption key. Allowed values: `caam`, `tpm`, `tee` or `cleartext`. If configured with `caam`, it will use Trusted Keys backed by the CAAM device (available on NXP iMX-based SoMs). If configured with `tpm`, it will use Trusted Keys backed by a TPM device (availability depends on the hardware). If configured with `tee`, it will use Trusted Keys backed by a Trusted Execution Environment. If configured with `cleartext`, the encryption key will be stored in clear text in the file system (use `cleartext` only for testing purposes!) | `caam` on iMX6/7/8 based SoMs, empty otherwise |
+| `TDX_ENC_CIPHER` | Cipher preset for dm-crypt block device encryption. Allowed values: `aes-cbc` or `aes-xts`. See [Cipher selection](#cipher-selection) for details. | `aes-cbc` |
 | `TDX_ENC_KEY_LOCATION` | Location to store the encryption key blob. Allowed values: `filesystem` or `partition`. If configured with `filesystem`, the encryption key blob will be stored as a file in the filesystem (location defined by the `TDX_ENC_KEY_DIR` variable. If configured with `partition`, the encryption key blob will be stored in a block of the disk outside the dm-crypt partition (useful if the rootfs filesystem is read-only) | `filesystem` |
 | `TDX_ENC_KEY_DIR` | Directory to store the encryption key blob | `/var/local/private/.keys` |
 | `TDX_ENC_KEY_FILE` | File name of the encryption key blob | `tdx-enc-key.blob` |
@@ -87,6 +88,29 @@ IMPORTANT:
 - When using a SysVinit-based init system, the encryption handler script will execute at runlevel 30 during startup. If necessary, you can adjust the runlevel by creating an append file for the `tdx-enc-handler` recipe and overriding the `INITSCRIPT_PARAMS` variable.
 - When using systemd as the init system, the service that mounts the encrypted partition (`tdx-enc-handler.service`) runs early in the boot process, where not necessarily udev has run/settled. For that reason, it is recommended to use the name of the partition as assigned by the kernel (e.g. `/dev/sdb1`). If one wants to set a name that relies on udev rules then one must review the systemd dependencies of the service to ensure the name is available.
 - Similarly, the location where the encrypted key blob is stored must also be available to the to service; currently the service definition includes dependencies to ensure `/var` is available so that the default configuration works; if storing the key blob outside of `/var` one must review the service definition.
+
+## Cipher selection
+
+The `TDX_ENC_CIPHER` variable selects the dm-crypt cipher preset used when the encrypted mapping is created. 
+
+Two values are currently supported:
+
+| Value | Algorithm | Key size | IV mode |
+| :---- | :-------- | :------- | :------ |
+| `aes-cbc` | AES-CBC | 32-byte key (AES-256) | `plain` (sector number) |
+| `aes-xts` | AES-XTS | 64-byte volume key (XTS-AES-256; two 32-byte AES keys) | `plain64` |
+
+**`aes-cbc` is the default** and is kept for backward compatibility with existing deployments.
+
+**`aes-xts` is recommended for all new deployments.** XTS-AES is the industry-standard mode for storage encryption and avoids the pattern-leakage/watermarking weakness of CBC with a plain sector-number IV. To enable it:
+
+```
+TDX_ENC_CIPHER = "aes-xts"
+```
+
+> **WARNING**: Do not change `TDX_ENC_CIPHER` on a device that already contains data encrypted with the existing mapping. The new cipher configuration will not decrypt the existing ciphertext correctly. To migrate an existing device, back up the data, remove the existing encrypted state/key material used by this workflow, and allow the partition to be initialized again with the new setting.
+
+The dm-crypt subsystem uses the Linux kernel crypto API, so hardware-backed AES acceleration can be used transparently when the appropriate backend is available and loaded (e.g. CAAM on iMX based SoMs).
 
 ## Notes on using CAAM
 

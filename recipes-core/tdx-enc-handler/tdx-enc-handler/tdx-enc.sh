@@ -5,6 +5,15 @@
 # backend used to manage the encryption key
 TDX_ENC_KEY_BACKEND="@@TDX_ENC_KEY_BACKEND@@"
 
+# cipher preset
+TDX_ENC_CIPHER="@@TDX_ENC_CIPHER@@"
+
+# dm-crypt cipher specification (initialized at runtime)
+TDX_ENC_CIPHER_SPEC=""
+
+# encryption key size in bytes (initialized at runtime)
+TDX_ENC_KEY_SIZE=""
+
 # encryption key location
 TDX_ENC_KEY_LOCATION="@@TDX_ENC_KEY_LOCATION@@"
 
@@ -68,6 +77,24 @@ tdx_enc_exit_error() {
     exit 1
 }
 
+# setup dm-crypt cipher spec and key size
+tdx_enc_cipher_configure() {
+    case "${TDX_ENC_CIPHER}" in
+        aes-cbc)
+            TDX_ENC_CIPHER_SPEC="cbc(aes)-plain"
+            TDX_ENC_KEY_SIZE="32"
+            ;;
+        aes-xts)
+            TDX_ENC_CIPHER_SPEC="xts(aes)-plain64"
+            TDX_ENC_KEY_SIZE="64"
+            ;;
+        *)
+            tdx_enc_exit_error "Unsupported cipher preset '${TDX_ENC_CIPHER}'!"
+            ;;
+    esac
+    tdx_enc_log "Cipher: ${TDX_ENC_CIPHER} (${TDX_ENC_CIPHER_SPEC}, key=${TDX_ENC_KEY_SIZE} bytes)"
+}
+
 # All backends: prepare and check system
 tdx_enc_prepare_generic() {
     tdx_enc_log "Preparing and checking system (generic)..."
@@ -106,10 +133,6 @@ tdx_enc_prepare_caam() {
 
     if ! modprobe trusted source=caam; then
         tdx_enc_exit_error "Error loading trusted module!"
-    fi
-
-    if ! grep -q cbc-aes-caam /proc/crypto; then
-        tdx_enc_exit_error "No support for cbc-aes-caam!"
     fi
 }
 
@@ -253,7 +276,7 @@ tdx_enc_key_gen_cleartext() {
 # CAAM: generate/load key
 tdx_enc_key_gen_caam() {
     tdx_enc_log "Setting up encryption key for CAAM backend..."
-    tdx_enc_keyring_configure "trusted" "${TDX_ENC_KEY_KEYRING_NAME}" "new 32" "load \$(cat ${TDX_ENC_KEY_FULLPATH})"
+    tdx_enc_keyring_configure "trusted" "${TDX_ENC_KEY_KEYRING_NAME}" "new ${TDX_ENC_KEY_SIZE}" "load \$(cat ${TDX_ENC_KEY_FULLPATH})"
 }
 
 # TPM: generate/load key
@@ -275,14 +298,14 @@ tdx_enc_key_gen_tpm() {
     fi
 
     tdx_enc_keyring_configure "trusted" "${TDX_ENC_KEY_KEYRING_NAME}" \
-                              "new 32 keyhandle=$TPMKEYHANDLE" \
+                              "new ${TDX_ENC_KEY_SIZE} keyhandle=$TPMKEYHANDLE" \
                               "load \$(cat ${TDX_ENC_KEY_FULLPATH})"
 }
 
 # TEE: generate/load key
 tdx_enc_key_gen_tee() {
     tdx_enc_log "Setting up encryption key for TEE backend..."
-    tdx_enc_keyring_configure "trusted" "${TDX_ENC_KEY_KEYRING_NAME}" "new 32" "load \$(cat ${TDX_ENC_KEY_FULLPATH})"
+    tdx_enc_keyring_configure "trusted" "${TDX_ENC_KEY_KEYRING_NAME}" "new ${TDX_ENC_KEY_SIZE}" "load \$(cat ${TDX_ENC_KEY_FULLPATH})"
 }
 
 # initially mount the partition if possible
@@ -351,7 +374,7 @@ tdx_enc_partition_setup() {
 
     if ! dmsetup -v create ${TDX_ENC_DM_DEVICE} \
                  --table "0 ${TDX_ENC_STORAGE_NUM_BLOCKS} \
-                 crypt capi:cbc(aes)-plain :32:${TDX_ENC_KEY_KEYRING_TYPE}:${TDX_ENC_KEY_KEYRING_NAME} \
+                 crypt capi:${TDX_ENC_CIPHER_SPEC} :${TDX_ENC_KEY_SIZE}:${TDX_ENC_KEY_KEYRING_TYPE}:${TDX_ENC_KEY_KEYRING_NAME} \
                  0 ${TDX_ENC_STORAGE_LOCATION} 0 1 sector_size:512"; then
         tdx_enc_exit_error "Error setting up dm-crypt partition!"
     fi
@@ -421,6 +444,7 @@ tdx_enc_partition_remove() {
 
 # mount encrypted partition
 tdx_enc_main_start() {
+    tdx_enc_cipher_configure
     if tdx_enc_pre_mount; then
         tdx_run_user_check
         tdx_enc_backup_data
