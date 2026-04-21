@@ -46,6 +46,7 @@ do_install() {
     sed -i 's|@@TDX_ENC_KEY_DIR@@|${TDX_ENC_KEY_DIR}|g' ${D}${sbindir}/tdx-enc.sh
     sed -i 's|@@TDX_ENC_PRESERVE_DATA@@|${TDX_ENC_PRESERVE_DATA}|g' ${D}${sbindir}/tdx-enc.sh
     sed -i 's|@@TDX_ENC_BACKUP_STORAGE_PCT@@|${TDX_ENC_BACKUP_STORAGE_PCT}|g' ${D}${sbindir}/tdx-enc.sh
+    sed -i 's|@@TDX_ENC_CIPHER@@|${TDX_ENC_CIPHER}|g' ${D}${sbindir}/tdx-enc.sh
 
     install -d ${D}${systemd_system_unitdir}
     install -m 0644 ${WORKDIR}/tdx-enc-handler.service ${D}${systemd_system_unitdir}

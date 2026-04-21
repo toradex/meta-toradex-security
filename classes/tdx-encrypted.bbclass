@@ -13,6 +13,14 @@ TDX_ENC_KEY_BACKEND:mx6-generic-bsp ?= "caam"
 TDX_ENC_KEY_BACKEND:mx7-generic-bsp ?= "caam"
 TDX_ENC_KEY_BACKEND:mx8-generic-bsp ?= "caam"
 
+# Encryption cipher preset
+# This variable selects the dm-crypt cipher preset (algorithm, key size and IV mode)
+# WARNING: changing this on an already-encrypted device will make data unrecoverable
+# Available options:
+#    aes-cbc -> AES-CBC with plain IV  (default, kept for backward compatibility)
+#    aes-xts -> AES-XTS with plain64 IV (recommended for new deployments)
+TDX_ENC_CIPHER ?= "aes-cbc"
+
 # Encryption key blob location
 # This variable defines where the encrypted key will be stored
 # Available options:
@@ -74,4 +82,9 @@ python validate_enc_parameters() {
     storage_location = e.data.getVar('TDX_ENC_STORAGE_LOCATION')
     if storage_location == "":
         bb.fatal("Please set storage to be encrypted via TDX_ENC_STORAGE_LOCATION.")
+
+    cipher = e.data.getVar('TDX_ENC_CIPHER')
+    supported_ciphers = ['aes-cbc', 'aes-xts']
+    if cipher not in supported_ciphers:
+        bb.fatal("'%s' is invalid. Please set a valid cipher algorithm via TDX_ENC_CIPHER. Supported: %s" % (cipher, ', '.join(supported_ciphers)))
 }
