@@ -1,7 +1,7 @@
-From d9a8c7c84c28f814c7b5b8fa3491aa8c0a01f08b Mon Sep 17 00:00:00 2001
+From bc4fa8fd35dfeab460ab91df42a5158e6868ca7a Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:29:34 -0300
-Subject: [PATCH 1/8] toradex: integrate command whitelisting (upstream)
+Subject: [PATCH 01/10] toradex: integrate command whitelisting (upstream)
 
 v1:
 
@@ -66,7 +66,7 @@ index 82df59f176e..62d66b831af 100644
 +	help
 +	  Enable the command white-listing feature provided by Toradex.
 diff --git a/common/Makefile b/common/Makefile
-index 396f1d69d18..95e5f3abd0a 100644
+index c0d4fd330cd..c241b4a7ae1 100644
 --- a/common/Makefile
 +++ b/common/Makefile
 @@ -25,6 +25,8 @@ obj-$(CONFIG_MII) += miiphyutil.o
@@ -114,5 +114,5 @@ index 4158ca11b0e..433ed201a3b 100644
  };
  
 -- 
-2.34.1
+2.43.0
 

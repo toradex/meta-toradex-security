@@ -3,6 +3,8 @@ TDX_UBOOT_HARDENING_PATCHES_COMMON = "\
     file://0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch \
 "
 
+# TODO: Add "cp" protection to NXP downstream U-Boot.
+# TODO: Add "fastboot" protection to NXP downstream U-Boot.
 TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM = "\
     ${TDX_UBOOT_HARDENING_PATCHES_COMMON} \
     file://0001-toradex-integrate-command-whitelisting-downstream.patch \
@@ -15,6 +17,8 @@ TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM = "\
     file://0008-toradex-cmd-setexpr-integrate-protections-downstream.patch \
 "
 
+# TODO: Add "cp" protection to TI downstream U-Boot.
+# TODO: Add "fastboot" protection to TI downstream U-Boot.
 TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM_K3 = "\
     ${TDX_UBOOT_HARDENING_PATCHES_COMMON} \
     file://0001-toradex-integrate-command-whitelisting-k3.patch \
@@ -34,9 +38,11 @@ TDX_UBOOT_HARDENING_PATCHES_UPSTREAM = "\
     file://0003-toradex-integrate-CLI-access-protection-upstream.patch \
     file://0004-toradex-integrate-bootargs-protection-upstream.patch \
     file://0005-toradex-integrate-load-protection-upstream.patch \
-    file://0006-toradex-cmd-fuse-add-switch-for-quiet-operation-upst.patch \
-    file://0007-toradex-cmd-fuse-add-readv-command-upstream.patch \
-    file://0008-toradex-cmd-setexpr-integrate-protections-upstream.patch \
+    file://0006-toradex-integrate-cp-protection-upstream.patch \
+    file://0007-toradex-integrate-fastboot-protection-upstream.patch \
+    file://0008-toradex-cmd-fuse-add-switch-for-quiet-operation-upst.patch \
+    file://0009-toradex-cmd-fuse-add-readv-command-upstream.patch \
+    file://0010-toradex-cmd-setexpr-integrate-protections-upstream.patch \
 "
 
 TDX_UBOOT_HARDENING_PATCHES = "${TDX_UBOOT_HARDENING_PATCHES_UPSTREAM}"

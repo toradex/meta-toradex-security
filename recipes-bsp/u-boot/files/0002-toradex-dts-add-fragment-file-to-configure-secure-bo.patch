@@ -1,4 +1,4 @@
-From 30e8d320dec0e0a96b38b4b440b3426dabe28729 Mon Sep 17 00:00:00 2001
+From 59559acbacdc942ec4f8e7a9fed218723b8d2117 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Tue, 22 Aug 2023 22:56:24 -0300
 Subject: [PATCH 2/2] toradex: dts: add fragment file to configure secure boot
@@ -45,5 +45,5 @@ index 00000000000..b8f6b3fc425
 +	};
 +};
 -- 
-2.34.1
+2.43.0
 
