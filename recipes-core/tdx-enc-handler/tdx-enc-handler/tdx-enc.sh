@@ -354,7 +354,7 @@ tdx_run_user_check() {
     if [ -x ${TDX_ENC_USER_SCRIPT} ]; then
         if ! [ -O ${TDX_ENC_USER_SCRIPT} -a -G ${TDX_ENC_USER_SCRIPT} ]; then
             tdx_enc_log "WARNING: Ignoring user check script due to invalid ownership."
-        elif (( 0$(stat -c %a "${TDX_ENC_USER_SCRIPT}") & 07022 )); then
+        elif [ $(( 0$(stat -c %a "${TDX_ENC_USER_SCRIPT}") & 07022 )) -ne 0 ]; then
             tdx_enc_log "WARNING: Ignoring user check script due to invalid permissions."
         elif ! ${TDX_ENC_USER_SCRIPT}; then
             tdx_enc_exit_error "Encryption disabled by the user!"
