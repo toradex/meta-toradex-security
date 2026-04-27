@@ -109,9 +109,19 @@ tdx_enc_prepare_generic() {
 
     TDX_ENC_STORAGE_NUM_BLOCKS=$(blockdev --getsz ${TDX_ENC_STORAGE_LOCATION})
     if [ "${TDX_ENC_KEY_LOCATION}" = "partition" ] && [ "${TDX_ENC_STORAGE_RESERVE}" = "0" ]; then
-        # we need at least one reserved block to store the encryption key blob
-        TDX_ENC_STORAGE_RESERVE="1"
+        if [ "${TDX_ENC_CIPHER}" = "aes-cbc" ]; then
+            TDX_ENC_STORAGE_RESERVE="1"
+        else
+            TDX_ENC_STORAGE_RESERVE="4"
+        fi
     fi
+
+    if [ "${TDX_ENC_KEY_LOCATION}" = "partition" ] && [ "${TDX_ENC_CIPHER}" = "aes-xts" ]; then
+        if [ "${TDX_ENC_STORAGE_RESERVE}" -lt 2 ]; then
+            tdx_enc_exit_error "TDX_ENC_STORAGE_RESERVE must be at least 2 when using aes-xts with partition key location!"
+        fi
+    fi
+
     TDX_ENC_STORAGE_NUM_BLOCKS=$((TDX_ENC_STORAGE_NUM_BLOCKS - TDX_ENC_STORAGE_RESERVE))
 
     tdx_enc_log "Blocks to be encrypted: $TDX_ENC_STORAGE_NUM_BLOCKS..."
@@ -177,7 +187,7 @@ tdx_enc_key_recover_from_partition() {
     rm -rf $TDX_ENC_KEY_FULLPATH
 
     STORAGE_KEY_BLOCK_DATA=$(mktemp /tmp/tdx-enc.XXXXXXXXXX)
-    if ! dd if=${TDX_ENC_STORAGE_LOCATION} of=${STORAGE_KEY_BLOCK_DATA} skip=${TDX_ENC_STORAGE_NUM_BLOCKS} bs=512 count=1; then
+    if ! dd if=${TDX_ENC_STORAGE_LOCATION} of=${STORAGE_KEY_BLOCK_DATA} skip=${TDX_ENC_STORAGE_NUM_BLOCKS} bs=512 count=${TDX_ENC_STORAGE_RESERVE}; then
         rm -f "${STORAGE_KEY_BLOCK_DATA}"
         tdx_enc_exit_error "Could not read block from ${TDX_ENC_STORAGE_LOCATION} with key information!"
     fi
