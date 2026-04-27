@@ -176,8 +176,9 @@ tdx_enc_key_recover_from_partition() {
     TDX_ENC_KEY_FULLPATH="/tmp/${TDX_ENC_KEY_FILE}"
     rm -rf $TDX_ENC_KEY_FULLPATH
 
-    STORAGE_KEY_BLOCK_DATA=/tmp/.enckey.txt
+    STORAGE_KEY_BLOCK_DATA=$(mktemp /tmp/tdx-enc.XXXXXXXXXX)
     if ! dd if=${TDX_ENC_STORAGE_LOCATION} of=${STORAGE_KEY_BLOCK_DATA} skip=${TDX_ENC_STORAGE_NUM_BLOCKS} bs=512 count=1; then
+        rm -f "${STORAGE_KEY_BLOCK_DATA}"
         tdx_enc_exit_error "Could not read block from ${TDX_ENC_STORAGE_LOCATION} with key information!"
     fi
 
@@ -192,6 +193,7 @@ tdx_enc_key_recover_from_partition() {
             "keycsum") keycsum="${val}" ;;
         esac
     done < ${STORAGE_KEY_BLOCK_DATA}
+    rm -f "${STORAGE_KEY_BLOCK_DATA}"
 
     if [ "${keyname}" != "${TDX_ENC_KEY_KEYRING_NAME}" ]; then
         tdx_enc_log "Invalid key name! A new key will be created."
@@ -216,7 +218,7 @@ tdx_enc_key_recover_from_partition() {
 tdx_enc_key_save_to_partition() {
     tdx_enc_log "Saving encrypted key to partition ${TDX_ENC_STORAGE_LOCATION}..."
 
-    STORAGE_KEY_BLOCK_DATA="/tmp/.enckey.txt"
+    STORAGE_KEY_BLOCK_DATA=$(mktemp /tmp/tdx-enc.XXXXXXXXXX)
     {
         echo "keyname=${TDX_ENC_KEY_KEYRING_NAME}"
         echo "keydata=$(cat ${TDX_ENC_KEY_FULLPATH})"
@@ -225,8 +227,10 @@ tdx_enc_key_save_to_partition() {
     } > ${STORAGE_KEY_BLOCK_DATA}
 
     if ! dd if=${STORAGE_KEY_BLOCK_DATA} of=${TDX_ENC_STORAGE_LOCATION} seek=${TDX_ENC_STORAGE_NUM_BLOCKS} bs=512; then
+        rm -f "${STORAGE_KEY_BLOCK_DATA}"
         tdx_enc_exit_error "Could not save encrypted key to partition ${TDX_ENC_STORAGE_LOCATION}!"
     fi
+    rm -f "${STORAGE_KEY_BLOCK_DATA}"
 }
 
 # configure key in kernel keyring
@@ -249,10 +253,14 @@ tdx_enc_keyring_configure() {
         fi
         if [ "${TDX_ENC_KEY_LOCATION}" = "partition" ]; then
             tdx_enc_key_save_to_partition
+            rm -f "${TDX_ENC_KEY_FULLPATH}"
         fi
     else
         tdx_enc_log "Encrypted key exists. Importing it..."
         keyctl add "${TDX_ENC_KEY_KEYRING_TYPE}" "${KEYNAME}" "$(eval echo ${LOAD_KEY_CMD})" @s
+        if [ "${TDX_ENC_KEY_LOCATION}" = "partition" ]; then
+            rm -f "${TDX_ENC_KEY_FULLPATH}"
+        fi
     fi
 
     if ! keyctl list @s | grep -q "${TDX_ENC_KEY_KEYRING_TYPE}: ${KEYNAME}"; then
@@ -284,14 +292,17 @@ tdx_enc_key_gen_tpm() {
     tdx_enc_log "Setting up encryption key for TPM backend..."
 
     if [ ! -e "${TDX_ENC_KEY_FULLPATH}" ]; then
+        TPM_KEY_CTXT=$(mktemp /tmp/tdx-enc.XXXXXXXXXX)
 
         # create a private RSA key in the TPM
-        if ! tpm2_createprimary -C o -G rsa2048 -c /tmp/key.ctxt; then
+        if ! tpm2_createprimary -C o -G rsa2048 -c "${TPM_KEY_CTXT}"; then
+            rm -f "${TPM_KEY_CTXT}"
             tdx_enc_exit_error "Error creating a private RSA key in the TPM!"
         fi
 
         # make the key persistent
-        TPMKEYHANDLE=$(tpm2_evictcontrol -C o -c /tmp/key.ctxt | grep persistent-handle | cut -d' ' -f 2)
+        TPMKEYHANDLE=$(tpm2_evictcontrol -C o -c "${TPM_KEY_CTXT}" | grep persistent-handle | cut -d' ' -f 2)
+        rm -f "${TPM_KEY_CTXT}"
         if [ -z "$TPMKEYHANDLE" ]; then
             tdx_enc_exit_error "Error making the TPM key persistent!"
         fi
