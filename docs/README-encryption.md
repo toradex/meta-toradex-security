@@ -138,6 +138,14 @@ To confirm you have a TPM to be used as a Trust Source for managing the encrypti
 
 If your hardware lacks a discrete TPM chip, you may want to consider using an fTPM (firmware-based TPM) running in OP-TEE. For additional details, please refer to the [fTPM session in the OP-TEE documentation](README-optee.md#ftpm-support-in-op-tee).
 
+The encryption key can only be unsealed by the same TPM that created it. This protects the encrypted data against offline attacks, such as removing the storage device and accessing it on another machine. Because the key blob is bound to a specific TPM, it cannot be migrated to another device. If the TPM is replaced or its owner hierarchy is cleared (e.g., via tpm2_clear), the key blob becomes unrecoverable and the encrypted partition must be reinitialized, resulting in data loss.
+
+In the current implementation, there is no support for an authorization policy (e.g., binding the key to the state of the boot chain). As a result, any code running on the device with sufficient access to the TPM can unseal the key, regardless of the boot state.
+
+Enabling secure boot mitigates this risk by ensuring that only authenticated and trusted software is executed, making it harder for an attacker to run arbitrary code with access to the TPM. However, without an authorization policy, a physical attacker could still attempt hardware-level attacks, such as removing the TPM device to extract secrets.
+
+Binding the key to Platform Configuration Registers (PCRs), thereby tying it to the measured boot chain, is planned for a future implementation.
+
 ## Notes on using TEE
 
 Before enabling the TEE backend, ensure that a Trusted Execution Environment (such as OP-TEE) is properly configured and enabled on your platform.
