@@ -258,9 +258,12 @@ tdx_enc_keyring_configure() {
         tdx_enc_log "Key blob not found. Creating it..."
         KEYHANDLE="$(keyctl add "${TDX_ENC_KEY_KEYRING_TYPE}" "${KEYNAME}" "$(eval echo ${NEW_KEY_CMD})" @s)"
         mkdir -p "${TDX_ENC_KEY_DIR}"
-        if ! keyctl pipe "$KEYHANDLE" > "${TDX_ENC_KEY_FULLPATH}"; then
+        TDX_ENC_KEY_TMPPATH=$(mktemp "${TDX_ENC_KEY_DIR}/tdx-enc.XXXXXXXXXX")
+        if ! keyctl pipe "$KEYHANDLE" > "${TDX_ENC_KEY_TMPPATH}"; then
+            rm -f "${TDX_ENC_KEY_TMPPATH}"
             tdx_enc_exit_error "Error saving key blob!"
         fi
+        mv "${TDX_ENC_KEY_TMPPATH}" "${TDX_ENC_KEY_FULLPATH}"
         if [ "${TDX_ENC_KEY_LOCATION}" = "partition" ]; then
             tdx_enc_key_save_to_partition
             rm -f "${TDX_ENC_KEY_FULLPATH}"
