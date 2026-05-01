@@ -1,7 +1,7 @@
-From 2f01909d455b52fe143e2ac097ee9011074bfcea Mon Sep 17 00:00:00 2001
+From 90d3dc646f42fb42c60ac9958d585f5c12cd46a4 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Wed, 19 Feb 2025 12:05:24 -0300
-Subject: [PATCH 8/8] toradex: cmd: setexpr: integrate protections (upstream)
+Subject: [PATCH 10/10] toradex: cmd: setexpr: integrate protections (upstream)
 
 Prevent usage of the '*' operator when device is closed; this operation
 allows arbitrary memory reads which is an undesirable operation in a
@@ -85,5 +85,5 @@ index ab76824a32b..e77596dfa90 100644
  		if (result)
  			return result;
 -- 
-2.34.1
+2.43.0
 

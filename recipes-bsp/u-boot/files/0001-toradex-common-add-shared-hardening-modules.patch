@@ -1,4 +1,4 @@
-From eaeb62c8a0dd6e9af9f65ad2136bd9933809eeb2 Mon Sep 17 00:00:00 2001
+From d7c76a870849b036d65a23b0d3db65093939e424 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:28:50 -0300
 Subject: [PATCH 1/2] toradex: common: add shared hardening modules
@@ -47,15 +47,19 @@ v3:
 - Add the bootflow command to the whitelist; also ensure no unsupported
   bootmeths are enabled.
 
-Upstream-Status: Inappropriate [Torizon OS specific]
+v4:
 
+- Allow fastboot command when CONFIG_TDX_FB_PROTECTION_ALLOW_CMD is set.
+- Allow cp command when CONFIG_TDX_CP_PROTECTION_ALLOW_CMD is set.
+
+Upstream-Status: Inappropriate [Torizon OS specific]
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  common/tdx-harden.c                           | 497 ++++++++++
- common/whitelist.c                            | 887 ++++++++++++++++++
+ common/whitelist.c                            | 895 ++++++++++++++++++
  .../dt-bindings/secure-boot/cmd-categories.h  | 111 +++
  include/tdx-harden.h                          |  59 ++
- 4 files changed, 1554 insertions(+)
+ 4 files changed, 1562 insertions(+)
  create mode 100644 common/tdx-harden.c
  create mode 100644 common/whitelist.c
  create mode 100644 include/dt-bindings/secure-boot/cmd-categories.h
@@ -63,7 +67,7 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 
 diff --git a/common/tdx-harden.c b/common/tdx-harden.c
 new file mode 100644
-index 00000000000..f508cf183fe
+index 00000000000..31e832ccb9f
 --- /dev/null
 +++ b/common/tdx-harden.c
 @@ -0,0 +1,497 @@
@@ -566,10 +570,10 @@ index 00000000000..f508cf183fe
 +#endif
 diff --git a/common/whitelist.c b/common/whitelist.c
 new file mode 100644
-index 00000000000..b94586cea6d
+index 00000000000..6f66a667474
 --- /dev/null
 +++ b/common/whitelist.c
-@@ -0,0 +1,887 @@
+@@ -0,0 +1,895 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2023 Toradex
@@ -711,7 +715,11 @@ index 00000000000..b94586cea6d
 +	{ { "clocks" }, { CMD_CAT_CLK_DIAG } },
 +	{ { "cmp", ALL }, { CMD_CAT_MEM_READ } },
 +	{ { "coninfo" }, { CMD_CAT_DIAG } },
++#ifdef CONFIG_TDX_CP_PROTECTION_ALLOW_CMD
++	{ { "cp", ALL }, { CMD_CAT_MEM_READ, CMD_CAT_MEM_WRITE, CMD_CAT_NEEDED } },
++#else
 +	{ { "cp", ALL }, { CMD_CAT_MEM_READ, CMD_CAT_MEM_WRITE } },
++#endif
 +	{ { "cpu", ALL }, { CMD_CAT_DIAG } },
 +	{ { "crc32", ALL }, { CMD_CAT_MEM_READ, CMD_CAT_MEM_WRITE } },
 +	{ { "dcache", ALL }, { CMD_CAT_DCACHE_CONTROL } },
@@ -738,7 +746,11 @@ index 00000000000..b94586cea6d
 +	{ { "ext4write", ALL }, { CMD_CAT_FS_WRITE } },
 +	{ { "false", ALL }, { CMD_CAT_SAFE } },
 +#ifdef CONFIG_CMD_FASTBOOT
++#ifdef CONFIG_TDX_FB_PROTECTION_ALLOW_CMD
++	{ { "fastboot", ALL }, { CMD_CAT_FASTBOOT, CMD_CAT_NEEDED } },
++#else
 +	{ { "fastboot", ALL }, { CMD_CAT_FASTBOOT } },
++#endif
 +#endif
 +	{ { "fatinfo", ALL }, { CMD_CAT_FS_DIAG } },
 +	{ { "fatload", ALL }, { CMD_CAT_FS_READ, CMD_CAT_MEM_WRITE_SAFE } },
@@ -1640,5 +1652,5 @@ index 00000000000..150558ab0d3
 +
 +#endif	/* __TDX_HARDEN_H */
 -- 
-2.34.1
+2.43.0
 

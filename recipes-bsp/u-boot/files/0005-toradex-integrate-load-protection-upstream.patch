@@ -1,7 +1,7 @@
-From 188cbbb319b856a85f90226f74a5738194a565b2 Mon Sep 17 00:00:00 2001
+From dc036c50a9d4c2148858a59c7c20271f9381d449 Mon Sep 17 00:00:00 2001
 From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Fri, 7 Mar 2025 15:56:56 -0300
-Subject: [PATCH 5/8] toradex: integrate load protection (upstream)
+Subject: [PATCH 05/10] toradex: integrate load protection (upstream)
 
 This introduces an extra protection to the "load" command. When this
 protection is enabled (by CONFIG_TDX_LOAD_PROTECTION) the command will
@@ -76,7 +76,7 @@ index acf465bdd80..b7ede5068a1 100644
  		return 0;
  
 diff --git a/lib/lmb.c b/lib/lmb.c
-index 8bcceb47bd7..a7bd913df13 100644
+index 8bcceb47bd7..bde85e67f82 100644
 --- a/lib/lmb.c
 +++ b/lib/lmb.c
 @@ -12,6 +12,8 @@
@@ -156,5 +156,5 @@ index 8bcceb47bd7..a7bd913df13 100644
 +}
 +#endif
 -- 
-2.34.1
+2.43.0
 
