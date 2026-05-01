@@ -128,6 +128,8 @@ tdx_enc_prepare_generic() {
     tdx_enc_log "Reserved blocks: $TDX_ENC_STORAGE_RESERVE..."
 
     if [ "${TDX_ENC_KEY_LOCATION}" = "partition" ]; then
+        TDX_ENC_KEY_DIR="/tmp"
+        TDX_ENC_KEY_FULLPATH="${TDX_ENC_KEY_DIR}/${TDX_ENC_KEY_FILE}"
         tdx_enc_key_recover_from_partition
     fi
 }
@@ -183,7 +185,6 @@ tdx_enc_prepare_tee() {
 tdx_enc_key_recover_from_partition() {
     tdx_enc_log "Recovering encrypted key blob from partition ${TDX_ENC_STORAGE_LOCATION}..."
 
-    TDX_ENC_KEY_FULLPATH="/tmp/${TDX_ENC_KEY_FILE}"
     rm -rf $TDX_ENC_KEY_FULLPATH
 
     STORAGE_KEY_BLOCK_DATA=$(mktemp /tmp/tdx-enc.XXXXXXXXXX)
