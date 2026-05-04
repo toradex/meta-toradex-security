@@ -62,11 +62,11 @@ amend_console_argument() {
 
 amend_root_argument() {
     # Sanity checks:
-    if ! grep -q 'env set rootfsargs_set'; then
+    if ! grep -q 'env set rootfsargs_set' boot.cmd; then
         bbfatal "Amendments to bootscript must be reviewed: statement setting variable 'rootfsargs_set' wasn't found."
     fi
 
-    if ! grep -q 'env set bootcmd_args'; then
+    if ! grep -q 'env set bootcmd_args' boot.cmd; then
         bbfatal "Amendments to bootscript must be reviewed: statement setting variable 'bootcmd_args' wasn't found."
     fi
 
