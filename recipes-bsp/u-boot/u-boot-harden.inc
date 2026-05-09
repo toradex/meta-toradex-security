@@ -231,10 +231,22 @@ SRC_URI:append = "\
 "
 
 CP_PROT_SUPPORTED ?= "0"
+CP_PROT_SUPPORTED:apalis-imx6 ?= "1"
+CP_PROT_SUPPORTED:colibri-imx6 ?= "1"
+CP_PROT_SUPPORTED:colibri-imx6ull ?= "1"
+CP_PROT_SUPPORTED:colibri-imx6ull-emmc ?= "1"
+CP_PROT_SUPPORTED:colibri-imx7 ?= "1"
+CP_PROT_SUPPORTED:colibri-imx7-emmc ?= "1"
 CP_PROT_SUPPORTED:verdin-imx8mm ?= "1"
 CP_PROT_SUPPORTED:verdin-imx8mp ?= "1"
 
 FB_PROT_SUPPORTED ?= "0"
+FB_PROT_SUPPORTED:apalis-imx6 ?= "1"
+FB_PROT_SUPPORTED:colibri-imx6 ?= "1"
+FB_PROT_SUPPORTED:colibri-imx6ull ?= "1"
+FB_PROT_SUPPORTED:colibri-imx6ull-emmc ?= "1"
+FB_PROT_SUPPORTED:colibri-imx7 ?= "1"
+FB_PROT_SUPPORTED:colibri-imx7-emmc ?= "1"
 FB_PROT_SUPPORTED:verdin-imx8mm ?= "1"
 FB_PROT_SUPPORTED:verdin-imx8mp ?= "1"
 
