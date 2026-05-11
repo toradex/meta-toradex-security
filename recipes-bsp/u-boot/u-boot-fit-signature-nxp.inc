@@ -1,6 +1,8 @@
 concat_dtb_pre_common() {
-    if [ "${UBOOT_MAKE_TARGET}" != "u-boot.imx" ]; then
-        bbfatal "Don't know how to handle a make target other than u-boot.imx"
+    # $1: type
+    # $2: binary
+    if [ "$2" != "u-boot.imx" ]; then
+        bbfatal "Don't know how to handle a bootloader binary ($2) other than u-boot.imx"
     fi
 
     # When the make target is "u-boot.imx" the u-boot.dtb file is not generated;
@@ -11,15 +13,17 @@ concat_dtb_pre_common() {
 }
 
 concat_dtb_post_common() {
-    if [ "${UBOOT_MAKE_TARGET}" != "u-boot.imx" ]; then
-        bbfatal "Don't know how to handle a make target other than u-boot.imx"
+    # $1: type
+    # $2: binary
+    if [ "$2" != "u-boot.imx" ]; then
+        bbfatal "Don't know how to handle a bootloader binary ($2) other than u-boot.imx"
     fi
 
     # Since concat_dtb() doesn't know how to handle a u-boot.imx file it will
     # wrongly generate it by simply concatenating it with the u-boot.dtb binary;
     # fix this by regenerating u-boot.imx now with the signed u-boot-dtb.
-    rm -f "${UBOOT_MAKE_TARGET}"
-    oe_runmake EXT_DTB="${UBOOT_DTB_SIGNED}" ${UBOOT_MAKE_TARGET}
+    rm -f "u-boot.imx"
+    oe_runmake EXT_DTB="${UBOOT_DTB_SIGNED}" "u-boot.imx"
 }
 
 concat_dtb:prepend:mx6ull-generic-bsp() {
@@ -54,7 +58,7 @@ concat_dtb:append:mx8m-generic-bsp() {
 
     # Execute make again to generate flash.bin. We could execute "make" passing
     # EXT_DTB="${UBOOT_DTB_SIGNED}" but this wouldn't help (or hurt) because the
-    # extra signature node presente in the signed DTB is not used by binman;
+    # extra signature node present in the signed DTB is not used by binman;
     # binman uses the DTs listed in CONFIG_OF_LIST directly and that's why we
     # updated them in the previous steps.
     oe_runmake ${UBOOT_MAKE_TARGET}
