@@ -69,9 +69,9 @@ sign_ahab_helper() {
     done
 
     # create fuse commands
+    TDX_IMX_HAB_CST_SRK_FUSE="${TDX_IMX_HAB_CST_SRK_FUSE}" \
     ${STAGING_BINDIR_NATIVE}/create_fuse_cmds.sh \
         "${IMX_BOOT_SOC_TARGET}" \
-        "${TDX_IMX_HAB_CST_SRK_FUSE}" \
         "${WORKDIR}/fuse-cmds.txt" \
         "${RECIPE_SYSROOT_NATIVE}${datadir}/imx-fuses"
 }

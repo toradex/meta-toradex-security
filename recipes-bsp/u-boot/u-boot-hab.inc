@@ -41,6 +41,17 @@ UBOOT_BINARY_HAB = "${UBOOT_BINARY}"
 UBOOT_BINARY_HAB:mx6dl-generic-bsp = "u-boot-ivt.img"
 UBOOT_BINARY_HAB:mx6q-generic-bsp = "u-boot-ivt.img"
 
+# Call create_fuse_cmds.sh with all required env vars and parameters
+create_fuse_cmds_helper() {
+    local soc="$1"
+
+    TDX_IMX_HAB_CST_SRK_FUSE="${TDX_IMX_HAB_CST_SRK_FUSE}" \
+    ${STAGING_BINDIR_NATIVE}/create_fuse_cmds.sh \
+        "$soc" \
+        "${WORKDIR}/fuse-cmds.txt" \
+        "${RECIPE_SYSROOT_NATIVE}${datadir}/imx-fuses"
+}
+
 # Sign U-Boot binary and/or SPL (this works both with i.MX6 and i.MX7).
 # This is supposed to run in the U-Boot build directory.
 imx6_imx7_sign_habv4() {
@@ -98,11 +109,7 @@ imx6_imx7_sign_habv4() {
     fi
 
     # Create fuse commands
-    ${STAGING_BINDIR_NATIVE}/create_fuse_cmds.sh \
-        "${soc}" \
-        "${TDX_IMX_HAB_CST_SRK_FUSE}" \
-        "${WORKDIR}/fuse-cmds.txt" \
-        "${RECIPE_SYSROOT_NATIVE}${datadir}/imx-fuses"
+    create_fuse_cmds_helper "${soc}"
 }
 
 # Sign U-Boot binary and/or SPL (this works with i.MX8M).
@@ -133,11 +140,7 @@ imx8m_sign_habv4() {
     ${WORKDIR}/imx8m_sign.sh
 
     # Create fuse commands
-    ${STAGING_BINDIR_NATIVE}/create_fuse_cmds.sh \
-        "${soc}" \
-        "${TDX_IMX_HAB_CST_SRK_FUSE}" \
-        "${WORKDIR}/fuse-cmds.txt" \
-        "${RECIPE_SYSROOT_NATIVE}${datadir}/imx-fuses"
+    create_fuse_cmds_helper "${soc}"
 }
 
 uboot_assemble_fitimage_helper:append:mx6dl-generic-bsp() {
