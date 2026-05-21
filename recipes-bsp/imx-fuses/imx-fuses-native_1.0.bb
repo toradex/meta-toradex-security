@@ -15,6 +15,7 @@ SRC_URI = "\
     file://imx8qm-template.fuse \
     file://imx8qx-template.fuse \
     file://imx95-template.fuse \
+    file://imx8mm-sjc-template.fuse \
 "
 
 inherit native
