@@ -13,6 +13,7 @@ MACHINE=""
 CSF=""
 TEMPLATE_FILE=""
 LIBFAKETIME_PATH="${LIBFAKETIME_PATH}"
+CSF_INC_DCD="${CSF_INC_DCD:-0}"
 
 # Timestamp to be used by libfaketime. The date itself isn't important, but this needs
 # to be constant between builds in order to generate deterministic CSF binaries
@@ -50,6 +51,9 @@ help() {
     echo " Optional Environment Variables:"
     echo
     echo "    TDX_IMX_HAB_CST_ARGS      Additional parameters to be passed to the CST tool"
+    echo "    CSF_INC_DCD               Include the DCD Blocks in the Authenticate Data areas of the CSF"
+    echo "                              Set to 1 when generating bootloaders aimed at SDP usage (iMX6ULL/7)"
+    echo "                              default: 0"
     echo "    LIBFAKETIME_PATH          Path to libfaketime library (needed for reproducible CSF binary builds)"
     echo "                              default: unset"
     echo
@@ -214,8 +218,21 @@ generate_csf() {
     # Delete 'Blocks =' section from template
     sed -i "/Blocks = /d" "${image_csf}"
 
-    # Append Blocks
-    echo "    Blocks = $(grep 'HAB Blocks' "${HAB_LOG}" | awk '{print $3, $4, $5}') \"${IMXBOOT}\"" >> "${image_csf}"
+    if grep -q "HAB Blocks" "${HAB_LOG}"; then
+        echo "    Blocks = $(grep 'HAB Blocks' "${HAB_LOG}" | awk '{print $3, $4, $5}') \"${IMXBOOT}\"" >> "${image_csf}"
+    else
+        error "Could not find 'HAB Blocks' section in '${HAB_LOG}'; aborting."
+    fi
+
+    if [ "${CSF_INC_DCD}" = "1" ]; then
+        if grep -q "DCD Blocks" "${HAB_LOG}"; then
+            # Add comma to last line and append extra line with DCD blocks.
+            sed -e '$ s/$/, \\/' -i "${image_csf}"
+            echo "             $(grep 'DCD Blocks' "${HAB_LOG}" | awk '{print $3, $4, $5}') \"${IMXBOOT}\"" >> "${image_csf}"
+        else
+            error "Could not find 'DCD Blocks' section in '${HAB_LOG}'; aborting."
+        fi
+    fi
 
     # Generate Binary
     if ! env ${LIBFAKETIME_PATH+LD_PRELOAD="${LIBFAKETIME_PATH}"

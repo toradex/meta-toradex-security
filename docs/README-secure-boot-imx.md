@@ -36,18 +36,39 @@ After that, configure the various variables listed below to match your choices; 
 | `TDX_IMX_HAB_CST_DIG_ALGO` | Digest algorithm as entered into the CST tool. | `sha256` |
 | `TDX_IMX_HAB_CST_SRK_CA` | Whether or not the SRK certificates have the CA flag set as entered into the CST tool; allowed values: `0` or `1`. | `1` |
 | `TDX_IMX_HAB_CST_SRK_INDEX` | Index of the SRK to be used for signing within the SRK table; allowed values: `1`..`4`, corresponding to `SRK1`..`SRK4`, respectively. | `1` |
+| `TDX_IMX_HAB_SDP_CONFIGS` | List of U-Boot configurations targeting SDP loading; `*` means all (relevant mainly to the iMX6ULL and iMX7) | Empty |
 | `TDX_IMX_HAB_GEN_UBOOT_FUSING_CMD` | Add a function called `prog_secure_boot_fuses` to U-Boot's environment to program the secure boot fuses. Since this is intended mostly for development/tests, the function will only program the fuses but not close the device. If you enable it and run the function inside U-Boot, be aware that it will write to One-Time Programmable e-fuses, and the operation is irreversible! Allowed values are: `0` (disabled) or `1` (enabled). | `0` |
 
 The complete list of variables can be found in the `imx-hab.bbclass` file.
 
 **NOTE**: For HAB signing, [libfaketime](https://github.com/wolfcw/libfaketime) is used when generating the CSF binaries with CST in order to create reproducible bootloader image builds.
 
-### Known issues
+### Bootloaders targeting SDP loading
+
+This section is currently relevant to the iMX6ULL and iMX7 SoCs where a bootloader aiming SDP loading requires a special signing procedure.
+
+The variable `TDX_IMX_HAB_SDP_CONFIGS` can be configured to generate a bootloader suitable for SDP loading and execution.
+
+For builds where multiple U-Boot configurations are specified (e.g., `UBOOT_CONFIG = "config1 config2 config3"`), setting `TDX_IMX_HAB_SDP_CONFIGS = "*"` ensures that all configurations are built with the required modifications for SDP usage.
+
+Normally though, only specific configurations target SDP loading. For example, with `UBOOT_CONFIG = "nand emmc recovery"`, users can set `TDX_IMX_HAB_SDP_CONFIGS = "recovery"` to limit SDP preparation to the `recovery` build.
+
+If `UBOOT_CONFIG` is not being used to set up multiple U-Boot configurations and the only (unnamed) configuration being built is aimed at SDP usage, then users should set `TDX_IMX_HAB_SDP_CONFIGS = "*"`.
+
+In addition to properly setting up the bootloader signing for SDP, users must provide extra parameters to the SDP `boot` command in UUU when loading the generated binary. Specifically, the options `-cleardcd` and `-dcdaddr` are typically required to ensure proper booting without HAB events. For example:
+
+```
+SDP: boot -f u-boot.imx -dcdaddr 0x00910000 -cleardcd
+```
+
+The DCD address can be determined from the `mkimage` output logs produced by U-Boot.
+
+## Known issues
 
 - Starting from version 4.0.0, the NXP CST tool may not work as expected on older Linux distributions (e.g., Ubuntu 20.04). If you are using NXP CST 4.0.0 or later, it is recommended to use a more recent Linux distribution (e.g., Ubuntu 24.04) to ensure compatibility and avoid potential issues.
 - As of April 2025, SGK is not supported in the current firmware for SoCs using the EdgeLock Secure Enclave (ELE), which includes iMX8ULP and iMX9x. Consequently, when building for machines based on these SoCs, the use of subordinate signing keys (SGK) will be disabled, and the boot container will be signed directly with the Super Root Keys (SRK).
 
-### Closing the device
+## Closing the device
 
 If HAB/AHAB is enabled, at the end of the build, a file with the commands to fuse the SoC (`fuse-cmds.txt`) will be generated in the images directory. The commands in this file should be executed in the U-Boot command line interface.
 
