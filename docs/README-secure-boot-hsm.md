@@ -4,7 +4,7 @@ This document describes how to use a PKCS#11-compatible HSM to sign secure-boot 
 
 With this workflow, private signing keys do not need to be stored on the build host filesystem. Instead, signing operations are delegated through a PKCS#11 provider to an HSM-backed device or service, such as a hardware token or a CloudHSM offering.
 
-The current implementation supports HSM-backed signing for the complete secure boot flow on i.MX-based SoMs. Support for TI-based SoMs is still a work in progress.
+The implementation supports HSM-backed signing for the complete secure boot flow on both i.MX-based and TI K3-based SoMs.
 
 ## How to use
 
@@ -41,6 +41,8 @@ The following variables are available to configure HSM-backed signing of secure 
 | `TDX_SIGNED_HSM_PKCS11_MODULE_PROVIDER` | Native package that provides the PKCS#11 implementation for the HSM. It is added as a dependency to recipes that need to access the token during signing. | `""` |
 | `TDX_SIGNED_HSM_PKCS11_MODULE_PATH` | Path to the PKCS#11 shared library, relative to the recipe native sysroot. | `""` |
 | `TDX_SIGNED_HSM_PKCS11_SOFTHSM_CONF` | Path to the SoftHSM configuration file. This is required when using SoftHSM, a software implementation of a PKCS#11 token commonly used for development and testing. | `${TOPDIR}/keys/softhsm/conf/softhsm2.conf` |
+| `TDX_SIGNED_HSM_K3_BINMAN_KEY_URL` | PKCS#11 URI of the private key used by binman to sign the TI K3 boot container. Only relevant when targeting a TI K3 SoM. | `""` |
+| `TDX_SIGNED_HSM_K3_OPENSSL_CONF` | Path to an OpenSSL configuration file activating the `pkcs11` provider, used when signing the TI K3 boot container. If empty, one is generated automatically at build time. | `""` |
 | `TDX_SIGNED_HSM_FIT_TOKEN_URL` | PKCS#11 URI identifying the token that contains the FIT signing key. | `""` |
 | `TDX_SIGNED_HSM_FIT_TOKEN_LABEL` | Label of the private key object used to sign the FIT image. | `""` |
 | `TDX_SIGNED_HSM_SUPPRESS_WARNINGS` | Suppress sanity-check warnings emitted when HSM variables are missing. Allowed values are `0` and `1`. | `0` |
@@ -58,7 +60,7 @@ The most important variables for configuring the PKCS#11 provider are `TDX_SIGNE
 The HSM signing flow in `meta-toradex-security` is designed to be provider-agnostic, as long as the HSM is accessible through a PKCS#11-compatible shared library available in the native sysroot. At the moment, the layer has been validated with the following providers:
 
 - **SoftHSM**, a software implementation of a PKCS#11 token.
-- **YubiKey**, a hardware-backed signing device from [Yubico](https://www.yubico.com/).
+- **YubiKey 5 NFC**, a hardware-backed signing device from [Yubico](https://www.yubico.com/).
 
 SoftHSM is useful for development, testing, and CI because it provides a PKCS#11-compatible software token without requiring dedicated hardware. Example configuration:
 
@@ -84,7 +86,7 @@ To use a different PKCS#11 provider, the layer does not usually require code cha
 
 > **Note:** If the provider requires additional environment variables or runtime initialization, the build logic may need to be extended accordingly. For a reference, see `classes/tdx-signed-hsm-env.bbclass`.
 
-### Configuring HAB/AHAB signing (only for NXP iMX based SoMs)
+### Configuring HAB/AHAB signing for NXP i.MX-based SoMs
 
 When signing boot images for NXP i.MX platforms with HAB or AHAB enabled, CST normally expects the signing certificates to be provided as files on the build host filesystem.
 
@@ -120,7 +122,45 @@ In these examples:
 
 This configuration changes how CST locates the certificate objects. It does not change the role of each variable in the HAB/AHAB signing flow. The same variables still represent the SRK, CSF, IMG, or SGK certificates as in the filesystem-based setup; only the way they are referenced is different.
 
+For detailed instructions on building secure boot-enabled images for i.MX-based SoCs with HSM-backed keys, see the article [Secure Boot Image Signing for NXP i.MX with HSM-Backed Keys](https://developer.toradex.com/linux-bsp/os-development/security/secure-boot-with-hsm-backed-keys) on the Toradex Developer website.
+
 > **Note:** When HSM-backed signing is enabled for NXP i.MX secure-boot builds, the CST tool is built from source so that PKCS#11 support is available.
+
+### Configuring TI K3 boot container signing
+
+On TI K3 platforms, the boot container is signed during the U-Boot build by U-Boot's `binman` tool using OpenSSL. In the default setup, `binman` reads the SMPK private key from a file on the filesystem. When HSM-backed signing is enabled, `binman` accesses the private key in the HSM through a PKCS#11 provider instead.
+
+Two variables control this:
+
+- `TDX_SIGNED_HSM_K3_BINMAN_KEY_URL` — the PKCS#11 URI of the SMPK private key object, forwarded to `binman` as the `keyfile` entry argument
+- `TDX_SIGNED_HSM_K3_OPENSSL_CONF` — optional path to an OpenSSL configuration file activating the `pkcs11` provider; when empty, one is generated automatically at build time using `TDX_SIGNED_HSM_PKCS11_MODULE_PATH`
+
+A typical configuration looks like:
+
+```
+TDX_SIGNED_HSM_K3_BINMAN_KEY_URL = "pkcs11:token=boot-hsm;object=custMpk;type=private"
+```
+
+If you want to provide your own OpenSSL configuration file instead of relying on the one generated by the build system, point `TDX_SIGNED_HSM_K3_OPENSSL_CONF` at it. The file must activate the `pkcs11` provider and configure it to load the PKCS#11 module corresponding to your HSM. A minimal example:
+
+```
+openssl_conf = openssl_init
+
+[openssl_init]
+providers = provider_sect
+
+[provider_sect]
+default = default_sect
+pkcs11 = pkcs11_sect
+
+[default_sect]
+activate = 1
+
+[pkcs11_sect]
+pkcs11-module-path = /usr/lib/softhsm/libsofthsm2.so
+pkcs11-module-quirks = no-deinit
+activate = 1
+```
 
 ### Configuring FIT image signing
 
@@ -157,7 +197,7 @@ TDX_SIGNED_HSM_FIT_TOKEN_URL = "model=SoftHSM%20v2;manufacturer=SoftHSM%20projec
 TDX_SIGNED_HSM_FIT_TOKEN_LABEL = "fit-sign-key"
 ```
 
-And the following example shows the configuration using Yubikey for image signing on iMX AHAB based SoMs:
+The following example shows the configuration using Yubikey for image signing on iMX AHAB based SoMs:
 
 ```
 TDX_SIGNED_HSM = "1"
@@ -169,6 +209,34 @@ TDX_IMX_HAB_CST_SRK_CERT = "pkcs11:token=YubiKey%20PIV%20%2322863375;id=%06;type
 TDX_IMX_HAB_CST_SGK_CERT = "pkcs11:token=YubiKey%20PIV%20%2322863375;id=%07;type=cert;pin-value=${TDX_SIGNED_HSM_TOKEN_PIN}"
 
 TDX_SIGNED_HSM_FIT_TOKEN_URL = "model=YubiKey%20YK5;manufacturer=Yubico%20%28www.yubico.com%29;serial=22863375;token=YubiKey%20PIV%20%2322863375;id=%12"
+TDX_SIGNED_HSM_FIT_TOKEN_LABEL = "yk-dev-key"
+```
+
+The following example shows a development setup using SoftHSM for image signing on TI K3 based SoMs:
+
+```
+TDX_SIGNED_HSM = "1"
+
+TDX_SIGNED_HSM_PKCS11_MODULE_PROVIDER = "softhsm-native"
+TDX_SIGNED_HSM_PKCS11_MODULE_PATH = "/usr/lib/softhsm/libsofthsm2.so"
+
+TDX_SIGNED_HSM_K3_BINMAN_KEY_URL = "pkcs11:token=boot-hsm;object=custMpk;type=private"
+
+TDX_SIGNED_HSM_FIT_TOKEN_URL = "model=SoftHSM%20v2;manufacturer=SoftHSM%20project;serial=984ed1d2002d1c09;token=fit-hsm"
+TDX_SIGNED_HSM_FIT_TOKEN_LABEL = "fit-sign-key"
+```
+
+The following example shows the configuration using YubiKey for image signing on TI K3 based SoMs:
+
+```
+TDX_SIGNED_HSM = "1"
+
+TDX_SIGNED_HSM_PKCS11_MODULE_PROVIDER = "yubico-piv-tool-native"
+TDX_SIGNED_HSM_PKCS11_MODULE_PATH = "/usr/lib/libykcs11.so"
+
+TDX_SIGNED_HSM_K3_BINMAN_KEY_URL = "pkcs11:token=YubiKey%20PIV%20%2322863375;id=%05;type=private"
+
+TDX_SIGNED_HSM_FIT_TOKEN_URL = "token=YubiKey%20PIV%20%2322863375;id=%06"
 TDX_SIGNED_HSM_FIT_TOKEN_LABEL = "yk-dev-key"
 ```
 
