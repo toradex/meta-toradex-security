@@ -41,6 +41,30 @@ UBOOT_BINARY_HAB = "${UBOOT_BINARY}"
 UBOOT_BINARY_HAB:mx6dl-generic-bsp = "u-boot-ivt.img"
 UBOOT_BINARY_HAB:mx6q-generic-bsp = "u-boot-ivt.img"
 
+python __anonymous() {
+    scfgs = (d.getVar('TDX_IMX_HAB_SDP_CONFIGS_INTERNAL') or "").split()
+    ucfgs = (d.getVar('UBOOT_CONFIG') or "").split()
+    if not ucfgs:
+        for _scfg in scfgs:
+            if _scfg != "*":
+                bb.warnonce(
+                    'UBOOT_CONFIG is not in use; TDX_IMX_HAB_SDP_CONFIGS should '
+                    'be either empty or set to "*", but it instead contains a '
+                    f'configuration named "{_scfg}"; bootloader will not be '
+                    'built for SDP loading.')
+                break
+        return
+
+    for _scfg in scfgs:
+        if _scfg == "*":
+            continue
+        if _scfg not in ucfgs:
+            bb.warnonce(
+                f'Configuration named "{_scfg}" in TDX_IMX_HAB_SDP_CONFIGS '
+                'is not listed in UBOOT_CONFIG and will be ignored; your '
+                'bootloader may not be built for SDP loading.')
+}
+
 # Sign U-Boot binary and/or SPL (this works both with i.MX6 and i.MX7).
 # This is supposed to run in the U-Boot build directory.
 imx6_imx7_sign_habv4() {
@@ -52,7 +76,43 @@ imx6_imx7_sign_habv4() {
         bbfatal "Could not find CST binary at ${TDX_IMX_HAB_CST_BIN}."
     fi
 
-    bbdebug 1 "Generating CSF for U-Boot"
+    binary_to_sign="${UBOOT_BINARY_HAB}"
+    binary_to_mkcsf="${UBOOT_BINARY_HAB}"
+
+    csf_inc_dcd="0"
+    # Run loop in a subshell with set -f to avoid expansion of "*", which
+    # variable TDX_IMX_HAB_SDP_CONFIGS (and the internal one) may contain.
+    (
+	set -f
+	for _config in ${TDX_IMX_HAB_SDP_CONFIGS_INTERNAL}; do
+            if [ "${_config}" = "${type}" ] || [ "${_config}" = "*" ]; then
+		exit 0
+            fi
+	done
+	exit 1
+    ) && csf_inc_dcd="1"
+
+    # For SDP loading we need:
+    #
+    # (a) a CSF determined from a bootloader with a cleared DCD pointer; and
+    # (b) a CSF that covers (protects) the DCD blocks.
+    #
+    if [ "${csf_inc_dcd}" = "1" ]; then
+        bbdebug 1 "Generating bootloader binary with cleared DCD pointer (type='${type}')"
+        if [ "$(xxd -p -l1 "${binary_to_sign}")" != "d1" ]; then
+            bbfatal "File '${binary_to_sign}' does not seem to start with an IVT; aborting."
+        fi
+        binary_to_mkcsf="${UBOOT_BINARY_HAB}-clrdcd"
+        cp -v "${binary_to_sign}" "${binary_to_mkcsf}"
+        cp -v "${binary_to_sign}.log" "${binary_to_mkcsf}.log"
+        # As per IMX6DRM/IMX7DRM, section titled "Image vector table structure",
+        # the 32-bit DCD pointer is at offset 12 (0xC); clear it.
+        printf '\0\0\0\0' | dd of="${binary_to_mkcsf}" bs=1 seek=12 conv=notrunc
+    else
+        bbdebug 1 "DCD pointer clearing has been skipped"
+    fi
+
+    bbdebug 1 "Generating CSF from U-Boot binary '${binary_to_mkcsf}' (type='${type}')"
     # Generate CSF file:
     LIBFAKETIME_PATH="${STAGING_LIBDIR_NATIVE}/faketime/libfaketime.so.1" \
     TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
@@ -61,17 +121,18 @@ imx6_imx7_sign_habv4() {
     TDX_IMX_HAB_CST_IMG_CERT="${TDX_IMX_HAB_CST_IMG_CERT}" \
     TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
     TDX_IMX_HAB_CST_ARGS="${TDX_IMX_HAB_CST_ARGS}" \
-    IMXBOOT="${UBOOT_BINARY_HAB}" \
-    HAB_LOG="${UBOOT_BINARY_HAB}.log" \
+    CSF_INC_DCD="${csf_inc_dcd}" \
+    IMXBOOT="${binary_to_mkcsf}" \
+    HAB_LOG="${binary_to_mkcsf}.log" \
     ${WORKDIR}/imx6_imx7_create_csf.sh -m "${soc}" -c "csf_uboot"
 
     # Save unsigned image and generate signed version by concatenating with the CSF.
-    bbdebug 1 "Concatenating CSF binary to U-Boot"
+    bbdebug 1 "Concatenating CSF binary to U-Boot binary '${binary_to_sign}'"
     if [ -n "${type}" ]; then
-        cp  "${UBOOT_BINARY_HAB}" "${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX}-unsigned"
-        cat "${UBOOT_BINARY_HAB}" "csf_uboot.bin" > "${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX}"
+        cp  "${binary_to_sign}" "${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX}-unsigned"
+        cat "${binary_to_sign}" "csf_uboot.bin" > "${UBOOT_BINARYNAME}-${type}.${UBOOT_SUFFIX}"
     else
-        mv  "${UBOOT_BINARY_HAB}" "${UBOOT_BINARY}-unsigned"
+        mv  "${binary_to_sign}" "${UBOOT_BINARY}-unsigned"
         cat "${UBOOT_BINARY}-unsigned" "csf_uboot.bin" > "${UBOOT_BINARY}"
     fi
 

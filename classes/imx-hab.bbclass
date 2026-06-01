@@ -142,3 +142,12 @@ TDX_IMX_HAB_CST_SGK_SUPP  ?= "1"
 
 # Only SRK is supported in the current released firmware (April 2025) for iMX9 based SoCs
 TDX_IMX_HAB_CST_SGK_SUPP:mx9-generic-bsp ?= "0"
+
+# List of U-Boot configurations targeting SDP loading; "*" means all;
+# normally this would be a subset of the values in UBOOT_CONFIG
+TDX_IMX_HAB_SDP_CONFIGS ?= ""
+
+# Internal version of the above variable making it relevant on specific SoCs
+TDX_IMX_HAB_SDP_CONFIGS_INTERNAL ?= ""
+TDX_IMX_HAB_SDP_CONFIGS_INTERNAL:mx6ull-generic-bsp = "${TDX_IMX_HAB_SDP_CONFIGS}"
+TDX_IMX_HAB_SDP_CONFIGS_INTERNAL:mx7-generic-bsp = "${TDX_IMX_HAB_SDP_CONFIGS}"
