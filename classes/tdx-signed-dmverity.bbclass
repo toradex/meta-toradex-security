@@ -26,6 +26,15 @@ SKIP_META_SECURITY_SANITY_CHECK = "1"
 TEZI_ROOT_SUFFIX = "ext4.verity"
 TEZI_ROOT_FSTYPE = "raw"
 
+# If different images are built, multiple .verity.env files end up in the
+# staging directory, and the ramdisk recipe (tdx-reference-ramdisk-image)
+# fails to pick the right one, as its name might be unpredictable (e.g.
+# Toradex BSP might append a string to it). To solve this, let's remove
+# any previously generated .verity.env file before generating the new one.
+verity_setup:prepend() {
+    rm -f ${STAGING_VERITY_DIR}/*.verity.env
+}
+
 # Easy Installer needs the size of the rootfs image so it can add to image.json
 CONVERSION_DEPENDS_verity:append = " bc-native"
 verity_setup:append() {
