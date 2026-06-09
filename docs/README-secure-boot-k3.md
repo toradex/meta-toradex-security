@@ -48,7 +48,7 @@ For signature checking, the following algorithms are supported:
 - RSA (2048 and 4096)
 - ECDSA (secp256 and secp521)
 
-Here are some instructions to create the keys. Be aware that this is just an example since you might want to define your own process to create and store the keys.
+The steps below show one way to generate the keys with OpenSSL on the build host. Treat this as a development example — in production you will likely want a different process for creating and storing the keys (see the note on key storage at the end of this section).
 
 Export some variables to configure the location and the name of the keys:
 
@@ -94,7 +94,11 @@ To finish, remove write access to the keys and certificates:
 $ chmod a-w *
 ```
 
-### Signing bootloader artifacts
+**A note on key storage**: the example above stores the private signing keys directly on the build host filesystem. This is convenient for development, but in production it exposes the keys to anyone with access to the build machine (developers, CI runners, backups, container images, etc.), and a single compromise of the host is enough to leak the root of trust of every device signed with those keys.
+
+For production use, this layer supports HSM-backed signing through a PKCS#11 provider, so the private keys never leave the hardware token or HSM. See [README-secure-boot-hsm.md](README-secure-boot-hsm.md) for details.
+
+### Enabling and configuring bootloader signing
 
 When the `tdx-signed` class is inherited, signing bootloader images on K3-based platforms like AM62 is enabled by default.
 
@@ -108,6 +112,22 @@ A few variables can be used to configure its behavior:
 | `TDX_K3_SUPPRESS_HSSE_WARNINGS` | Whether to suppress some warning messages about the type of device (HS-FS/HS-SE) that the generated image is targeted. | `0` |
 
 **NOTE**: Older versions of this layer provided variables `TDX_K3_HSSE_ENABLE` and `TDX_K3_HSSE_KEY_DIR` which are no longer available. The former has been replaced by `TDX_K3_SECBOOT_ENABLE` along with `TDX_K3_SECBOOT_TARGET_HSSE_DEVICE` and the latter by `TDX_K3_SECBOOT_KEY_DIR`.
+
+#### Signed artifacts and verification chain
+
+The K3 boot chain has three bootloader stages, and all three are signed with the SMPK when secure boot is enabled:
+
+- **`tiboot3.bin`** — first stage, containing the R5 SPL, the TI Foundational Security (TIFS) firmware and configuration data. It is wrapped in a TI-specific x509 certificate signed with the SMPK.
+- **`tispl.bin`** — second stage, a FIT image containing the A53 SPL, ATF (TF-A), OP-TEE and the DM firmware. Each sub-image is individually wrapped in a `ti-secure` x509 certificate signed with the SMPK.
+- **`u-boot.img`** — third stage, also a FIT image; the U-Boot proper payload inside it is wrapped in a `ti-secure` x509 certificate signed with the SMPK.
+
+The verification chain at boot is then:
+
+1. The boot ROM verifies `tiboot3.bin` against the SMPK hash fused into OTP.
+2. The R5 SPL (inside `tiboot3.bin`) loads `tispl.bin` and asks TIFS to verify each `ti-secure`-wrapped sub-image before using it.
+3. The A53 SPL (inside `tispl.bin`) loads `u-boot.img` and likewise asks TIFS to verify the `ti-secure`-wrapped U-Boot payload before jumping into it.
+
+On HS-SE devices, any image that fails verification — or that arrives without a `ti-secure` certificate at all — is rejected and the boot stops.
 
 ### Fusing the keys into the SoC
 
