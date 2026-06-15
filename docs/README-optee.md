@@ -167,7 +167,17 @@ For additional details on how the PKCS#11 Trusted Application works, refer to th
 
 ## Limitations
 
+### Colibri iMX6
+
 Currently, OP-TEE cannot be used in conjunction with HAB on Colibri iMX6 due to a limitation in the signing process. A different U-Boot image is generated when OP-TEE is enabled, and the signing scripts need to be adapted to handle it.
+
+### i.MX 8M
+
+On i.MX 8M, OP-TEE secure memory is currently not fully isolated from the normal world. Because the i.MX 8M DDR controller ignores the upper address bits, secure DRAM can also be reached through address aliases that fall through to the TZASC background region 0, which the boot firmware (U-Boot and TF-A) leaves open to the normal world. As a result, a compromised Linux kernel could read OP-TEE secrets such as cryptographic keys or fTPM state.
+
+Exploiting this requires kernel-level code execution, so the practical risk is reduced when secure boot is enabled: a signed boot chain prevents the kernel from being replaced and kernel module signing prevents loading malicious modules, both of which make obtaining kernel-level access harder (though a runtime kernel exploit would still bypass them). Kernel hardening such as `CONFIG_STRICT_DEVMEM` and the device tree `nomap` reservations also limit access to physical memory against user space code.
+
+Fully closing this gap requires coordinated changes in OP-TEE, TF-A and U-Boot (via the the upstream `CFG_TZASC_REGION0_SECURE` option, available in OP-TEE 4.10.0 and newer) and is expected to be resolved once the NXP BSP adopts a newer OP-TEE.
 
 ## Important note
 
