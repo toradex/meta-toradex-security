@@ -6,6 +6,8 @@ Encryption is currently supported on the following SoMs:
 
 - Apalis iMX6
 - Apalis iMX8
+- Aquila AM69
+- Aquila iMX95
 - Colibri iMX6DL
 - Colibri iMX6ULL (1GB eMMC variant only)
 - Colibri iMX7D (1GB eMMC variant only)

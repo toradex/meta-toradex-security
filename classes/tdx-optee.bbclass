@@ -77,6 +77,7 @@ python validate_optee_support() {
     supported_machines = [
         'apalis-imx6',
         'aquila-am69',
+        'aquila-imx95',
         'colibri-imx6',
         'colibri-imx7-emmc',
         'imx95-19x19-verdin',
