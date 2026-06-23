@@ -1,0 +1,55 @@
+From: Sergio Prado <sergio.prado@e-labworks.com>
+Date: Tue, 23 Jun 2026 00:00:00 +0000
+Subject: [PATCH] ele: skip unsupported SM-to-ELE DVFS notifications
+
+The ELE firmware shipped with the current BSP, version 2.0.2.1, does not
+implement the SM-to-ELE DVFS notification API added to System Manager
+by commit d06d8353 ("SM-240").
+
+As a result, when System Manager sends these notifications, ELE rejects
+them with ELE_INVALID_MESSAGE and logs two events on every boot:
+
+0x00c0f429
+0x00c1f429
+
+These events prevent the lifecycle transition to OEM Closed, causing
+ele_forward_lifecycle() to fail with ELE_AUTH_SKIPPED_OR_FAILED
+(0xbb29) and blocking the ahab_close command.
+
+Skip the unsupported DVFS notifications for now. This workaround can be
+dropped once the BSP ships an ELE firmware version that supports the DVFS
+notification API.
+
+Upstream-Status: Pending
+Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
+---
+diff --git a/drivers/ele/fsl_ele.c b/drivers/ele/fsl_ele.c
+index e16419dcc7bd..8b9de2a7e93e 100644
+--- a/drivers/ele/fsl_ele.c
++++ b/drivers/ele/fsl_ele.c
+@@ -541,6 +541,13 @@ void ELE_EnableAuxRequest(uint32_t core)
+ void ELE_StartDvfsChange(uint32_t flags, uint32_t mode, uint32_t eleMhz,
+     uint32_t m33Mhz)
+ {
++    /* Toradex BSP local patch: the ELE firmware shipped with this BSP
++     * (ELE 2.0.2) does not implement the DVFS-change API, so it rejects
++     * this message with ELE_INVALID_MESSAGE (0xc0f429), and that event
++     * blocks ahab_close. DVFS is still applied via the PMIC, so just
++     * skip the notification. Remove when a DVFS-capable ELE FW is used. */
++    return;
++
+     /* API LAYOUT:
+      *
+      *            |BITS[31:24|BITS[23:16]|BITS[15:08]|BITS[07:00|
+@@ -572,6 +579,9 @@ void ELE_StartDvfsChange(uint32_t flags, uint32_t mode, uint32_t eleMhz,
+ /*--------------------------------------------------------------------------*/
+ void ELE_StopDvfsChange(void)
+ {
++    /* See ELE_StartDvfsChange(): skip the unsupported ELE DVFS notification. */
++    return;
++
+     /* Call ELE */
+     ELE_Call(&s_msgMax, ELE_STOP_DVFS_CHANGE, 1U);
+ 
+-- 
+2.43.0
