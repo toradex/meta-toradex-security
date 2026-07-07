@@ -94,3 +94,23 @@ uefi_sb_prepare_keys() {
     uefi_sb_generate_dev_keys
 }
 
+uefi_sb_sign() {
+    input="$1"
+    output="$2"
+
+    if [ "${UEFI_SB_SIGN_ENABLE}" != "1" ]; then
+        bbnote "UEFI Secure Boot signing disabled; using unsigned EFI binary"
+        if [ "${input}" != "${output}" ]; then
+            cp -f "${input}" "${output}"
+        fi
+        return
+    fi
+
+    uefi_sb_prepare_keys
+
+    "${STAGING_BINDIR_NATIVE}/sbsign" \
+        --key "${UEFI_SB_KEYDIR}/db.key" \
+        --cert "${UEFI_SB_KEYDIR}/db.crt" \
+        --output "${output}" \
+        "${input}"
+}
