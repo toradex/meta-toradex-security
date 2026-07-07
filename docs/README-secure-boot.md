@@ -131,6 +131,44 @@ The complete list of variables can be found in the `tdx-signed-fit-image.inc` fi
 
 - On K3 based platforms (Verdin AM62, Aquila AM69), some of the configuration variables (e.g. `UBOOT_SIGN_KEYDIR`, `UBOOT_SIGN_KEYNAME` (check the complete list in `tdx-signed-fit-image.inc`)) are set through override `k3` to ensure the values coming from layer `meta-toradex-security` override those from layer `meta-ti-bsp`. Due to this, the recommended way to set those variables is via override `forcevariable`.
 
+## Configuring UEFI Secure Boot keys
+
+On x86-64 machines using UEFI Secure Boot with `tdx-signed`, development key
+generation and production key import are controlled by these variables:
+
+| Variable | Description | Default value |
+| :------- | :---------- | :------------ |
+| `UEFI_SB_SIGN_ENABLE` | Enable signing of UEFI binaries | `1` |
+| `UEFI_SB_GENERATE_KEYS` | Generate development UEFI Secure Boot keys when no key set exists | `1` |
+| `UEFI_SB_KEYDIR` | Location of the UEFI Secure Boot key material | `${TOPDIR}/keys/uefi` |
+
+When `UEFI_SB_SIGN_ENABLE` is set to `0`, the UEFI signing helper leaves EFI
+binaries unsigned while keeping the rest of the signed-image configuration in
+place
+
+The UEFI signing flow prepares the key directory before signing. With the
+default development setting, it creates the following files in
+`${UEFI_SB_KEYDIR}` when no key set exists:
+
+```
+PK.key   PK.crt   PK.esl   PK.auth
+KEK.key  KEK.crt  KEK.esl  KEK.auth
+db.key   db.crt   db.esl   db.auth
+dbx.esl  dbx.auth
+```
+
+The generated keys are for development only and must not be used in production.
+
+For production, place an externally generated complete key set in
+`${UEFI_SB_KEYDIR}` before building and set:
+
+```
+UEFI_SB_GENERATE_KEYS = "0"
+```
+
+With key generation disabled, the signing flow fails if the key directory does
+not already contain a complete imported set.
+
 ## Configuring rootfs image signing
 
 When the `tdxref-signed` class is inherited, the rootfs image will be generated using the `dm-verity` kernel feature.
