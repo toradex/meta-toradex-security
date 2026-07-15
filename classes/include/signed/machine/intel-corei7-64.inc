@@ -21,7 +21,10 @@ IMAGE_EFI_BOOT_FILES = " \
     loader/keys/auto/db.auth \
     loader/keys/auto/dbx.auth \
     loader/keys/auto/KEK.auth \
+    loader/keys/auto/KEK.auth \
     loader/keys/auto/PK.auth \
+    loader/keys/auto/PK.auth \
+    loader/loader.conf;loader/loader.conf \
     systemd-bootx64.signed.efi;EFI/BOOT/bootx64.efi \
     "
 
