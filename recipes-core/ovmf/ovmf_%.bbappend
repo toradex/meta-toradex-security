@@ -4,7 +4,8 @@ OVMF_SB_OWNER_GUID ??= "a5c059a1-94e4-4aa7-87b5-ab155c2bf072"
 OVMF_SB_VARS ??= "ovmf.secboot.vars"
 
 OVMF_SB_VARS_DEPENDS = "${@bb.utils.contains('PACKAGECONFIG', 'secureboot', 'python3-virt-firmware-native:do_populate_sysroot ${UEFI_SB_NATIVE_TASK_DEPS}', '', d)}"
-do_compile[depends] += "${OVMF_SB_VARS_DEPENDS}"
+do_deploy[depends] += "${OVMF_SB_VARS_DEPENDS}"
+do_deploy[file-checksums] += "${UEFI_SB_KEY_FILE_CHECKSUMS}"
 
 DEPLOYDEP:append:class-target = " ${OVMF_SB_VARS_DEPENDS}"
 
@@ -24,14 +25,12 @@ ovmf_generate_secureboot_vars() {
         --secure-boot
 }
 
-do_compile:append:class-target() {
-    ovmf_generate_secureboot_vars
-}
-
 do_deploy:append:class-target() {
     if ! ${@bb.utils.contains('PACKAGECONFIG', 'secureboot', 'true', 'false', d)}; then
         return
     fi
+
+    ovmf_generate_secureboot_vars
 
     qemu-img convert -f raw -O qcow2 \
         "${WORKDIR}/ovmf/${OVMF_SB_VARS}.fd" \
