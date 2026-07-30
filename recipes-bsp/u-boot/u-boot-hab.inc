@@ -238,3 +238,6 @@ do_deploy:append() {
         install -m 0644 ${WORKDIR}/imx-config.fuse ${DEPLOYDIR}
     fi
 }
+
+# HAB/AHAB status command configuration
+require u-boot-hab-status.inc
