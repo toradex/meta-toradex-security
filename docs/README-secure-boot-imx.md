@@ -72,7 +72,11 @@ The DCD address can be determined from the `mkimage` output logs produced by U-B
 
 If HAB/AHAB is enabled, at the end of the build, a file with the commands to fuse the SoC (`fuse-cmds.txt`) will be generated in the images directory. The commands in this file should be executed in the U-Boot command line interface.
 
-Read the warning messages carefully and be aware that the commands will write to One-Time Programmable e-fuses, and once you write them, you can't go back! You can check for HAB events with the command `hab_status` for HAB or `ahab_status` for AHAB. It is recommended to read NXP documentation about HAB/AHAB before writing to the e-fuses. This is an output example of the `fuse-cmds.txt` file:
+Read the warning messages carefully and be aware that the commands will write to One-Time Programmable e-fuses, and once you write them, you can't go back! You can check for HAB events with the command `hab_status` for HAB or `ahab_status` for AHAB. It is recommended to read NXP documentation about HAB/AHAB before writing to the e-fuses.
+
+By default these commands always report success, even when events are found. To make it possible to check the result from a boot script, this layer patches U-Boot so that both commands return a non-zero exit code whenever an event is reported. The only exception is a well-known RNG self-test event on i.MX6 SoCs, which is ignored and does not make the command fail.
+
+This is an output example of the `fuse-cmds.txt` file:
 
 ```
 $ cat deploy/images/verdin-imx8mp/fuse-cmds.txt
