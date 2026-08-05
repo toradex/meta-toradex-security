@@ -19,6 +19,7 @@ Secure boot is currently supported on the following SoMs:
 - Verdin iMX8MM
 - Verdin iMX8MP
 - Verdin iMX95
+- Intel x86-64 (`intel-corei7-64`)
 
 ## Secure boot implementation
 
@@ -57,6 +58,12 @@ The bootloader signature checking implementation is dependent on the System on C
 For details on the bootloader signature checking implementation for SoMs that use NXP iMX-based platforms (i.e. iMX6/7/8), see the [README-secure-boot-imx.md](README-secure-boot-imx.md) file.
 
 For details on the bootloader signature checking implementation for SoMs that use TI K3-based platforms (i.e. AM62/AM69), see the [README-secure-boot-k3.md](README-secure-boot-k3.md) file.
+
+For UEFI Secure Boot on `intel-corei7-64`, see
+[README-secure-boot-x86.md](README-secure-boot-x86.md). This flow uses signed
+systemd-boot and UKI binaries rather than U-Boot or FIT image signing. For DB
+and DBX OTA updates, see
+[README-secure-boot-x86-ota.md](README-secure-boot-x86-ota.md).
 
 ## U-Boot hardening
 
@@ -133,41 +140,100 @@ The complete list of variables can be found in the `tdx-signed-fit-image.inc` fi
 
 ## Configuring UEFI Secure Boot keys
 
-On x86-64 machines using UEFI Secure Boot with `tdx-signed`, development key
-generation and production key import are controlled by these variables:
+On x86-64 machines using UEFI Secure Boot with `tdx-signed`, these variables
+control signing and key location:
 
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
 | `UEFI_SB_SIGN_ENABLE` | Enable signing of UEFI binaries | `1` |
-| `UEFI_SB_GENERATE_KEYS` | Generate development UEFI Secure Boot keys when no key set exists | `1` |
-| `UEFI_SB_KEYDIR` | Location of the UEFI Secure Boot key material | `${TOPDIR}/keys/uefi` |
+| `UEFI_SB_KEYDIR` | Location of UEFI enrollment and KEK key material | `${META_TORADEX_SECURITY_LAYERDIR}/keys/uefi-dev` |
+| `UEFI_SB_BOOT_KEYDIR` | Location of systemd-boot and ext4 driver signing key | `${UEFI_SB_KEYDIR}` |
+| `UEFI_SB_UKI_KEYDIR` | Location of UKI signing key | `${UEFI_SB_KEYDIR}` |
+| `UEFI_SB_BOOT_KEY_NAME` | Basename of boot signing key | `key-boot` |
+| `UEFI_SB_UKI_KEY_NAME` | Basename of UKI signing key | `key-uki` |
+
+### OTA DB and DBX Updates
+
+Signed x86 images include two Torizon Subsystem Update targets:
+
+| Hardware ID | UEFI variable | Payload input |
+| --- | --- | --- |
+| `uefi-db-append` | `db` | PEM X.509 signer certificate |
+| `uefi-dbx-append` | `dbx` | PE/Authenticode SHA-256 hash or PEM X.509 signer certificate |
+
+Configure append-only updates in the build configuration. Inputs must be
+absolute paths and are signed with `KEK.key` and `KEK.crt` from
+`UEFI_SB_KEYDIR`.
+
+```
+UEFI_SB_DB_ADD_CERTS = "/secure/keys/db-next.crt"
+UEFI_SB_DBX_ADD_HASHES = "<64-character-authenticode-sha256>"
+UEFI_SB_DBX_ADD_CERTS = "/secure/keys/db-old.crt"
+```
+
+The build emits payloads and JSON manifests in:
+
+```
+${DEPLOY_DIR_IMAGE}/uefi-sb-updates/
+```
+
+Payload names are deterministic:
+
+```
+db-append-${DISTRO_VERSION}-<certificate-sha256>.auth
+dbx-append-${DISTRO_VERSION}-<authenticode-sha256>.auth
+dbx-cert-append-${DISTRO_VERSION}-<certificate-sha256>.auth
+```
+
+Do not use the enrollment files in `loader/keys/auto/` for OTA updates. They
+replace firmware variables during initial enrollment; OTA payloads use
+`sign-efi-sig-list -a` and append only.
+
+Upload an emitted artifact using its manifest values. For DBX:
+
+```
+torizoncore-builder platform push \
+  --credentials credentials.zip \
+  --hardwareid uefi-dbx-append \
+  --package-name <manifest-derived-name> \
+  --package-version <build-version> \
+  --custom-meta "$(cat <artifact>.auth.json)" \
+  <artifact>.auth
+```
+
+After assignment in Torizon Cloud, aktualizr applies the update, reports
+`need-completion`, and requests reboot. It confirms the UEFI variable is
+readable in `complete-install` after reboot. DBX updates must never target the
+currently booted UKI, boot manager, shim, or other active boot artifact.
 
 When `UEFI_SB_SIGN_ENABLE` is set to `0`, the UEFI signing helper leaves EFI
 binaries unsigned while keeping the rest of the signed-image configuration in
 place
 
-The UEFI signing flow prepares the key directory before signing. With the
-default development setting, it creates the following files in
-`${UEFI_SB_KEYDIR}` when no key set exists:
+The UEFI signing flow requires this enrollment and KEK key set in
+`${UEFI_SB_KEYDIR}`:
 
 ```
 PK.key   PK.crt   PK.esl   PK.auth
 KEK.key  KEK.crt  KEK.esl  KEK.auth
-db.key   db.crt   db.esl   db.auth
+db.esl   db.auth
 dbx.esl  dbx.auth
 ```
 
-The generated keys are for development only and must not be used in production.
+`${UEFI_SB_BOOT_KEYDIR}` requires
+`${UEFI_SB_BOOT_KEY_NAME}.key` and `${UEFI_SB_BOOT_KEY_NAME}.crt`; it signs
+systemd-boot and the ext4 driver. `${UEFI_SB_UKI_KEYDIR}` requires
+`${UEFI_SB_UKI_KEY_NAME}.key` and `${UEFI_SB_UKI_KEY_NAME}.crt`; it signs
+UKIs. `db.esl` and `db.auth` must enroll both leaf certificates. Regenerate
+them with the KEK whenever either leaf certificate changes.
 
-For production, place an externally generated complete key set in
-`${UEFI_SB_KEYDIR}` before building and set:
+The default key directory contains public development keys. They are for local
+development and CI testing only and must not be used in production.
 
-```
-UEFI_SB_GENERATE_KEYS = "0"
-```
-
-With key generation disabled, the signing flow fails if the key directory does
-not already contain a complete imported set.
+For production, point `UEFI_SB_KEYDIR` and, when needed,
+`UEFI_SB_BOOT_KEYDIR` and `UEFI_SB_UKI_KEYDIR` at protected directories
+containing externally generated key material before building. The signing flow
+fails when a required key file is missing.
 
 ## Configuring rootfs image signing
 
