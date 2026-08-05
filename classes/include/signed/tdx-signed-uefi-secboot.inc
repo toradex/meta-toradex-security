@@ -186,3 +186,5 @@ with open(out, "wb") as fh:
 
     rm -rf "${workdir}"
 }
+
+IMAGE_INSTALL:append:intel-corei7-64:tdx-signed = " uefi-sb-update"

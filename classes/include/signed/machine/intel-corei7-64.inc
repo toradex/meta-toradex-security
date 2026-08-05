@@ -29,3 +29,4 @@ IMAGE_EFI_BOOT_FILES = " \
     "
 
 do_image_wic[depends] += " edk2-ext4dxe:do_deploy"
+do_image_wic[depends] += " uefi-sb-update-artifacts:do_deploy"
