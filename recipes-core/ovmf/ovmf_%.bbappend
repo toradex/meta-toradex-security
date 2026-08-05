@@ -21,7 +21,8 @@ ovmf_generate_secureboot_vars() {
         --output "${WORKDIR}/ovmf/${OVMF_SB_VARS}.fd" \
         --set-pk "${OVMF_SB_OWNER_GUID}" "${UEFI_SB_KEYDIR}/PK.crt" \
         --add-kek "${OVMF_SB_OWNER_GUID}" "${UEFI_SB_KEYDIR}/KEK.crt" \
-        --add-db "${OVMF_SB_OWNER_GUID}" "${UEFI_SB_KEYDIR}/db.crt" \
+        --add-db "${OVMF_SB_OWNER_GUID}" "${UEFI_SB_BOOT_KEYDIR}/${UEFI_SB_BOOT_KEY_NAME}.crt" \
+        --add-db "${OVMF_SB_OWNER_GUID}" "${UEFI_SB_UKI_KEYDIR}/${UEFI_SB_UKI_KEY_NAME}.crt" \
         --secure-boot
 }
 
