@@ -3,6 +3,8 @@ FILESEXTRAPATHS:prepend:tdx-signed := "${THISDIR}/linux-intel:"
 require ${@ 'classes/include/signed/tdx-signed-uefi-secboot.inc' if 'tdx-signed' in d.getVar('OVERRIDES').split(':') else ''}
 require ${@ 'classes/include/signed/tdx-signed-modsign.inc' if 'tdx-signed' in d.getVar('OVERRIDES').split(':') else ''}
 
+MODSIGN_KEY_FILE_CHECKSUMS ?= ""
+
 SRC_URI:append:tdx-signed = " \
     file://composefs.cfg \
     file://lockdown.cfg \
