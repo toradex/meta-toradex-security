@@ -1,6 +1,6 @@
 # UEFI Secure Boot on Intel x86-64
 
-This document describes the `tdx-signed` UEFI Secure Boot configuration for
+This document describes the `torizon-signed` UEFI Secure Boot configuration for
 `MACHINE = "intel-corei7-64"`.
 
 ## Scope
@@ -24,7 +24,7 @@ Enable the signed configuration in the build configuration:
 
 ```bitbake
 MACHINE = "intel-corei7-64"
-INHERIT += "tdx-signed"
+INHERIT += "torizon-signed"
 ```
 
 Build the required image normally, for example:

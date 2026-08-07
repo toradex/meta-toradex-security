@@ -10,7 +10,7 @@ firmware-variable update.
 
 ## Prerequisites
 
-- Build the signed image with `INHERIT += "tdx-signed"`.
+- Build the signed image with `INHERIT += "torizon-signed"`.
 - Use UEFI enrollment material through `UEFI_SB_KEYDIR` and the boot and UKI
   signing keys through `UEFI_SB_BOOT_KEYDIR` and `UEFI_SB_UKI_KEYDIR`.
 - Enroll PK and KEK before applying an update. The device must be in UEFI User
