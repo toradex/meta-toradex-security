@@ -81,6 +81,7 @@ python validate_optee_support() {
         'colibri-imx6',
         'colibri-imx7-emmc',
         'imx95-19x19-verdin',
+        'lino-imx93',
         'toradex-smarc-imx8mp',
         'toradex-smarc-imx95',
         'verdin-am62',
