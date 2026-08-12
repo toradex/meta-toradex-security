@@ -13,6 +13,7 @@ Encryption is currently supported on the following SoMs:
 - Colibri iMX7D (1GB eMMC variant only)
 - Colibri iMX8X
 - iMX95 Verdin EVK
+- Lino iMX93
 - SMARC iMX8MP
 - SMARC iMX95
 - Verdin AM62
@@ -40,7 +41,11 @@ Trusted Keys make it possible to create and manage variable-length symmetric key
 
 Trusted Keys require the availability of a Trust Source for greater security. Different Trust Sources are supported, including CAAM (Cryptographic Acceleration and Assurance Module), TPM (Trusted Platform Module) and TEE (Trusted Execution Environment).
 
-This layer supports using CAAM, TPM or TEE as a source for managing the encryption key. CAAM is available on NXP iMX-based SoMs (except for iMX95 and iMX6ULL) and TPM availability might depend on the selected SoM and carrier board.
+This layer supports using CAAM, TPM or TEE as a source for managing the encryption key.
+
+CAAM is NXP-specific IP, available on most NXP i.MX-based SoMs. One exception is i.MX6ULL, which does not include CAAM. Another exception is the i.MX9x family, such as i.MX93 and i.MX95, which relies on the EdgeLock Enclave (ELE) instead.
+
+On any SoM without CAAM, use the TEE backend (which requires OP-TEE to be enabled, see [README-optee.md](README-optee.md)) or the TPM backend. TPM availability might depend on the selected SoM and carrier board.
 
 ## Block device encryption
 
@@ -113,6 +118,8 @@ TDX_ENC_CIPHER = "aes-xts"
 > **WARNING**: Do not change `TDX_ENC_CIPHER` on a device that already contains data encrypted with the existing mapping. The new cipher configuration will not decrypt the existing ciphertext correctly. To migrate an existing device, back up the data, remove the existing encrypted state/key material used by this workflow, and allow the partition to be initialized again with the new setting.
 
 The dm-crypt subsystem uses the Linux kernel crypto API, so hardware-backed AES acceleration can be used transparently when the appropriate backend is available and loaded (e.g. CAAM on iMX based SoMs).
+
+On TI K3-based SoMs, this layer blacklists the `sa2ul` crypto driver, because its hardware offload does not work correctly when mounting a dm-crypt partition. Encryption on those SoMs therefore falls back to the kernel's CPU-based AES implementation.
 
 ## Notes on using CAAM
 
