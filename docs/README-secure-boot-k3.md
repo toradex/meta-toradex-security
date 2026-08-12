@@ -110,6 +110,7 @@ A few variables can be used to configure its behavior:
 | `TDX_K3_SECBOOT_KEY_DIR` | Location of the keys and certificates that will be used to sign the bootloader images. See the previous session for an example on how to create the keys. | `${TOPDIR}/keys/ti` |
 | `TDX_K3_SECBOOT_TARGET_HSSE_DEVICE` | Whether the build is targeting a HS-FS (`0` (development)) or HS-SE (`1` (production)) device. | `0` |
 | `TDX_K3_SUPPRESS_HSSE_WARNINGS` | Whether to suppress some warning messages about the type of device (HS-FS/HS-SE) that the generated image is targeted. | `0` |
+| `TDX_K3_SECBOOT_REPRODUCIBLE` | Whether to generate the signing certificates reproducibly, so that rebuilding the same sources produces byte-identical bootloader binaries; allowed values: `0` or `1`. | `0` |
 
 **NOTE**: Older versions of this layer provided variables `TDX_K3_HSSE_ENABLE` and `TDX_K3_HSSE_KEY_DIR` which are no longer available. The former has been replaced by `TDX_K3_SECBOOT_ENABLE` along with `TDX_K3_SECBOOT_TARGET_HSSE_DEVICE` and the latter by `TDX_K3_SECBOOT_KEY_DIR`.
 
@@ -128,6 +129,16 @@ The verification chain at boot is then:
 3. The A53 SPL (inside `tispl.bin`) loads `u-boot.img` and likewise asks TIFS to verify the `ti-secure`-wrapped U-Boot payload before jumping into it.
 
 On HS-SE devices, any image that fails verification — or that arrives without a `ti-secure` certificate at all — is rejected and the boot stops.
+
+#### Reproducible bootloader binaries
+
+By default, the signing step embeds a random serial number and a validity period based on the current time in every certificate it generates. Two builds of the same sources therefore produce different `tiboot3.bin`, `tispl.bin` and `u-boot.img`, even though nothing about the images has changed.
+
+Setting `TDX_K3_SECBOOT_REPRODUCIBLE = "1"` makes the certificates deterministic: the serial number is derived from the data being signed, and the validity period runs from `SOURCE_DATE_EPOCH` to the end of 2049. Rebuilding the same sources with the same keys then produces byte-identical bootloader binaries.
+
+The end date is not arbitrary: it is the latest one that X.509 encodes as `UTCTime`, and the boot ROM of the K3 SoCs cannot parse a certificate whose validity is encoded as `GeneralizedTime` - which is what any date from 2050 on requires. A device given such an image **does not boot at all**. Nothing in the boot flow checks whether the certificate has expired, so the date itself carries no meaning; only its encoding does (inferred from [AM6412: TI supports for tiboot3 certificates with validity beyond 2049](https://e2e.ti.com/support/processors-group/processors/f/processors-forum/1491915/am6412-ti-supports-for-tiboot3-certificates-with-validity-beyond-2049)).
+
+This is worth enabling if you re-sign bootloader binaries with your own keys, since it lets you verify a re-signed image by comparing it byte for byte against one produced by the build. It is off by default, so that a build only changes how its certificates are generated when it asks for it.
 
 ### Fusing the keys into the SoC
 
