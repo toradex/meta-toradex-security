@@ -10,12 +10,15 @@ DEPENDS += "${@ 'imx-code-signing-tool-native' if d.getVar('TDX_IMX_HAB_CST_BUIL
 
 SRC_URI:append = "\
     file://mx8_sign.sh \
-    file://mx8_template.csf \
-    file://mx9_template.csf \
+    file://ahabv1_template.csf \
+    file://ahabv2_template.csf \
 "
 
-TDX_IMX_HAB_CST_TEMPLATE:mx8-generic-bsp = "mx8_template.csf"
-TDX_IMX_HAB_CST_TEMPLATE:mx9-generic-bsp = "mx9_template.csf"
+# The CSF header version selects the AHAB container format (1: legacy,
+# 2: hybrid) and it must match the format of the SRK table, which is chosen
+# when generating it with "srktool --ahab_ver".
+TDX_IMX_HAB_CST_TEMPLATE:mx8-generic-bsp = "ahabv1_template.csf"
+TDX_IMX_HAB_CST_TEMPLATE:mx9-generic-bsp = "ahabv2_template.csf"
 
 sign_ahab_image() {
     local orig_image=$1
