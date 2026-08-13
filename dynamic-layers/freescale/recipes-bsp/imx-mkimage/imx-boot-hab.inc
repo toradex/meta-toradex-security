@@ -20,6 +20,11 @@ SRC_URI:append = "\
 TDX_IMX_HAB_CST_TEMPLATE:mx8-generic-bsp = "ahabv1_template.csf"
 TDX_IMX_HAB_CST_TEMPLATE:mx9-generic-bsp = "ahabv2_template.csf"
 
+# The iMX93 hashes the SRK table with sha256, and srktool only produces such a
+# table in the legacy format (--ahab_ver 1), so this SoC requires the legacy
+# CSF header instead of the one used by the other iMX9x SoCs.
+TDX_IMX_HAB_CST_TEMPLATE:mx93-generic-bsp = "ahabv1_template.csf"
+
 sign_ahab_image() {
     local orig_image=$1
     local dest_image=$2
@@ -55,19 +60,22 @@ sign_ahab_helper() {
     for target in ${IMXBOOT_TARGETS}; do
         local imgfile=""
 
-        # On iMX95, the u-boot-atf-container.img is generated separately
-        # and appended to flash.bin later. Therefore, it must be signed
-        # before creating and signing the final boot container image.
-        if [ "${IMX_BOOT_SOC_TARGET}" = "iMX95" ]; then
-            local imgdir="${S}/iMX95"
+        # On iMX9 SoCs, the u-boot-atf-container.img (holding ATF, U-Boot
+        # proper and, when enabled, OP-TEE) is generated separately and only
+        # appended to flash.bin afterwards. Since the signing script only signs
+        # the first container of a given image, this container must be signed
+        # on its own before the final boot container is assembled and signed,
+        # otherwise it would be left unauthenticated.
+        if [ "${IMX_BOOT_SOC_TARGET}" = "iMX9" ] || \
+           [ "${IMX_BOOT_SOC_TARGET}" = "iMX95" ]; then
             local imgname="u-boot-atf-container.img"
-            imgfile="${imgdir}/${imgname}"
+            imgfile="${BOOT_STAGING}/${imgname}"
 
             rm -rf "${imgfile}"
             sign_ahab_image "${imgfile}" "${imgfile}" "${imgname}"
         fi
 
-        imgfile="${S}/${IMX_BOOT_SOC_TARGET}/flash.bin"
+        imgfile="${BOOT_STAGING}/flash.bin"
         sign_ahab_image "${imgfile}" "${S}/${BOOT_CONFIG_MACHINE_EXTRA}-${target}" "${target}"
     done
 
