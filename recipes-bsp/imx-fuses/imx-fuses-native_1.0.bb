@@ -14,6 +14,7 @@ SRC_URI = "\
     file://imx8m-template.fuse \
     file://imx8qm-template.fuse \
     file://imx8qx-template.fuse \
+    file://imx93-template.fuse \
     file://imx95-template.fuse \
 "
 

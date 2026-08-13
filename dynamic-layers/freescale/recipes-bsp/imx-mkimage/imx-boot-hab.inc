@@ -25,6 +25,12 @@ TDX_IMX_HAB_CST_TEMPLATE:mx9-generic-bsp = "ahabv2_template.csf"
 # CSF header instead of the one used by the other iMX9x SoCs.
 TDX_IMX_HAB_CST_TEMPLATE:mx93-generic-bsp = "ahabv1_template.csf"
 
+# SoC used to select the fuse map when generating the fusing commands. It
+# defaults to the imx-mkimage SoC target, which happens to name the SoC on most
+# platforms, but not on all of them (e.g. the target used by the iMX93 is "iMX9")
+TDX_IMX_HAB_FUSE_SOC = "${IMX_BOOT_SOC_TARGET}"
+TDX_IMX_HAB_FUSE_SOC:mx93-generic-bsp = "iMX93"
+
 sign_ahab_image() {
     local orig_image=$1
     local dest_image=$2
@@ -81,7 +87,7 @@ sign_ahab_helper() {
 
     # create fuse commands
     ${STAGING_BINDIR_NATIVE}/create_fuse_cmds.sh \
-        "${IMX_BOOT_SOC_TARGET}" \
+        "${TDX_IMX_HAB_FUSE_SOC}" \
         "${TDX_IMX_HAB_CST_SRK_FUSE}" \
         "${WORKDIR}/fuse-cmds.txt" \
         "${RECIPE_SYSROOT_NATIVE}${datadir}/imx-fuses"
