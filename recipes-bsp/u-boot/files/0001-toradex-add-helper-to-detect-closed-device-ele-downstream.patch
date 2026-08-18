@@ -1,0 +1,120 @@
+From 13b65ce64827572e06cdcd92db8545fab595f1d9 Mon Sep 17 00:00:00 2001
+From: Sergio Prado <sergio.prado@e-labworks.com>
+Date: Wed, 12 Aug 2026 19:25:35 -0300
+Subject: [PATCH] toradex: add helper to detect closed device (ELE, downstream)
+
+The shared secure boot module calls tdx_secboot_ele_ahab_dev_is_closed()
+for every CONFIG_ARCH_IMX9 target, but the only implementation available
+is guarded by CONFIG_IMX95, so on the i.MX93 the symbol is missing and
+the build fails with an undefined reference at link time.
+
+Add the helper once, right after the life cycle display code, and select
+the life cycle encoding inside it, as the encoding is not the same on all
+of these SoCs: on the i.MX93 the OEM open state is 0x8 and the OEM closed
+state is 0x20, while on the i.MX95 they are 0x10 and 0x40. The life cycle
+register offset differs as well, which is already handled by the existing
+FSB_LC_OFFSET definitions.
+
+Decode the life cycle only on the SoCs where the encoding has been
+validated, and fail to build on the others. Getting this wrong is silent:
+a closed device would be reported as open and the hardening would be
+disabled without any indication, so it is preferable to break the build
+until the encoding is confirmed for the SoC being added.
+
+Upstream-Status: Inappropriate [Torizon OS specific]
+
+Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
+Signed-off-by: Rogerio Borin <rogerio.borin@toradex.com>
+---
+ arch/arm/mach-imx/ele_ahab.c | 75 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 75 insertions(+)
+
+diff --git a/arch/arm/mach-imx/ele_ahab.c b/arch/arm/mach-imx/ele_ahab.c
+index cdf73ba30412..1c5d47d9c979 100644
+--- a/arch/arm/mach-imx/ele_ahab.c
++++ b/arch/arm/mach-imx/ele_ahab.c
+@@ -501,6 +501,81 @@ static void display_life_cycle(u32 lc)
+ }
+ #endif
+ 
++int tdx_secboot_ele_ahab_dev_is_closed(void)
++{
++	u32 lc;
++
++	/* Read life cycle status (as done by ele_hab.c) */
++	lc = readl(FSB_BASE_ADDR + FSB_LC_OFFSET);
++	lc &= 0x3ff;
++
++	/*
++	 * The life cycle encoding is not the same on all ELE based SoCs, so
++	 * only decode it on the ones where it has actually been validated.
++	 */
++#if defined(CONFIG_IMX95)
++	switch (lc) {
++	case 0x1:	/* Blank */
++	case 0x2:	/* FAB Default */
++	case 0x4:	/* FAB */
++	case 0x8:	/* NXP Provisioned */
++		debug("Device is in a pre OEM-open state! (lc=0x%x)\n", lc);
++		return 0;
++	case 0x10:	/* OEM Open */
++		debug("Device is in OEM-open state!\n");
++		return 0;
++	case 0x20:	/* OEM secure world closed */
++	case 0x40:	/* OEM closed */
++		debug("Device is in closed state! (lc=0x%x)\n", lc);
++		return 1;
++	case 0x80:	/* OEM locked */
++		/* Not documented as a closed state; assumed closed to be safe. */
++		debug("Device is OEM Locked state! (lc=0x%x)\n", lc);
++		return 1;
++	case 0x100:	/* Field Return OEM */
++	case 0x200:	/* Field Return NXP */
++	case 0x400:	/* Bricked */
++		debug("Device is in some 'return' state!\n");
++		/* Note: no software runs in return states. */
++		return 0;
++	default:
++		/* Unknown state: in doubt we take it as closed. */
++		debug("Device is in an unknown state! (lc=0x%x)\n", lc);
++		return 1;
++	}
++#elif defined(CONFIG_IMX93)
++	switch (lc) {
++	case 0x1:	/* Blank */
++	case 0x2:	/* FAB */
++	case 0x4:	/* NXP Provisioned */
++		debug("Device is in a pre OEM-open state! (lc=0x%x)\n", lc);
++		return 0;
++	case 0x8:	/* OEM Open */
++		debug("Device is in OEM-open state!\n");
++		return 0;
++	case 0x20:	/* OEM closed */
++		debug("Device is in closed state! (lc=0x%x)\n", lc);
++		return 1;
++	case 0x100:	/* OEM Locked */
++		/* Not documented as a closed state; assumed closed to be safe. */
++		debug("Device is OEM Locked state! (lc=0x%x)\n", lc);
++		return 1;
++	case 0x40:	/* Field Return OEM */
++	case 0x80:	/* Field Return NXP */
++	case 0x200:	/* Bricked */
++		debug("Device is in some 'return' state!\n");
++		/* Note: no software runs in return states. */
++		return 0;
++	default:
++		/* Unknown state: in doubt we take it as closed. */
++		debug("Device is in an unknown state! (lc=0x%x)\n", lc);
++		return 1;
++	}
++#else
++#error Life cycle encoding is not known for this ELE based SoC
++#endif
++}
++
+ static int confirm_close(void)
+ {
+ 	puts("Warning: Please ensure your sample is in NXP closed state, "
+-- 
+2.34.1
+

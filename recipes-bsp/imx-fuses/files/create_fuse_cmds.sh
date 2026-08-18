@@ -103,6 +103,9 @@ case ${SOC} in
     "iMX8QM")
         create_fuse_cmds "${TEMPLATES_DIR}/imx8qm-template.fuse"
         ;;
+    "iMX93")
+        create_fuse_cmds "${TEMPLATES_DIR}/imx93-template.fuse"
+        ;;
     "iMX95")
         create_fuse_cmds "${TEMPLATES_DIR}/imx95-template.fuse"
         ;;

@@ -14,6 +14,7 @@ This layer provides support for running OP-TEE on the following SoMs:
 - Colibri iMX6
 - Colibri iMX7D (1GB eMMC variant only)
 - iMX95 Verdin EVK
+- Lino iMX93
 - SMARC iMX8MP
 - SMARC iMX95
 - Verdin AM62
@@ -108,7 +109,11 @@ With this, one could use an OS image configured in `factory` mode during a secur
 
 Another important aspect is how the key generation works. Because OP-TEE derives the RPMB authentication key from the SoC's HUK, if the RPMB key is provisioned while the device is in an "open" state (secure boot disabled), it becomes inaccessible once secure boot is enabled, because the HUK changes when the device transitions to a "closed" state.
 
-To prevent this issue, OP-TEE includes a software hook, `plat_rpmb_key_is_ready()`, which platforms can use to enforce a security logic. For example, on i.MX-based devices, the RPMB key cannot be written unless secure boot is enabled. This behavior can be modified by overriding the `plat_rpmb_key_is_ready()` function in the `core/drivers/imx_snvs.c` file of the OP-TEE OS source code.
+To prevent this issue, OP-TEE includes a software hook, `plat_rpmb_key_is_ready()`, which platforms can use to enforce a security logic. On i.MX devices based on SNVS/CAAM (i.MX6, i.MX7, i.MX8 and i.MX8M), this hook is implemented in `core/drivers/imx_snvs.c` and prevents the RPMB key from being written unless secure boot is enabled. This behavior can be modified by overriding that function in the OP-TEE OS source code.
+
+This protection is not in place on i.MX9x devices (i.MX93, i.MX95). These SoCs derive the HUK from the EdgeLock Enclave (ELE) rather than SNVS/CAAM, so `core/drivers/imx_snvs.c` is not compiled and `plat_rpmb_key_is_ready()` falls back to OP-TEE's default implementation, which always returns `true`. OP-TEE will therefore allow the RPMB key to be programmed on a device that is still open. Because the RPMB key can only be written once, and the ELE-derived HUK is expected to change when the device is closed, provisioning RPMB before enabling secure boot can leave the RPMB partition permanently unusable. On these modules, always enable secure boot before running `factory` mode provisioning.
+
+More generally, both the HUK derivation and the `plat_rpmb_key_is_ready()` logic are provided by the SoC vendor and can change between OP-TEE releases, BSP versions and security firmware (e.g. ELE) revisions. Since RPMB key programming is a one-time, irreversible operation, always review the implementation shipped in the OP-TEE OS version you are actually building before running `factory` mode provisioning, rather than relying on the behavior described here.
 
 To test RPMB functionality, use OP-TEE's test tools to write to the storage and verify if the RPMB write counter increases. Note that this test will not work in development mode since the RPMB partition is emulated in memory.
 

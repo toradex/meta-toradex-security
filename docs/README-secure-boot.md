@@ -7,11 +7,13 @@ Secure boot is currently supported on the following SoMs:
 - Apalis iMX6
 - Apalis iMX8
 - Aquila AM69
+- Aquila iMX95
 - Colibri iMX6DL
 - Colibri iMX6ULL (1GB eMMC variant only)
 - Colibri iMX7D (1GB eMMC variant only)
 - Colibri iMX8X
 - iMX95 Verdin EVK
+- Lino iMX93
 - SMARC iMX8MP
 - SMARC iMX95
 - Verdin AM62
@@ -54,7 +56,7 @@ The following sessions describe in detail each of these features.
 
 The bootloader signature checking implementation is dependent on the System on Chip (SoC).
 
-For details on the bootloader signature checking implementation for SoMs that use NXP iMX-based platforms (i.e. iMX6/7/8), see the [README-secure-boot-imx.md](README-secure-boot-imx.md) file.
+For details on the bootloader signature checking implementation for SoMs that use NXP iMX-based platforms (i.e. iMX6/7/8/9x), see the [README-secure-boot-imx.md](README-secure-boot-imx.md) file.
 
 For details on the bootloader signature checking implementation for SoMs that use TI K3-based platforms (i.e. AM62/AM69), see the [README-secure-boot-k3.md](README-secure-boot-k3.md) file.
 
