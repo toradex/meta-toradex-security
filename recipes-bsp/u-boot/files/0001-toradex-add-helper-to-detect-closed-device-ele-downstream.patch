@@ -26,14 +26,14 @@ Upstream-Status: Inappropriate [Torizon OS specific]
 Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
 Signed-off-by: Rogerio Borin <rogerio.borin@toradex.com>
 ---
- arch/arm/mach-imx/ele_ahab.c | 75 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 75 insertions(+)
+ arch/arm/mach-imx/ele_ahab.c | 76 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 76 insertions(+)
 
 diff --git a/arch/arm/mach-imx/ele_ahab.c b/arch/arm/mach-imx/ele_ahab.c
 index cdf73ba30412..1c5d47d9c979 100644
 --- a/arch/arm/mach-imx/ele_ahab.c
 +++ b/arch/arm/mach-imx/ele_ahab.c
-@@ -501,6 +501,81 @@ static void display_life_cycle(u32 lc)
+@@ -501,6 +501,82 @@
  }
  #endif
  
@@ -65,14 +65,14 @@ index cdf73ba30412..1c5d47d9c979 100644
 +		debug("Device is in closed state! (lc=0x%x)\n", lc);
 +		return 1;
 +	case 0x80:	/* OEM locked */
-+		/* Not documented as a closed state; assumed closed to be safe. */
++		/* as OEM closed, plus no debug and no field return. */
 +		debug("Device is OEM Locked state! (lc=0x%x)\n", lc);
 +		return 1;
 +	case 0x100:	/* Field Return OEM */
 +	case 0x200:	/* Field Return NXP */
 +	case 0x400:	/* Bricked */
-+		debug("Device is in some 'return' state!\n");
-+		/* Note: no software runs in return states. */
++		/* containers run unauthenticated once returned. */
++		debug("Device is in a return or bricked state! (lc=0x%x)\n", lc);
 +		return 0;
 +	default:
 +		/* Unknown state: in doubt we take it as closed. */
@@ -89,18 +89,19 @@ index cdf73ba30412..1c5d47d9c979 100644
 +	case 0x8:	/* OEM Open */
 +		debug("Device is in OEM-open state!\n");
 +		return 0;
++	case 0x10:	/* OEM secure world closed */
 +	case 0x20:	/* OEM closed */
 +		debug("Device is in closed state! (lc=0x%x)\n", lc);
 +		return 1;
 +	case 0x100:	/* OEM Locked */
-+		/* Not documented as a closed state; assumed closed to be safe. */
++		/* as OEM closed, plus no debug and no field return. */
 +		debug("Device is OEM Locked state! (lc=0x%x)\n", lc);
 +		return 1;
 +	case 0x40:	/* Field Return OEM */
 +	case 0x80:	/* Field Return NXP */
 +	case 0x200:	/* Bricked */
-+		debug("Device is in some 'return' state!\n");
-+		/* Note: no software runs in return states. */
++		/* containers run unauthenticated once returned. */
++		debug("Device is in a return or bricked state! (lc=0x%x)\n", lc);
 +		return 0;
 +	default:
 +		/* Unknown state: in doubt we take it as closed. */
