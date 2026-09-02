@@ -8,7 +8,11 @@ To mitigate this risk, this layer provides a feature called **Secure Debug**.
 
 Secure Debug is currently supported on the following SoMs:
 
+- SMARC iMX8MP
 - Verdin iMX8MM
+- Verdin iMX8MP
+
+On the iMX8MP-based SoMs only the non-authenticated modes are available, because NXP defeatured the Secure JTAG mode on that SoC. See [Limitations](#limitations).
 
 Support for additional SoMs and SoC families is planned. Since each SoC family may use a different hardware mechanism to restrict debug access, new platforms may introduce additional variables or different provisioning requirements.
 
@@ -29,6 +33,8 @@ The supported operating modes are:
 - **JTAG Enabled**: JTAG is fully open. This is the default state and is normally used during development.
 - **Secure JTAG**: JTAG access is blocked after reset and can only be reopened by a debugger that knows the programmed response key.
 - **No Debug**: security-sensitive debug features, such as CPU halt and memory access, are disabled. Some lower-risk JTAG features, such as boundary scan, may still remain available depending on the SoC.
+
+Not every SoC of the family supports every mode. On the iMX8MP, "Secure JTAG" is not available and only the "No Debug" operating mode can be used. See [Limitations](#limitations).
 
 In addition to these operating modes, the SJC backend also provides an option to fully disable the JTAG controller. When enabled, all JTAG functionality is disabled, including boundary scan.
 
@@ -189,7 +195,7 @@ Flipping a single bit of the correct key is a useful negative test, because it h
 
 ## Limitations
 
-- Although iMX8MP belongs to the iMX8M family, authenticated Secure Debug is not available on this SoC. NXP states in AN4686 that "the Secure Debug mode is not functional on the i.MX 8M Plus" and references erratum ERR052318. Disabling debug access would still be possible in principle, but this SoC is not currently supported by the layer.
+- Authenticated Secure Debug is not available on the iMX8MP, even though the SoC belongs to the iMX8M family. Erratum ERR052318 states that in Secure JTAG mode the SJC "does not correctly control JTAG access and may not unlock the device for JTAG access", and AN4686 states that "the Secure Debug mode is not functional on the i.MX 8M Plus". NXP defeatured the mode and recommends "No Debug" mode or disabling the SJC instead, which is what the layer offers on this SoC.
 - Only the SJC backend is implemented, and within it only iMX8M is supported. The two-key iMX8/iMX8X variant, the iMX9x EdgeLock Secure Enclave, and TI K3 use different mechanisms and are not supported yet.
 - All devices programmed from the same build share the same response key. See [Key management](#key-management).
 
@@ -198,4 +204,6 @@ Flipping a single bit of the correct key is a useful negative test, because it h
 The implementation was based on the following documents. Access to some of them may be restricted and require a non-disclosure agreement with the SoC vendor.
 
 - AN4686 — *Secure Debug in i.MX 6/7/8M Family of Applications Processors*, Rev. 4.0, 5 February 2025
+- *IMX8MP_1P33A Mask Set Errata*, Rev. 2.1, 2 October 2024
 - *Security Reference Manual for i.MX8M Mini Applications Processor*, Rev. 1, January 2024
+- *Security Reference Manual for i.MX 8M Plus Applications Processor*, Rev. 0, April 2021
