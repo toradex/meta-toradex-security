@@ -3,12 +3,15 @@
 
 # Machines this backend has been validated on.
 TDX_SECURE_DEBUG_SUPPORTED_MACHINES:append = "\
+    toradex-smarc-imx8mp \
     verdin-imx8mm \
+    verdin-imx8mp \
 "
 
 # Fuse map template describing where the SJC fields live on this SoC.
 TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE ?= ""
 TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx8mm-generic-bsp = "imx8mm-sjc-template.fuse"
+TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx8mp-generic-bsp = "imx8mp-sjc-template.fuse"
 
 # Block the HAB software path (HAB_JDE) that can re-enable JTAG from
 # trusted boot software, bypassing the Secure JTAG challenge/response.
@@ -30,7 +33,7 @@ TDX_SECURE_DEBUG_SJC_DISABLE ?= "0"
 # used when TDX_SECURE_DEBUG_MODE = "authenticated".
 #
 # Key length by SoC family:
-#   - i.MX6 / i.MX7 / i.MX8M : 56 bits => 14 hex characters
+#   - i.MX6 / i.MX7 / i.MX8MM : 56 bits => 14 hex characters
 #
 # File format:
 #   - hexadecimal text
@@ -62,6 +65,14 @@ python validate_secure_debug_sjc() {
     # check key file used to answer the secure debug challenge/response mechanism
     if e.data.getVar('TDX_SECURE_DEBUG_MODE') == 'authenticated' and \
             e.data.getVar('TDX_SECURE_DEBUG_SJC_DISABLE') != '1':
+        overrides = (e.data.getVar('MACHINEOVERRIDES') or '').split(':')
+        if 'mx8mp-generic-bsp' in overrides:
+            bb.fatal("Secure debug in authenticated mode is not available on "
+                     "the iMX8MP. NXP defeatured the Secure JTAG mode on this "
+                     "SoC (erratum ERR052318). Set TDX_SECURE_DEBUG_MODE="
+                     "\"no-debug\" or TDX_SECURE_DEBUG_SJC_DISABLE=\"1\" to fully "
+                     "disable JTAG.")
+
         key_file = e.data.getVar('TDX_SECURE_DEBUG_KEY_FILE')
         if not key_file:
             bb.fatal("TDX_SECURE_DEBUG_KEY_FILE must be set when "
