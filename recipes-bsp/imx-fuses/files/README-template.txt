@@ -59,7 +59,13 @@ providing the same names with the bank/word/mask values for that SoC's
 fuse map; do not invent new names without also updating the script.
 
 The order of SJC: rows in the file is irrelevant -- the script looks
-them up by name.
+them up by name. Lines that do not start with "SJC:" are ignored, so a
+template may carry "#" comments explaining where its values come from.
+
+A template only needs the rows that the modes supported on its SoC can
+reach. Leaving a row out is a deliberate safety net: create_fuse_cmds.sh
+aborts on a missing entry rather than programming a fuse whose layout it
+cannot know.
 
 As it emits each fuse command, the script also appends the resolved row
 (same format, with <mask> replaced by the value actually programmed) to
