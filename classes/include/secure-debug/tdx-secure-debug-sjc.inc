@@ -3,6 +3,9 @@
 
 # Machines this backend has been validated on.
 TDX_SECURE_DEBUG_SUPPORTED_MACHINES:append = "\
+    apalis-imx6 \
+    colibri-imx6 \
+    colibri-imx6ull-emmc \
     toradex-smarc-imx8mp \
     verdin-imx8mm \
     verdin-imx8mp \
@@ -10,6 +13,9 @@ TDX_SECURE_DEBUG_SUPPORTED_MACHINES:append = "\
 
 # Fuse map template describing where the SJC fields live on this SoC.
 TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE ?= ""
+TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx6dl-generic-bsp = "imx6-sjc-template.fuse"
+TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx6q-generic-bsp = "imx6-sjc-template.fuse"
+TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx6ull-generic-bsp = "imx6-sjc-template.fuse"
 TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx8mm-generic-bsp = "imx8mm-sjc-template.fuse"
 TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx8mp-generic-bsp = "imx8mp-sjc-template.fuse"
 

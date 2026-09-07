@@ -20,6 +20,7 @@ TDX_SECURE_DEBUG_SUPPORTED_MACHINES ?= ""
 
 # include backend configuration
 MACHINEOVERRIDES_EXTENDER ?= ""
+require ${@ 'include/secure-debug/tdx-secure-debug-sjc.inc' if 'mx6-generic-bsp' in d.getVar('MACHINEOVERRIDES_EXTENDER').split(':') else ''}
 require ${@ 'include/secure-debug/tdx-secure-debug-sjc.inc' if 'mx8m-generic-bsp' in d.getVar('MACHINEOVERRIDES_EXTENDER').split(':') else ''}
 
 # Generic configuration validation
