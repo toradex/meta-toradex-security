@@ -8,6 +8,10 @@ To mitigate this risk, this layer provides a feature called **Secure Debug**.
 
 Secure Debug is currently supported on the following SoMs:
 
+- Apalis iMX6
+- Colibri iMX6DL
+- Colibri iMX6ULL (1GB eMMC variant only)
+- Colibri iMX7D (1GB eMMC variant only)
 - SMARC iMX8MP
 - Verdin iMX8MM
 - Verdin iMX8MP
@@ -24,9 +28,9 @@ The layer therefore exposes a small, policy-oriented interface that stays the sa
 
 When secure debug is enabled, provisioning data is generated at build time. For example, on iMX8-based SoCs the layer generates the required fuse commands and appends them to the `fuse-cmds.txt` and `imx-config.fuse` files already produced by the HAB/AHAB flow. Nothing is programmed by the build itself. The commands are executed later, by the user, on the device.
 
-## Secure Debug on iMX8M
+## Secure Debug on iMX6, iMX7 and iMX8M
 
-On iMX8M, Secure Debug uses the NXP **System JTAG Controller (SJC)**. The SJC can gate the JTAG interface and require a challenge/response authentication flow before allowing debug access.
+On iMX6, iMX7 and iMX8M, Secure Debug uses the NXP **System JTAG Controller (SJC)**. The SJC can gate the JTAG interface and require a challenge/response authentication flow before allowing debug access.
 
 The supported operating modes are:
 
@@ -34,7 +38,7 @@ The supported operating modes are:
 - **Secure JTAG**: JTAG access is blocked after reset and can only be reopened by a debugger that knows the programmed response key.
 - **No Debug**: security-sensitive debug features, such as CPU halt and memory access, are disabled. Some lower-risk JTAG features, such as boundary scan, may still remain available depending on the SoC.
 
-Not every SoC of the family supports every mode. On the iMX8MP, "Secure JTAG" is not available and only the "No Debug" operating mode can be used. See [Limitations](#limitations).
+Not every SoC supports every mode. On the iMX8MP, "Secure JTAG" is not available and only the "No Debug" operating mode can be used. See [Limitations](#limitations).
 
 In addition to these operating modes, the SJC backend also provides an option to fully disable the JTAG controller. When enabled, all JTAG functionality is disabled, including boundary scan.
 
@@ -63,7 +67,7 @@ The following generic variables are available:
 | `TDX_SECURE_DEBUG_ENABLE` | Enable or disable the Secure Debug feature. Allowed values: `0` or `1`. | `1` |
 | `TDX_SECURE_DEBUG_MODE` | Debug policy. Allowed values: `authenticated` or `no-debug`. | `authenticated` |
 
-For SJC-based SoCs (e.g. iMX8M), the following additional variables are available:
+For SJC-based SoCs (iMX6, iMX7 and iMX8M), the following additional variables are available:
 
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
@@ -102,7 +106,7 @@ TDX_SECURE_DEBUG_SJC_DISABLE = "1"
 
 When `TDX_SECURE_DEBUG_MODE = "authenticated"`, `TDX_SECURE_DEBUG_KEY_FILE` must point to a file containing the SJC response key in hexadecimal format.
 
-For iMX8M, the key is a 56-bit value represented by exactly 14 hexadecimal characters, without a `0x` prefix. Example:
+On iMX6, iMX7 and iMX8M, the key is a 56-bit value represented by exactly 14 hexadecimal characters, without a `0x` prefix. Example:
 
 ```text
 7a73cfcdb180e3
@@ -160,6 +164,8 @@ The same fuses are also recorded in `imx-config.fuse`, which provides a map of t
 
 Program the commands manually in U-Boot, exactly in the order shown in `fuse-cmds.txt`.
 
+When verifying a freshly programmed fuse in U-Boot, use `fuse sense` rather than `fuse read`. Programming a fuse writes the OTP array without reloading the shadow registers, so `fuse read` still returns the pre-programming value and makes a successful write look like a failure.
+
 > **Warning**
 >
 > Fuse programming is irreversible. Review the generated commands carefully before executing them.
@@ -179,7 +185,20 @@ The ordering of the generated commands is important:
 - The debug configuration is locked last, after every mode fuse has been programmed.
 - The Secure Debug fuses must be programmed before closing the device.
 
+For a first device, consider deferring two of the generated commands until authenticated debug has actually been demonstrated with your probe:
+
+- the one that locks the response key, so that the programmed key can still be read back for diagnosis; and
+- the one that blocks the HAB software path (`TDX_SECURE_DEBUG_SJC_HEO`), so that path remains available as a recovery route.
+
+Program the remaining fuses first, verify the three cases above, and only then program these two and repeat the verification. Once they are programmed, a device whose response key does not work can no longer be debugged.
+
 On a closed device, the hardened U-Boot command policy blocks fuse programming. Therefore, a device that is closed before the Secure Debug fuses are programmed cannot be provisioned for Secure Debug later.
+
+## Board-level prerequisites
+
+Authenticated debug also depends on the carrier board exposing the debug interface, which is outside the control of this layer. Check this before concluding that a fused device is faulty.
+
+On iMX6 for example, a pin called JTAG_MOD decides whether the debug interface is available at all. When it is high, the SoC only offers boundary scan and no debugger can reach the CPU, whatever the fuses say. The pin has an internal pull-up and is therefore high by default, so the board has to pull it low for debugging to be possible. On **Colibri iMX6**, this means pulling SODIMM pin 180 to GND. On the Colibri Evaluation Board V3.2 it is done by shorting pins `C12` (DATA_31) and `B2` (GND) on the extension connector `X3`.
 
 ## Verifying authenticated debug
 
@@ -193,10 +212,12 @@ For authenticated mode, the expected behavior is:
 
 Flipping a single bit of the correct key is a useful negative test, because it helps confirm that the full response key is being checked.
 
+Debug probe support for the authentication flow differs between SoCs even within the same vendor tooling, and is the most common obstacle to verifying this feature. Confirm that your probe implements the mechanism for your SoC **before** programming any fuse, ideally on a device you can afford to lose debug access to.
+
 ## Limitations
 
 - Authenticated Secure Debug is not available on the iMX8MP, even though the SoC belongs to the iMX8M family. Erratum ERR052318 states that in Secure JTAG mode the SJC "does not correctly control JTAG access and may not unlock the device for JTAG access", and AN4686 states that "the Secure Debug mode is not functional on the i.MX 8M Plus". NXP defeatured the mode and recommends "No Debug" mode or disabling the SJC instead, which is what the layer offers on this SoC.
-- Only the SJC backend is implemented, and within it only iMX8M is supported. The two-key iMX8/iMX8X variant, the iMX9x EdgeLock Secure Enclave, and TI K3 use different mechanisms and are not supported yet.
+- Only the SJC backend is implemented, and within it only iMX6, iMX7 and iMX8M are supported. The two-key iMX8/iMX8X variant, the iMX9x EdgeLock Secure Enclave, and TI K3 use different mechanisms and are not supported yet.
 - All devices programmed from the same build share the same response key. See [Key management](#key-management).
 
 ## References
@@ -207,3 +228,8 @@ The implementation was based on the following documents. Access to some of them 
 - *IMX8MP_1P33A Mask Set Errata*, Rev. 2.1, 2 October 2024
 - *Security Reference Manual for i.MX8M Mini Applications Processor*, Rev. 1, January 2024
 - *Security Reference Manual for i.MX 8M Plus Applications Processor*, Rev. 0, April 2021
+- *i.MX 6Dual/6Quad Applications Processor Reference Manual*, Rev. 4, 09/2017
+- *i.MX 6Solo/6DualLite Applications Processor Reference Manual*, Rev. 5, 05/2020
+- *i.MX 6ULL Applications Processor Reference Manual*, Rev. 1, 11/2017
+- *i.MX 7Dual Applications Processor Reference Manual*, Rev. 1, 01/2018
+- *i.MX 7Solo Applications Processor Reference Manual*, Rev. 0.1, 08/2016
