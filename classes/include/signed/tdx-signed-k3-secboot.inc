@@ -11,6 +11,11 @@ TDX_K3_SECBOOT_KEY_DIR ?= "${TOPDIR}/keys/ti"
 # variable TDX_K3_SECBOOT_TARGET_HSSE_DEVICE:
 TDX_K3_SUPPRESS_HSSE_WARNINGS ?= "0"
 
+# Whether to generate the bootloader signing certificates reproducibly, so that
+# two builds of the same sources produce byte-identical tiboot3.bin, tispl.bin
+# and u-boot.img; allowed values: 0 or 1.
+TDX_K3_SECBOOT_REPRODUCIBLE ?= "0"
+
 # Choose between HSSE/HSFS variants of tiboot3.bin:
 def target_hsse(d):
     return bb.utils.to_boolean(d.getVar('TDX_K3_SECBOOT_ENABLE')) and \
