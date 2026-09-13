@@ -46,7 +46,7 @@ came to be repeated four times, so factor them into a single place.
 
 [1] https://e2e.ti.com/support/processors-group/processors/f/processors-forum/1491915/am6412-ti-supports-for-tiboot3-certificates-with-validity-beyond-2049
 
-Upstream-Status: Pending
+Upstream-Status: Submitted [https://lore.kernel.org/u-boot/20260913223951.3945168-1-rogerio.borin@gmail.com/]
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  tools/binman/btool/openssl.py | 96 ++++++++++++++++++++++++++++++-----
