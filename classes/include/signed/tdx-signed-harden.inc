@@ -58,6 +58,7 @@ TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:toradex-smarc-imx8mp ?= "ro rootwait conso
 TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:verdin-imx95 ?= "ro rootwait console=tty1 console=ttyLP2,115200"
 TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:aquila-imx95 ?= "ro rootwait console=tty1 console=ttyLP2,115200"
 TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:lino-imx93 ?= "ro rootwait console=tty1 console=ttyLP2,115200"
+TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:toradex-osm-imx93 ?= "ro rootwait console=tty1 console=ttyLP2,115200"
 # Bootargs for BSP images; users should override this one when needed:
 TDX_SECBOOT_REQUIRED_BOOTARGS ?= "${TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT}"
 
