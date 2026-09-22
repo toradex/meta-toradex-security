@@ -31,6 +31,15 @@ TDX_IMX_HAB_CST_TEMPLATE:mx93-generic-bsp = "ahabv1_template.csf"
 TDX_IMX_HAB_FUSE_SOC = "${IMX_BOOT_SOC_TARGET}"
 TDX_IMX_HAB_FUSE_SOC:mx93-generic-bsp = "iMX93"
 
+# Secure debug is enabled only if both tdx-secure-debug class is inherited
+# and TDX_SECURE_DEBUG_ENABLE="1"
+TDX_SECURE_DEBUG_ENABLE_INTERNAL = "0"
+TDX_SECURE_DEBUG_ENABLE_INTERNAL:tdx-secure-debug = "${TDX_SECURE_DEBUG_ENABLE}"
+
+# Make sure fuse-cmds.txt is regenerated if a secure debug authentication key changes
+do_compile[file-checksums] += "${@ (d.getVar('TDX_SECURE_DEBUG_KEY_FILE') or '') + ':True' if d.getVar('TDX_SECURE_DEBUG_ENABLE_INTERNAL') == '1' and d.getVar('TDX_SECURE_DEBUG_MODE') == 'authenticated' and d.getVar('TDX_SECURE_DEBUG_SJC_DISABLE') != '1' else ''}"
+do_compile[file-checksums] += "${@ d.getVar('TDX_SECURE_DEBUG_TZ_KEY_FILE') + ':True' if d.getVar('TDX_SECURE_DEBUG_TZ_KEY_FILE') and d.getVar('TDX_SECURE_DEBUG_ENABLE_INTERNAL') == '1' and d.getVar('TDX_SECURE_DEBUG_MODE') == 'authenticated' and d.getVar('TDX_SECURE_DEBUG_SJC_DISABLE') != '1' else ''}"
+
 sign_ahab_image() {
     local orig_image=$1
     local dest_image=$2
@@ -87,6 +96,12 @@ sign_ahab_helper() {
 
     # create fuse commands
     TDX_IMX_HAB_CST_SRK_FUSE="${TDX_IMX_HAB_CST_SRK_FUSE}" \
+    TDX_SECURE_DEBUG_ENABLE="${TDX_SECURE_DEBUG_ENABLE_INTERNAL}" \
+    TDX_SECURE_DEBUG_MODE="${TDX_SECURE_DEBUG_MODE}" \
+    TDX_SECURE_DEBUG_KEY_FILE="${TDX_SECURE_DEBUG_KEY_FILE}" \
+    TDX_SECURE_DEBUG_TZ_KEY_FILE="${TDX_SECURE_DEBUG_TZ_KEY_FILE}" \
+    TDX_SECURE_DEBUG_SJC_DISABLE="${TDX_SECURE_DEBUG_SJC_DISABLE}" \
+    TDX_SECURE_DEBUG_FUSE_TEMPLATE="${TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE}" \
     ${STAGING_BINDIR_NATIVE}/create_fuse_cmds.sh \
         "${TDX_IMX_HAB_FUSE_SOC}" \
         "${WORKDIR}/fuse-cmds.txt" \
