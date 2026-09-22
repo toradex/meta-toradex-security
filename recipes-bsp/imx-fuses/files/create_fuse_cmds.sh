@@ -44,6 +44,11 @@ WARNING_SECURE_DEBUG="\
 # These fuses configure the System JTAG Controller (SJC).
 # Program them exactly in the order shown below."
 
+# additional explanation for the secure-debug section on i.MX8/i.MX8X
+WARNING_SECURE_DEBUG_IMX8="\
+# Program all of them before running 'ahab_close': the response keys
+# can only be programmed while the device is still OEM Open."
+
 fuse_write_line() {
     local bank=$1
     local word=$2
@@ -98,6 +103,34 @@ secure_debug_load_template() {
     done < "$template_file"
 }
 
+# Print the key read from file $1, which must hold exactly $2 hex characters.
+secure_debug_read_key() {
+    local key_file="$1"
+    local key_len="$2"
+    local key
+
+    key=$(tr -d '[:space:]' < "$key_file")
+    if [ ${#key} -ne "$key_len" ] || ! [[ "$key" =~ ^[0-9a-fA-F]+$ ]]; then
+        echo "Error: invalid key file content in '$key_file' (must be $key_len hex chars)" >&2
+        return 1
+    fi
+    echo "$key"
+}
+
+# Emit the fuse-prog lines for a 128-bit key read from file $2, using the SJC
+# template entries $1_0 (key[31:0]) to $1_3 (key[127:96]).
+secure_debug_emit_key128() {
+    local name="$1"
+    local key_file="$2"
+    local key i
+
+    key=$(secure_debug_read_key "$key_file" 32)
+    for i in 0 1 2 3; do
+        secure_debug_emit "${name}_$i" "${name}[$((i * 32 + 31)):$((i * 32))]" \
+            "0x${key:$((24 - i * 8)):8}"
+    done
+}
+
 secure_debug_append() {
     if [ -z "${TDX_SECURE_DEBUG_FUSE_TEMPLATE}" ]; then
         echo "Error: Secure Debug is not supported for SOC=${SOC}!" >&2
@@ -110,17 +143,59 @@ secure_debug_append() {
     echo "${SECTION_SECURE_DEBUG}" >> "$FUSE_CMDS_FILE"
     echo "${WARNING_SECURE_DEBUG}" >> "$FUSE_CMDS_FILE"
 
+    case "${SOC}" in
+        "iMX8QM"|"iMX8QX")
+            secure_debug_append_imx8
+            ;;
+        *)
+            secure_debug_append_imx6_imx7_imx8m
+            ;;
+    esac
+}
+
+# i.MX8 and i.MX8X: no JTAG_SMODE; on an OEM Closed device the challenge/
+# response opens debug, with separate 128-bit keys for the normal world (OEM
+# key) and the secure world (TrustZone key).
+secure_debug_append_imx8() {
+    if [ "${TDX_SECURE_DEBUG_SJC_DISABLE}" = "1" ]; then
+        secure_debug_emit SJC_DISABLE "SJC_DISABLE = 1 (full JTAG disable)"
+        return
+    fi
+
+    case "${TDX_SECURE_DEBUG_MODE}" in
+        "authenticated")
+            echo "${WARNING_SECURE_DEBUG_IMX8}" >> "$FUSE_CMDS_FILE"
+            secure_debug_emit_key128 OEM_KEY "${TDX_SECURE_DEBUG_KEY_FILE}"
+            secure_debug_emit OEM_KEY_READ_LOCK "OEM_KEY read lock"
+            if [ -n "${TDX_SECURE_DEBUG_TZ_KEY_FILE}" ]; then
+                secure_debug_emit_key128 TZ_KEY "${TDX_SECURE_DEBUG_TZ_KEY_FILE}"
+                secure_debug_emit TZ_KEY_READ_LOCK "TZ_KEY read lock"
+            else
+                secure_debug_emit TZ_CHALLENGE_RESP_DISABLE \
+                    "OTP_TZ_CHALLENGE_RESP_DISABLE = 1 (no TrustZone key)"
+            fi
+            ;;
+        "no-debug")
+            secure_debug_emit CHALLENGE_RESP_DISABLE "OTP_CHALLENGE_RESP_DISABLE = 1"
+            secure_debug_emit TZ_CHALLENGE_RESP_DISABLE "OTP_TZ_CHALLENGE_RESP_DISABLE = 1"
+            ;;
+        *)
+            echo "Error: invalid TDX_SECURE_DEBUG_MODE='${TDX_SECURE_DEBUG_MODE}'" >&2
+            return 1
+            ;;
+    esac
+}
+
+# i.MX6, i.MX7 and i.MX8M: JTAG_SMODE selects the debug policy, with a single
+# 56-bit response key.
+secure_debug_append_imx6_imx7_imx8m() {
     if [ "${TDX_SECURE_DEBUG_SJC_DISABLE}" = "1" ]; then
         secure_debug_emit SJC_DISABLE "SJC_DISABLE = 1 (full JTAG disable)"
     else
         case "${TDX_SECURE_DEBUG_MODE}" in
             "authenticated")
                 local key
-                key=$(tr -d '[:space:]' < "${TDX_SECURE_DEBUG_KEY_FILE}")
-                if [ ${#key} -ne 14 ] || ! [[ "$key" =~ ^[0-9a-fA-F]+$ ]]; then
-                    echo "Error: invalid key file content (must be 14 hex chars)" >&2
-                    return 1
-                fi
+                key=$(secure_debug_read_key "${TDX_SECURE_DEBUG_KEY_FILE}" 14)
                 local key_lo="0x${key:6:8}"
                 local key_hi="0x00${key:0:6}"
                 secure_debug_emit SJC_RESP_LO "SJC_RESP[31:0]" "$key_lo"

@@ -54,9 +54,11 @@ create_fuse_cmds.sh. Format:
                                         the value is supplied at runtime.
 
 The set of symbolic names the script expects is fixed by
-secure_debug_append() in create_fuse_cmds.sh. Adding a new SoC means
-providing the same names with the bank/word/mask values for that SoC's
-fuse map; do not invent new names without also updating the script.
+secure_debug_append() in create_fuse_cmds.sh, and differs between the
+i.MX6/i.MX7/i.MX8M and the i.MX8/i.MX8X families, which have different
+debug fuses. Adding a new SoC means providing the names of its family
+with the bank/word/mask values for that SoC's fuse map; do not invent
+new names without also updating the script.
 
 The order of SJC: rows in the file is irrelevant -- the script looks
 them up by name. Lines that do not start with "SJC:" are ignored, so a
