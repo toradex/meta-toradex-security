@@ -1,12 +1,14 @@
 # Secure Debug - SJC (System JTAG Controller) backend
-# Implements secure debug for NXP iMX6/iMX7/iMX8M based SoCs.
+# Implements secure debug for NXP iMX6/iMX7/iMX8M/iMX8/iMX8X based SoCs.
 
 # Machines this backend has been validated on.
 TDX_SECURE_DEBUG_SUPPORTED_MACHINES:append = "\
     apalis-imx6 \
+    apalis-imx8 \
     colibri-imx6 \
     colibri-imx6ull-emmc \
     colibri-imx7-emmc \
+    colibri-imx8x \
     toradex-smarc-imx8mp \
     verdin-imx8mm \
     verdin-imx8mp \
@@ -20,10 +22,13 @@ TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx6ull-generic-bsp = "imx6-sjc-template.fuse"
 TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx7d-generic-bsp = "imx7-sjc-template.fuse"
 TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx8mm-generic-bsp = "imx8mm-sjc-template.fuse"
 TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx8mp-generic-bsp = "imx8mp-sjc-template.fuse"
+TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx8qm-generic-bsp = "imx8qm-sjc-template.fuse"
+TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx8qxp-generic-bsp = "imx8qx-sjc-template.fuse"
 
 # Block the HAB software path (HAB_JDE) that can re-enable JTAG from
 # trusted boot software, bypassing the Secure JTAG challenge/response.
-# Relevant only when TDX_SECURE_DEBUG_MODE = "authenticated".
+# Relevant only when TDX_SECURE_DEBUG_MODE = "authenticated", and ignored
+# on iMX8 / iMX8X, which have no such path.
 #   0 - allow the HAB software path that may re-enable JTAG
 #   1 - block the HAB software path that may re-enable JTAG
 TDX_SECURE_DEBUG_SJC_HEO ?= "1"
@@ -40,8 +45,11 @@ TDX_SECURE_DEBUG_SJC_DISABLE ?= "0"
 # Key file used to answer the secure-debug challenge/response mechanism,
 # used when TDX_SECURE_DEBUG_MODE = "authenticated".
 #
+# On iMX8 / iMX8X, this is the OEM (normal world) key.
+#
 # Key length by SoC family:
-#   - i.MX6 / i.MX7 / i.MX8MM : 56 bits => 14 hex characters
+#   - i.MX6 / i.MX7 / i.MX8M : 56 bits => 14 hex characters
+#   - i.MX8 / i.MX8X         : 128 bits => 32 hex characters
 #
 # File format:
 #   - hexadecimal text
@@ -49,6 +57,32 @@ TDX_SECURE_DEBUG_SJC_DISABLE ?= "0"
 #   - no spaces or separators
 #   - trailing newline allowed
 TDX_SECURE_DEBUG_KEY_FILE ?= "${TOPDIR}/keys/secure-debug/key.txt"
+
+# TrustZone (secure world) key file used for Secure Debug
+# challenge/response authentication when TDX_SECURE_DEBUG_MODE =
+# "authenticated".
+#
+# This key is optional, valid only on i.MX8/i.MX8X and ignored on
+# i.MX6/i.MX7/i.MX8M. When unset, TrustZone challenge/response
+# authentication is disabled.
+#
+# Same file format as TDX_SECURE_DEBUG_KEY_FILE, with 32 hex characters.
+TDX_SECURE_DEBUG_TZ_KEY_FILE ?= ""
+
+# Check that the key file in variable 'var' is valid
+def tdx_secure_debug_check_key_file(d, var, key_len):
+    key_file = d.getVar(var)
+    if not key_file:
+        bb.fatal("%s must be set when TDX_SECURE_DEBUG_MODE='authenticated'." % var)
+    if not os.path.exists(key_file):
+        bb.fatal("Secure debug key file not found: '%s'" % key_file)
+    with open(key_file, 'r') as f:
+        key = f.read().strip()
+    if len(key) != key_len:
+        bb.fatal("Key file '%s' must contain exactly %d hex characters "
+                 "(%d bits); got %d." % (key_file, key_len, key_len * 4, len(key)))
+    if not all(c in '0123456789abcdefABCDEF' for c in key):
+        bb.fatal("Key file '%s' must contain only hex characters." % key_file)
 
 # SJC configuration validation
 addhandler validate_secure_debug_sjc
@@ -70,7 +104,7 @@ python validate_secure_debug_sjc() {
     if e.data.getVar('TDX_IMX_HAB_ENABLE') != '1':
         bb.fatal("TDX_SECURE_DEBUG_ENABLE=1 requires secure boot to be enabled")
 
-    # check key file used to answer the secure debug challenge/response mechanism
+    # check key files used to answer the secure debug challenge/response mechanism
     if e.data.getVar('TDX_SECURE_DEBUG_MODE') == 'authenticated' and \
             e.data.getVar('TDX_SECURE_DEBUG_SJC_DISABLE') != '1':
         overrides = (e.data.getVar('MACHINEOVERRIDES') or '').split(':')
@@ -81,17 +115,9 @@ python validate_secure_debug_sjc() {
                      "\"no-debug\" or TDX_SECURE_DEBUG_SJC_DISABLE=\"1\" to fully "
                      "disable JTAG.")
 
-        key_file = e.data.getVar('TDX_SECURE_DEBUG_KEY_FILE')
-        if not key_file:
-            bb.fatal("TDX_SECURE_DEBUG_KEY_FILE must be set when "
-                     "TDX_SECURE_DEBUG_MODE='authenticated'.")
-        if not os.path.exists(key_file):
-            bb.fatal("Secure debug key file not found: '%s'" % key_file)
-        with open(key_file, 'r') as f:
-            key = f.read().strip()
-        if len(key) != 14:
-            bb.fatal("Key file '%s' must contain exactly 14 hex characters "
-                     "(56 bits); got %d." % (key_file, len(key)))
-        if not all(c in '0123456789abcdefABCDEF' for c in key):
-            bb.fatal("Key file '%s' must contain only hex characters." % key_file)
+        imx8 = 'mx8qm-generic-bsp' in overrides or 'mx8qxp-generic-bsp' in overrides
+        tdx_secure_debug_check_key_file(e.data, 'TDX_SECURE_DEBUG_KEY_FILE',
+                                        32 if imx8 else 14)
+        if imx8 and e.data.getVar('TDX_SECURE_DEBUG_TZ_KEY_FILE'):
+            tdx_secure_debug_check_key_file(e.data, 'TDX_SECURE_DEBUG_TZ_KEY_FILE', 32)
 }
