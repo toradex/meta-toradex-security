@@ -22,7 +22,7 @@ TDX_SECURE_DEBUG_SUPPORTED_MACHINES ?= ""
 MACHINEOVERRIDES_EXTENDER ?= ""
 require ${@ 'include/secure-debug/tdx-secure-debug-sjc.inc' if 'mx6-generic-bsp' in d.getVar('MACHINEOVERRIDES_EXTENDER').split(':') else ''}
 require ${@ 'include/secure-debug/tdx-secure-debug-sjc.inc' if 'mx7-generic-bsp' in d.getVar('MACHINEOVERRIDES_EXTENDER').split(':') else ''}
-require ${@ 'include/secure-debug/tdx-secure-debug-sjc.inc' if 'mx8m-generic-bsp' in d.getVar('MACHINEOVERRIDES_EXTENDER').split(':') else ''}
+require ${@ 'include/secure-debug/tdx-secure-debug-sjc.inc' if 'mx8-generic-bsp' in d.getVar('MACHINEOVERRIDES_EXTENDER').split(':') else ''}
 
 # Generic configuration validation
 addhandler validate_secure_debug_generic
