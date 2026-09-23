@@ -14,6 +14,7 @@ Secure boot is currently supported on the following SoMs:
 - Colibri iMX8X
 - iMX95 Verdin EVK
 - Lino iMX93
+- OSM iMX93
 - SMARC iMX8MP
 - SMARC iMX95
 - Verdin AM62
