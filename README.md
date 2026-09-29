@@ -66,7 +66,8 @@ For more information on the available features, please check the corresponding d
 | [docs/README-secure-boot-k3.md](docs/README-secure-boot-k3.md) | Details on the secure boot implementation for TI K3 based SoMs (e.g. AM62) |
 | [docs/README-encryption.md](docs/README-encryption.md) | General documentation about the data-at-rest encryption feature |
 | [docs/README-optee.md](docs/README-optee.md) | Documentation on how to run a Trusted Execution Environment (OP-TEE) together with the Linux kernel |
-| [docs/README-secure-debug.md](docs/README-secure-debug.md) | Documentation about the secure debug feature |
+| [docs/README-secure-debug.md](docs/README-secure-debug.md) | General documentation about the secure debug feature |
+| [docs/README-secure-debug-sjc.md](docs/README-secure-debug-sjc.md) | Details on the secure debug implementation for NXP iMX6, iMX7 and iMX8 based SoMs |
 | [docs/README-data-partition.md](docs/README-data-partition.md) | Documentation on how to create an additional partition for storing persistent data |
 
 This layer only works on Toradex Embedded Linux BSP 6.3.0 and newer releases.
