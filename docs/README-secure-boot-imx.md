@@ -41,6 +41,8 @@ After that, configure the various variables listed below to match your choices; 
 
 The complete list of variables can be found in the `imx-hab.bbclass` file.
 
+**NOTE**: If authenticated secure debug is needed on iMX95 devices, check the key requirements in [README-secure-debug-ele.md](README-secure-debug-ele.md) before generating the PKI, since the SRK hash cannot be changed once it is fused.
+
 **NOTE**: For HAB signing, [libfaketime](https://github.com/wolfcw/libfaketime) is used when generating the CSF binaries with CST in order to create reproducible bootloader image builds.
 
 ### Bootloaders targeting SDP loading

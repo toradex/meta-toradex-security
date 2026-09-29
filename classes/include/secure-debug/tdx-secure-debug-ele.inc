@@ -25,7 +25,8 @@ TDX_SECURE_DEBUG_ELE_OEM_DOMAINS:mx95-generic-bsp = "0x00FFFFF0"
 
 # Debug domains opened by the generated debug credential (cc_socu field),
 # used when TDX_SECURE_DEBUG_MODE = "authenticated". Defaults to all OEM
-# debug domains of the SoC with all debug permissions.
+# debug domains of the SoC with all debug permissions. The encoding
+# of the field is described in docs/README-secure-debug-ele.md
 TDX_SECURE_DEBUG_ELE_DC_CC_SOCU ?= "${TDX_SECURE_DEBUG_ELE_OEM_DOMAINS}"
 
 # Fully disable JTAG by programming the SoC's JTAG disable fuse (named

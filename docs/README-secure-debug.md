@@ -10,13 +10,16 @@ Secure Debug is currently supported on the following SoMs:
 
 - Apalis iMX6
 - Apalis iMX8
+- Aquila iMX95
 - Colibri iMX6DL
 - Colibri iMX6ULL (1GB eMMC variant only)
 - Colibri iMX7D (1GB eMMC variant only)
 - Colibri iMX8X
 - SMARC iMX8MP
+- SMARC iMX95
 - Verdin iMX8MM
 - Verdin iMX8MP
+- Verdin iMX95
 
 Support for additional SoMs and SoC families is planned. Since each SoC family may use a different hardware mechanism to restrict debug access, new platforms may introduce additional variables or different provisioning requirements.
 
@@ -28,7 +31,9 @@ The layer therefore exposes a small, policy-oriented interface that stays the sa
 
 When secure debug is enabled, provisioning data is generated at build time. For example, on iMX8-based SoCs the layer generates the required fuse commands and appends them to the `fuse-cmds.txt` and `imx-config.fuse` files already produced by the HAB/AHAB flow. Nothing is programmed by the build itself. The commands are executed later, by the user, on the device.
 
-The SoMs currently supported are based on NXP iMX6, iMX7, iMX8M, iMX8 and iMX8X SoCs, which use the System JTAG Controller (SJC) backend. For details on the SJC backend, including its configuration variables, key management and provisioning, see the [README-secure-debug-sjc.md](README-secure-debug-sjc.md) file.
+The SoMs based on NXP iMX6, iMX7, iMX8M, iMX8 and iMX8X SoCs use the System JTAG Controller (SJC) backend. For details on the SJC backend, including its configuration variables, key management and provisioning, see the [README-secure-debug-sjc.md](README-secure-debug-sjc.md) file.
+
+The SoMs based on the NXP iMX9 SoC use the EdgeLock Secure Enclave (ELE) backend. For details on the ELE backend, including its configuration variables, debug credentials and provisioning, see the [README-secure-debug-ele.md](README-secure-debug-ele.md) file.
 
 ## Enabling Secure Debug
 
@@ -51,7 +56,7 @@ The following generic variables are available:
 | `TDX_SECURE_DEBUG_ENABLE` | Enable or disable the Secure Debug feature. Allowed values: `0` or `1`. | `1` |
 | `TDX_SECURE_DEBUG_MODE` | Debug policy. Allowed values: `authenticated` or `no-debug`. | `authenticated` |
 
-Each backend adds its own variables. For SJC-based SoCs, see [Configuration variables](README-secure-debug-sjc.md#configuration-variables) in the SJC documentation.
+Each backend adds its own variables. For SJC-based SoCs, see [Configuration variables](README-secure-debug-sjc.md#configuration-variables) in the SJC documentation. For ELE-based SoCs, see [Configuration variables](README-secure-debug-ele.md#configuration-variables) in the ELE documentation.
 
 To disable security-sensitive debug access instead of using authenticated JTAG:
 
@@ -71,4 +76,4 @@ Debug probe support for the authentication flow differs between SoCs even within
 
 ## Limitations
 
-- Only the SJC backend is implemented, covering iMX6, iMX7, iMX8M, iMX8 and iMX8X. The iMX9x EdgeLock Secure Enclave and TI K3 use different mechanisms and are not supported yet.
+- Only the SJC and ELE backends are implemented, covering iMX6, iMX7, iMX8M, iMX8, iMX8X and iMX95. The iMX93 and TI K3 are not supported yet.
