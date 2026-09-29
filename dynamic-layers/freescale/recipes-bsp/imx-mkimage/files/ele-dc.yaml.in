@@ -1,0 +1,9 @@
+# Debug credential (DC) configuration for the NXP SPSDK tools (version 3.x)
+# to produce the authenticated debug credential file (dc.bin).
+family: @FAMILY@
+revision: latest
+cc_socu: @CC_SOCU@
+uuid: @UUID@
+fuse_version: 0
+public_key_0: @DCK_KEY@
+signer_0: @SRK_SIGNER@
