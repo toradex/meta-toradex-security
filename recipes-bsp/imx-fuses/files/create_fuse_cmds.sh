@@ -49,6 +49,11 @@ WARNING_SECURE_DEBUG_IMX8="\
 # Program all of them before running 'ahab_close': the response keys
 # can only be programmed while the device is still OEM Open."
 
+# explanation for the secure-debug section on EdgeLock Secure Enclave SoCs
+WARNING_SECURE_DEBUG_ELE="\
+# These fuses configure the debug policy enforced by the EdgeLock
+# Secure Enclave (ELE). Program them before running 'ahab_close'."
+
 fuse_write_line() {
     local bank=$1
     local word=$2
@@ -89,8 +94,8 @@ secure_debug_emit() {
 }
 
 # Load the Secure Debug template file $1. Its "H:T:<type>" header selects the
-# prefix of the rows to load (e.g. SJC). Rows are kept in SECURE_DEBUG_TEMPLATE
-# by name.
+# prefix of the rows to load (SJC or ELE). Rows are kept in SECURE_DEBUG_TEMPLATE
+# by name, and their names in file order in SECURE_DEBUG_NAMES.
 secure_debug_load_template() {
     local template_file="$1"
     if [ ! -e "$template_file" ]; then
@@ -105,10 +110,12 @@ secure_debug_load_template() {
     fi
 
     declare -gA SECURE_DEBUG_TEMPLATE
+    SECURE_DEBUG_NAMES=()
     local prefix name bank word mask
     while IFS=: read -r prefix name bank word mask; do
         [ "$prefix" = "$SECURE_DEBUG_PREFIX" ] || continue
         SECURE_DEBUG_TEMPLATE[$name]="$bank $word $mask"
+        SECURE_DEBUG_NAMES+=("$name")
     done < "$template_file"
 }
 
@@ -150,8 +157,69 @@ secure_debug_append() {
 
     if [ "$SECURE_DEBUG_PREFIX" = "SJC" ]; then
         secure_debug_append_sjc
+    elif [ "$SECURE_DEBUG_PREFIX" = "ELE" ]; then
+        secure_debug_append_ele
     else
         echo "Error: Secure Debug Prefix ${SECURE_DEBUG_PREFIX} is not supported!" >&2
+        return 1
+    fi
+}
+
+# Emit the fuse-prog lines that disable every debug domain listed in the ELE
+# template (DBG_DISABLE_* rows). Rows sharing a fuse word are merged into a
+# single write.
+secure_debug_emit_ele_dbg_disable() {
+    local -A word_mask word_domains
+    local words=()
+    local name bank word mask key
+
+    for name in "${SECURE_DEBUG_NAMES[@]}"; do
+        [[ "$name" == DBG_DISABLE_* ]] || continue
+        read -r bank word mask <<<"${SECURE_DEBUG_TEMPLATE[$name]}"
+        key="$bank $word"
+        if [ -z "${word_mask[$key]}" ]; then
+            words+=("$key")
+            word_mask[$key]=0
+        fi
+        word_mask[$key]=$(( word_mask[$key] | mask ))
+        word_domains[$key]+=" ${name#DBG_DISABLE_}"
+        echo "ELE:${name}:${bank}:${word}:${mask}" >> "$FUSE_INFO_FILE"
+    done
+
+    if [ ${#words[@]} -eq 0 ]; then
+        echo "Error: no DBG_DISABLE entries in the ELE template!" >&2
+        return 1
+    fi
+
+    for key in "${words[@]}"; do
+        read -r bank word <<<"$key"
+        {
+            echo "# Disable debug domains:${word_domains[$key]}"
+            fuse_write_line "$bank" "$word" "$(printf '0x%08X' "${word_mask[$key]}")"
+        } >> "$FUSE_CMDS_FILE"
+    done
+}
+
+# On a closed iMX9x device, the ELE opens debug only to a debug credential signed
+# with the SRK, so authenticated mode needs no fuses and the debug-disable fuses
+# override such a credential.
+secure_debug_append_ele() {
+    # authenticated mode needs no fuses
+    if [ "${TDX_SECURE_DEBUG_ELE_JTAG_DISABLE}" != "1" ] && [ "${TDX_SECURE_DEBUG_MODE}" = "authenticated" ]; then
+        return
+    fi
+
+    echo "" >> "$FUSE_CMDS_FILE"
+    echo "${SECTION_SECURE_DEBUG}" >> "$FUSE_CMDS_FILE"
+    echo "${WARNING_SECURE_DEBUG_ELE}" >> "$FUSE_CMDS_FILE"
+
+    if [ "${TDX_SECURE_DEBUG_ELE_JTAG_DISABLE}" = "1" ]; then
+        secure_debug_emit_ele_dbg_disable
+        secure_debug_emit JTAG_DISABLE "JTAG_DISABLE = 1 (full JTAG disable)"
+    elif [ "${TDX_SECURE_DEBUG_MODE}" = "no-debug" ]; then
+        secure_debug_emit_ele_dbg_disable
+    else
+        echo "Error: invalid TDX_SECURE_DEBUG_MODE='${TDX_SECURE_DEBUG_MODE}'" >&2
         return 1
     fi
 }
