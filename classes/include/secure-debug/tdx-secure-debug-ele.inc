@@ -1,6 +1,13 @@
 # Secure Debug - ELE (EdgeLock Secure Enclave) backend
 # Implements secure debug for NXP iMX9x based SoCs
 
+# Machines this backend has been validated on
+TDX_SECURE_DEBUG_SUPPORTED_MACHINES:append = "\
+    aquila-imx95 \
+    toradex-smarc-imx95 \
+    verdin-imx95 \
+"
+
 # Fuse map template describing the debug fuses of this SoC
 TDX_SECURE_DEBUG_ELE_FUSE_TEMPLATE ?= ""
 TDX_SECURE_DEBUG_ELE_FUSE_TEMPLATE:mx95-generic-bsp = "imx95-ele-template.fuse"
