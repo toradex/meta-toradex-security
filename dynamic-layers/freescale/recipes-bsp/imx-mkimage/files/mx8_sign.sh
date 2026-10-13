@@ -29,7 +29,8 @@ help() {
     echo "    TDX_IMX_HAB_CST_SRK_CERT  Path to SRK public key certificate"
     echo "                              e.g. SRK1_sha256_2048_65537_v3_ca_crt.pem (when CA flag is set)"
     echo "                              e.g. SRK1_sha256_2048_65537_v3_usr_crt.pem (when CA flag is not set)"
-    echo "    TDX_IMX_HAB_CST_SGK_CERT  Path to SGK public key certificate (needed only if CA flag is set for SRK)"
+    echo "    TDX_IMX_HAB_CST_SGK_CERT  Path to SGK public key certificate (needed only if CA flag is set for SRK"
+    echo "                              and SGK is supported by the SoC)"
     echo "                              e.g. SGK1_1_sha256_2048_65537_v3_usr_crt.pem"
     echo "    TDX_IMX_HAB_CST_HSM       Enable usage of HSM (via PKCS11) when set to 1"
     echo "    TDX_IMX_HAB_CST_SRK_CA    Whether or not the SRK certificates have the CA flag"
@@ -97,7 +98,8 @@ validate_environ() {
     # variables are actually PKCS11 URIs)
     if [ "${TDX_IMX_HAB_CST_HSM}" = 0 ]; then
         check_fileref "${TDX_IMX_HAB_CST_SRK_CERT}" "TDX_IMX_HAB_CST_SRK_CERT"
-        if [ "${TDX_IMX_HAB_CST_SRK_CERT##*_ca_}" = "crt.pem" ]; then
+        if [ "${TDX_IMX_HAB_CST_SRK_CERT##*_ca_}" = "crt.pem" ] && \
+           [ "${TDX_IMX_HAB_CST_SGK_SUPP}" != "0" ]; then
             check_fileref "${TDX_IMX_HAB_CST_SGK_CERT}" "TDX_IMX_HAB_CST_SGK_CERT"
         fi
     fi
