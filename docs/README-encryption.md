@@ -12,7 +12,6 @@ Encryption is currently supported on the following SoMs:
 - Colibri iMX6ULL (1GB eMMC variant only)
 - Colibri iMX7D (1GB eMMC variant only)
 - Colibri iMX8X
-- iMX95 Verdin EVK
 - Lino iMX93
 - OSM iMX93
 - SMARC iMX8MP

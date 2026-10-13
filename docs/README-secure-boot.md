@@ -12,7 +12,6 @@ Secure boot is currently supported on the following SoMs:
 - Colibri iMX6ULL (1GB eMMC variant only)
 - Colibri iMX7D (1GB eMMC variant only)
 - Colibri iMX8X
-- iMX95 Verdin EVK
 - Lino iMX93
 - OSM iMX93
 - SMARC iMX8MP
@@ -110,7 +109,7 @@ TDX_SECBOOT_WL_ALLOW_CLOSED_CATEG = "CMD_CAT_ALL_SAFE CMD_CAT_GPIO_CONTROL"
 ### U-Boot hardening / known issues
 
 - On K3 based platforms (Verdin AM62, Aquila AM69), the hardening does not cover the bootloader running on the R5 processor (the boot master); we have plans to evaluate the need for such a protection and implementing it if actually needed.
-- Aquila AM69 and iMX95 Verdin EVK require some additional work to have out-of-the-box support for U-Boot hardening, so it is currently disabled by default.
+- Aquila AM69 requires some additional work to have out-of-the-box support for U-Boot hardening, so it is currently disabled by default.
 
 ## Configuring FIT image signing
 
