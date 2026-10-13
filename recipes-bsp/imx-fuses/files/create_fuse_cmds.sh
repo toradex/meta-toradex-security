@@ -49,6 +49,11 @@ WARNING_SECURE_DEBUG_IMX8="\
 # Program all of them before running 'ahab_close': the response keys
 # can only be programmed while the device is still OEM Open."
 
+# explanation for the secure-debug section on EdgeLock Secure Enclave SoCs
+WARNING_SECURE_DEBUG_ELE="\
+# These fuses configure the debug policy enforced by the EdgeLock
+# Secure Enclave (ELE). Program them before running 'ahab_close'."
+
 fuse_write_line() {
     local bank=$1
     local word=$2
@@ -56,8 +61,8 @@ fuse_write_line() {
     echo "fuse prog -y $bank $word $hexval"
 }
 
-# Emit a fuse-prog line for an SJC template entry, with a leading comment.
-# $1 = symbol name (looked up in SJC_TEMPLATE)
+# Emit a fuse-prog line for a Secure Debug entry, with a leading comment.
+# $1 = symbol name (looked up in SECURE_DEBUG_TEMPLATE)
 # $2 = human-readable comment
 # $3 = optional hex value; if omitted, the template's mask is used.
 secure_debug_emit() {
@@ -65,9 +70,9 @@ secure_debug_emit() {
     local comment="$2"
     local fuseval="${3:-}"
 
-    local entry="${SJC_TEMPLATE[$name]}"
+    local entry="${SECURE_DEBUG_TEMPLATE[$name]}"
     if [ -z "$entry" ]; then
-        echo "Error: SJC template entry '$name' not found!" >&2
+        echo "Error: ${SECURE_DEBUG_PREFIX} template entry '$name' not found!" >&2
         return 1
     fi
 
@@ -75,7 +80,7 @@ secure_debug_emit() {
     read -r bank word mask <<<"$entry"
     local hexval="${fuseval:-$mask}"
     if [ -z "$hexval" ]; then
-        echo "Error: no value for SJC template entry '$name'!" >&2
+        echo "Error: no value for ${SECURE_DEBUG_PREFIX} template entry '$name'!" >&2
         return 1
     fi
     {
@@ -85,21 +90,32 @@ secure_debug_emit() {
 
     # Record the resolved value in the human-readable fuse map too, so that
     # it documents every fuse that gets burned and not just the HAB ones.
-    echo "SJC:${name}:${bank}:${word}:${hexval}" >> "$FUSE_INFO_FILE"
+    echo "${SECURE_DEBUG_PREFIX}:${name}:${bank}:${word}:${hexval}" >> "$FUSE_INFO_FILE"
 }
 
+# Load the Secure Debug template file $1. Its "H:T:<type>" header selects the
+# prefix of the rows to load (SJC or ELE). Rows are kept in SECURE_DEBUG_TEMPLATE
+# by name, and their names in file order in SECURE_DEBUG_NAMES.
 secure_debug_load_template() {
     local template_file="$1"
     if [ ! -e "$template_file" ]; then
-        echo "Error: SJC template file not found [$template_file]!" >&2
+        echo "Error: Secure Debug template file not found [$template_file]!" >&2
         return 1
     fi
 
-    declare -gA SJC_TEMPLATE
+    SECURE_DEBUG_PREFIX=$(sed -n 's/^H:T:\(.*\)$/\1/p' "$template_file")
+    if [ -z "$SECURE_DEBUG_PREFIX" ]; then
+        echo "Error: no H:T header in Secure Debug template [$template_file]!" >&2
+        return 1
+    fi
+
+    declare -gA SECURE_DEBUG_TEMPLATE
+    SECURE_DEBUG_NAMES=()
     local prefix name bank word mask
     while IFS=: read -r prefix name bank word mask; do
-        [ "$prefix" = "SJC" ] || continue
-        SJC_TEMPLATE[$name]="$bank $word $mask"
+        [ "$prefix" = "$SECURE_DEBUG_PREFIX" ] || continue
+        SECURE_DEBUG_TEMPLATE[$name]="$bank $word $mask"
+        SECURE_DEBUG_NAMES+=("$name")
     done < "$template_file"
 }
 
@@ -139,16 +155,87 @@ secure_debug_append() {
 
     secure_debug_load_template "${TEMPLATES_DIR}/${TDX_SECURE_DEBUG_FUSE_TEMPLATE}"
 
+    if [ "$SECURE_DEBUG_PREFIX" = "SJC" ]; then
+        secure_debug_append_sjc
+    elif [ "$SECURE_DEBUG_PREFIX" = "ELE" ]; then
+        secure_debug_append_ele
+    else
+        echo "Error: Secure Debug Prefix ${SECURE_DEBUG_PREFIX} is not supported!" >&2
+        return 1
+    fi
+}
+
+# Emit the fuse-prog lines that disable every debug domain listed in the ELE
+# template (DBG_DISABLE_* rows). Rows sharing a fuse word are merged into a
+# single write.
+secure_debug_emit_ele_dbg_disable() {
+    local -A word_mask word_domains
+    local words=()
+    local name bank word mask key
+
+    for name in "${SECURE_DEBUG_NAMES[@]}"; do
+        [[ "$name" == DBG_DISABLE_* ]] || continue
+        read -r bank word mask <<<"${SECURE_DEBUG_TEMPLATE[$name]}"
+        key="$bank $word"
+        if [ -z "${word_mask[$key]}" ]; then
+            words+=("$key")
+            word_mask[$key]=0
+        fi
+        word_mask[$key]=$(( word_mask[$key] | mask ))
+        word_domains[$key]+=" ${name#DBG_DISABLE_}"
+        echo "ELE:${name}:${bank}:${word}:${mask}" >> "$FUSE_INFO_FILE"
+    done
+
+    if [ ${#words[@]} -eq 0 ]; then
+        echo "Error: no DBG_DISABLE entries in the ELE template!" >&2
+        return 1
+    fi
+
+    for key in "${words[@]}"; do
+        read -r bank word <<<"$key"
+        {
+            echo "# Disable debug domains:${word_domains[$key]}"
+            fuse_write_line "$bank" "$word" "$(printf '0x%08X' "${word_mask[$key]}")"
+        } >> "$FUSE_CMDS_FILE"
+    done
+}
+
+# On a closed iMX9x device, the ELE opens debug only to a debug credential signed
+# with the SRK, so authenticated mode needs no fuses and the debug-disable fuses
+# override such a credential.
+secure_debug_append_ele() {
+    # authenticated mode needs no fuses
+    if [ "${TDX_SECURE_DEBUG_ELE_JTAG_DISABLE}" != "1" ] && [ "${TDX_SECURE_DEBUG_MODE}" = "authenticated" ]; then
+        return
+    fi
+
+    echo "" >> "$FUSE_CMDS_FILE"
+    echo "${SECTION_SECURE_DEBUG}" >> "$FUSE_CMDS_FILE"
+    echo "${WARNING_SECURE_DEBUG_ELE}" >> "$FUSE_CMDS_FILE"
+
+    if [ "${TDX_SECURE_DEBUG_ELE_JTAG_DISABLE}" = "1" ]; then
+        secure_debug_emit_ele_dbg_disable
+        secure_debug_emit JTAG_DISABLE "JTAG_DISABLE = 1 (full JTAG disable)"
+    elif [ "${TDX_SECURE_DEBUG_MODE}" = "no-debug" ]; then
+        secure_debug_emit_ele_dbg_disable
+    else
+        echo "Error: invalid TDX_SECURE_DEBUG_MODE='${TDX_SECURE_DEBUG_MODE}'" >&2
+        return 1
+    fi
+}
+
+# Emit the Secure Debug section for SoCs with a System JTAG Controller (SJC).
+secure_debug_append_sjc() {
     echo "" >> "$FUSE_CMDS_FILE"
     echo "${SECTION_SECURE_DEBUG}" >> "$FUSE_CMDS_FILE"
     echo "${WARNING_SECURE_DEBUG}" >> "$FUSE_CMDS_FILE"
 
     case "${SOC}" in
         "iMX8QM"|"iMX8QX")
-            secure_debug_append_imx8
+            secure_debug_append_sjc_imx8
             ;;
         *)
-            secure_debug_append_imx6_imx7_imx8m
+            secure_debug_append_sjc_imx6_imx7_imx8m
             ;;
     esac
 }
@@ -156,7 +243,7 @@ secure_debug_append() {
 # i.MX8 and i.MX8X: no JTAG_SMODE; on an OEM Closed device the challenge/
 # response opens debug, with separate 128-bit keys for the normal world (OEM
 # key) and the secure world (TrustZone key).
-secure_debug_append_imx8() {
+secure_debug_append_sjc_imx8() {
     if [ "${TDX_SECURE_DEBUG_SJC_DISABLE}" = "1" ]; then
         secure_debug_emit SJC_DISABLE "SJC_DISABLE = 1 (full JTAG disable)"
         return
@@ -188,7 +275,7 @@ secure_debug_append_imx8() {
 
 # i.MX6, i.MX7 and i.MX8M: JTAG_SMODE selects the debug policy, with a single
 # 56-bit response key.
-secure_debug_append_imx6_imx7_imx8m() {
+secure_debug_append_sjc_imx6_imx7_imx8m() {
     if [ "${TDX_SECURE_DEBUG_SJC_DISABLE}" = "1" ]; then
         secure_debug_emit SJC_DISABLE "SJC_DISABLE = 1 (full JTAG disable)"
     else

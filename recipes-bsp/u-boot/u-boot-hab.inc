@@ -47,7 +47,7 @@ TDX_SECURE_DEBUG_ENABLE_INTERNAL = "0"
 TDX_SECURE_DEBUG_ENABLE_INTERNAL:tdx-secure-debug = "${TDX_SECURE_DEBUG_ENABLE}"
 
 # Make sure fuse-cmds.txt is regenerated if the secure debug authentication key changes
-do_uboot_assemble_fitimage[file-checksums] += "${@ (d.getVar('TDX_SECURE_DEBUG_KEY_FILE') or '') + ':True' if d.getVar('TDX_SECURE_DEBUG_ENABLE_INTERNAL') == '1' and d.getVar('TDX_SECURE_DEBUG_MODE') == 'authenticated' and d.getVar('TDX_SECURE_DEBUG_SJC_DISABLE') != '1' else ''}"
+do_uboot_assemble_fitimage[file-checksums] += "${@ d.getVar('TDX_SECURE_DEBUG_KEY_FILE') + ':True' if d.getVar('TDX_SECURE_DEBUG_KEY_FILE') and d.getVar('TDX_SECURE_DEBUG_ENABLE_INTERNAL') == '1' and d.getVar('TDX_SECURE_DEBUG_MODE') == 'authenticated' and d.getVar('TDX_SECURE_DEBUG_SJC_DISABLE') != '1' else ''}"
 
 # Call create_fuse_cmds.sh with all required env vars and parameters
 create_fuse_cmds_helper() {
@@ -59,7 +59,7 @@ create_fuse_cmds_helper() {
     TDX_SECURE_DEBUG_KEY_FILE="${TDX_SECURE_DEBUG_KEY_FILE}" \
     TDX_SECURE_DEBUG_SJC_HEO="${TDX_SECURE_DEBUG_SJC_HEO}" \
     TDX_SECURE_DEBUG_SJC_DISABLE="${TDX_SECURE_DEBUG_SJC_DISABLE}" \
-    TDX_SECURE_DEBUG_FUSE_TEMPLATE="${TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE}" \
+    TDX_SECURE_DEBUG_FUSE_TEMPLATE="${TDX_SECURE_DEBUG_FUSE_TEMPLATE}" \
     ${STAGING_BINDIR_NATIVE}/create_fuse_cmds.sh \
         "$soc" \
         "${WORKDIR}/fuse-cmds.txt" \

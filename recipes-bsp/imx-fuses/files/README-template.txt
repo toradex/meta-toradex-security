@@ -13,6 +13,9 @@ There are two template flavors:
   *-sjc-template.fuse       SJC (System JTAG Controller) fuse map for
                             the Secure Debug feature (one per SoC family)
 
+  *-ele-template.fuse       EdgeLock Secure Enclave (ELE) debug fuse map
+                            for the Secure Debug feature (one per SoC)
+
 HAB/AHAB template format
 ------------------------
 
@@ -72,3 +75,33 @@ cannot know.
 As it emits each fuse command, the script also appends the resolved row
 (same format, with <mask> replaced by the value actually programmed) to
 imx-config.fuse, so that file records every fuse the commands burn.
+
+ELE template format
+-------------------
+
+Used by the Secure Debug feature on SoCs where debug access is controlled
+by the EdgeLock Secure Enclave (iMX9x). Format:
+
+  H:T:ELE                       Header. Selects the ELE flow in
+                                secure_debug_append().
+
+  ELE:<name>:<bank>:<word>:<mask>
+                                Same row format as the SJC template, with
+                                a fixed <mask>.
+
+Recognized names:
+
+  DBG_DISABLE_<domain>          Debug-disable bits of one debug domain
+                                (the 4 CoreSight enables of the domain).
+                                The script burns every DBG_DISABLE_* row it
+                                finds, so the rows list the domains of the
+                                SoC; <domain> is only used in comments. Rows
+                                sharing a fuse word are merged into a single
+                                write.
+
+  JTAG_DISABLE                  Fuse that disables the JTAG controller,
+                                boundary scan included (named SJC_DISABLE in
+                                the NXP documentation).
+
+Authenticated debug on these SoCs needs no fuses, so a template only
+describes the fuses used by the "no-debug" mode and the full JTAG disable.

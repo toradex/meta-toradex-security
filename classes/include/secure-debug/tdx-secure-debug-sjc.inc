@@ -24,6 +24,7 @@ TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx8mm-generic-bsp = "imx8mm-sjc-template.fuse
 TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx8mp-generic-bsp = "imx8mp-sjc-template.fuse"
 TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx8qm-generic-bsp = "imx8qm-sjc-template.fuse"
 TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE:mx8qxp-generic-bsp = "imx8qx-sjc-template.fuse"
+TDX_SECURE_DEBUG_FUSE_TEMPLATE = "${TDX_SECURE_DEBUG_SJC_FUSE_TEMPLATE}"
 
 # Block the HAB software path (HAB_JDE) that can re-enable JTAG from
 # trusted boot software, bypassing the Secure JTAG challenge/response.
