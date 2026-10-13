@@ -41,6 +41,9 @@ UBOOT_BINARY_HAB = "${UBOOT_BINARY}"
 UBOOT_BINARY_HAB:mx6dl-generic-bsp = "u-boot-ivt.img"
 UBOOT_BINARY_HAB:mx6q-generic-bsp = "u-boot-ivt.img"
 
+# Sign U-Boot and generate fuse-cmds.txt again when the PKI changes
+do_uboot_assemble_fitimage[file-checksums] += "${@tdx_imx_hab_pki_file_checksums(d)}"
+
 # Secure debug is enabled only if both tdx-secure-debug class is inherited
 # and TDX_SECURE_DEBUG_ENABLE="1"
 TDX_SECURE_DEBUG_ENABLE_INTERNAL = "0"
