@@ -120,6 +120,7 @@ sign_common() {
 
     if [ ! -e "${TDX_IMX_HAB_CST_SRK_FUSE}" ]; then
         bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
+        exit 1
     fi
 
     # show warning if CA flag is enabled but not supported
