@@ -71,17 +71,15 @@ $ mkdir -p "${KEYS_DIR}" && cd "${KEYS_DIR}"
 Create the SMPK key pair and certificate using RSA 4096:
 
 ```
-$ openssl genrsa -F4 -out ${SMPK_NAME}.key 4096
-$ cp ${SMPK_NAME}.key ${SMPK_NAME}.pem
-$ openssl req -batch -new -x509 -key ${SMPK_NAME}.key -out ${SMPK_NAME}.crt
+$ openssl genrsa -F4 -out ${SMPK_NAME}.pem 4096
+$ openssl req -batch -new -x509 -key ${SMPK_NAME}.pem -out ${SMPK_NAME}.crt
 ```
 
 Create the BMPK key pair and certificate using RSA 4096:
 
 ```
-$ openssl genrsa -F4 -out ${BMPK_NAME}.key 4096
-$ cp ${BMPK_NAME}.key ${BMPK_NAME}.pem
-$ openssl req -batch -new -x509 -key ${BMPK_NAME}.key -out ${BMPK_NAME}.crt
+$ openssl genrsa -F4 -out ${BMPK_NAME}.pem 4096
+$ openssl req -batch -new -x509 -key ${BMPK_NAME}.pem -out ${BMPK_NAME}.crt
 ```
 
 Additionally, a key called `ti-degenerate-key` needs to be created. This key is only used when building bootloader artifacts for GP (General Purpose) devices, and it is not used in the secure boot implementation, but needs to be there or the U-Boot build will fail:
