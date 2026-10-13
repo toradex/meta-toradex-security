@@ -41,7 +41,7 @@ The MEK key comes from TI, it is already burned into the SoC and cannot be chang
 
 The SMPK key needs to be created by the user and will be used to sign the bootloader artifacts.
 
-BMPK is a backup key.  Its creation and usage are optional (but recommended). In case the main key (SMPK) is lost or compromised, the user is able to switch to this backup key.
+BMPK is a backup key. Its creation and usage are optional (but recommended). It is not used for signing while the SMPK is the active key. In case the main key (SMPK) is compromised, the user is able to switch to this backup key. The switch needs a certificate signed with both the SMPK and the BMPK private keys, so it is not possible if the SMPK private key is lost. See TI's [Run time read/write to KEYREV and SWREV](https://software-dl.ti.com/tisci/esd/latest/6_topic_user_guides/otp_revision.html) for details.
 
 For signature checking, the following algorithms are supported:
 
