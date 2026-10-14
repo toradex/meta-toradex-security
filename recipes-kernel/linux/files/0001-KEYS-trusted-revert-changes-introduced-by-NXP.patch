@@ -13,6 +13,7 @@ work properly.
 So let's revert this change, which by the way is not required at all for
 our use cases.
 
+Upstream-Status: Inappropriate [NXP downstream kernel specific]
 Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
 ---
  security/keys/trusted-keys/trusted_core.c | 16 ----------------

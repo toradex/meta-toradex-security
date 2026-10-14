@@ -143,6 +143,23 @@ TDX_IMX_HAB_CST_SGK_SUPP  ?= "1"
 # Only SRK is supported in the current released firmware (April 2025) for iMX9 based SoCs
 TDX_IMX_HAB_CST_SGK_SUPP:mx9-generic-bsp ?= "0"
 
+# Return the PKI files used for signing in the format of the file-checksums
+# task flag, so that the signing task runs again when the PKI is replaced in
+# place. Files that do not exist are listed as such, so that BitBake parses
+# the recipe again when they appear. PKCS#11 URIs (used with an HSM) are
+# skipped. The private keys are not covered, since CST finds them from the
+# certificate names.
+def tdx_imx_hab_pki_file_checksums(d):
+    import os
+    files = []
+    for var in ['TDX_IMX_HAB_CST_SRK', 'TDX_IMX_HAB_CST_SRK_FUSE',
+                'TDX_IMX_HAB_CST_SRK_CERT', 'TDX_IMX_HAB_CST_CSF_CERT',
+                'TDX_IMX_HAB_CST_IMG_CERT', 'TDX_IMX_HAB_CST_SGK_CERT']:
+        path = d.getVar(var) or ''
+        if os.path.isabs(path):
+            files.append(path + (':True' if os.path.exists(path) else ':False'))
+    return ' '.join(files)
+
 # List of U-Boot configurations targeting SDP loading; "*" means all;
 # normally this would be a subset of the values in UBOOT_CONFIG
 TDX_IMX_HAB_SDP_CONFIGS ?= ""

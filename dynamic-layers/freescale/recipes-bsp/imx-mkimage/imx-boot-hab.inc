@@ -25,6 +25,9 @@ TDX_IMX_HAB_CST_TEMPLATE:mx9-generic-bsp = "ahabv2_template.csf"
 # CSF header instead of the one used by the other iMX9x SoCs.
 TDX_IMX_HAB_CST_TEMPLATE:mx93-generic-bsp = "ahabv1_template.csf"
 
+# Sign the boot container and generate fuse-cmds.txt again when the PKI changes
+do_compile[file-checksums] += "${@tdx_imx_hab_pki_file_checksums(d)}"
+
 # SoC used to select the fuse map when generating the fusing commands. It
 # defaults to the imx-mkimage SoC target, which happens to name the SoC on most
 # platforms, but not on all of them (e.g. the target used by the iMX93 is "iMX9")
@@ -117,6 +120,7 @@ sign_common() {
 
     if [ ! -e "${TDX_IMX_HAB_CST_SRK_FUSE}" ]; then
         bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
+        exit 1
     fi
 
     # show warning if CA flag is enabled but not supported

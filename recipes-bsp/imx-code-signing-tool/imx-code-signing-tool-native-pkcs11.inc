@@ -2,7 +2,7 @@ DEPENDS += "libp11-native patchelf-native"
 
 EXTRA_OECMAKE:append = "\
     -DCST_WITH_PKCS11=ON \
-    -Dlibp11_DIR=/usr/lib/engines-3 \
+    -Dlibp11_DIR=${libdir}/engines-3 \
 "
 
 do_configure:prepend() {

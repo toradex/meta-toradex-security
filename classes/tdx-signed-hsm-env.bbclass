@@ -24,8 +24,8 @@ tdx_signed_hsm_vars_export() {
 
     # OpenSSL engines directory
     for d in \
-        "${RECIPE_SYSROOT_NATIVE}${libdir}/engines-3" \
-        "${RECIPE_SYSROOT_NATIVE}${libdir}/engines-1.1"
+        "${STAGING_LIBDIR_NATIVE}/engines-3" \
+        "${STAGING_LIBDIR_NATIVE}/engines-1.1"
     do
         if [ -d "$d" ]; then
             export OPENSSL_ENGINES="$d"

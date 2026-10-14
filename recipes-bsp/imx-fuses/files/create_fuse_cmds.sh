@@ -324,7 +324,7 @@ create_fuse_cmds() {
 
     echo "Writing fusing commands..."
 
-    for hexval in $(hexdump -e '/4 "0x"' -e '/4 "%X""\n"' "${SRK_FUSE_FILE}"); do
+    for hexval in $(hexdump -v -e '/4 "0x"' -e '/4 "%X""\n"' "${SRK_FUSE_FILE}"); do
         if ! fuse_info=$(grep -m 1 "^H:F:.*:$" "$FUSE_INFO_FILE"); then
             rm -rf "$FUSE_INFO_FILE" "$FUSE_CMDS_FILE"
             echo "Error: didn't find empty fuse line to insert hex value!"

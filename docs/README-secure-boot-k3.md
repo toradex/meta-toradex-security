@@ -45,8 +45,10 @@ BMPK is a backup key.  Its creation and usage are optional (but recommended). In
 
 For signature checking, the following algorithms are supported:
 
-- RSA (2048 and 4096)
-- ECDSA (secp256 and secp521)
+- RSA 4096, on all K3 SoCs.
+- EC keys on AM62x, AM62Ax, AM62Px, AM64x and AM275. There is no public TI documentation on which curves are supported.
+
+This layer has been validated with RSA 4096 keys on Verdin AM62 and Aquila AM69. The supported key types above are based on the [TI Key Writer documentation](https://software-dl.ti.com/tisci/esd/latest/6_topic_user_guides/key_writer.html), which describes the keys that can be programmed as SMPK and BMPK.
 
 The steps below show one way to generate the keys with OpenSSL on the build host. Treat this as a development example — in production you will likely want a different process for creating and storing the keys (see the note on key storage at the end of this section).
 
