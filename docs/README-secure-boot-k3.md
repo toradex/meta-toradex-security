@@ -41,7 +41,7 @@ The MEK key comes from TI, it is already burned into the SoC and cannot be chang
 
 The SMPK key needs to be created by the user and will be used to sign the bootloader artifacts.
 
-BMPK is a backup key.  Its creation and usage are optional (but recommended). In case the main key (SMPK) is lost or compromised, the user is able to switch to this backup key.
+BMPK is a backup key. Its creation and usage are optional (but recommended). It is not used for signing while the SMPK is the active key. In case the main key (SMPK) is compromised, the user is able to switch to this backup key. The switch needs a certificate signed with both the SMPK and the BMPK private keys, so it is not possible if the SMPK private key is lost. See TI's [Run time read/write to KEYREV and SWREV](https://software-dl.ti.com/tisci/esd/latest/6_topic_user_guides/otp_revision.html) for details.
 
 For signature checking, the following algorithms are supported:
 
@@ -71,17 +71,15 @@ $ mkdir -p "${KEYS_DIR}" && cd "${KEYS_DIR}"
 Create the SMPK key pair and certificate using RSA 4096:
 
 ```
-$ openssl genrsa -F4 -out ${SMPK_NAME}.key 4096
-$ cp ${SMPK_NAME}.key ${SMPK_NAME}.pem
-$ openssl req -batch -new -x509 -key ${SMPK_NAME}.key -out ${SMPK_NAME}.crt
+$ openssl genrsa -F4 -out ${SMPK_NAME}.pem 4096
+$ openssl req -batch -new -x509 -key ${SMPK_NAME}.pem -out ${SMPK_NAME}.crt
 ```
 
 Create the BMPK key pair and certificate using RSA 4096:
 
 ```
-$ openssl genrsa -F4 -out ${BMPK_NAME}.key 4096
-$ cp ${BMPK_NAME}.key ${BMPK_NAME}.pem
-$ openssl req -batch -new -x509 -key ${BMPK_NAME}.key -out ${BMPK_NAME}.crt
+$ openssl genrsa -F4 -out ${BMPK_NAME}.pem 4096
+$ openssl req -batch -new -x509 -key ${BMPK_NAME}.pem -out ${BMPK_NAME}.crt
 ```
 
 Additionally, a key called `ti-degenerate-key` needs to be created. This key is only used when building bootloader artifacts for GP (General Purpose) devices, and it is not used in the secure boot implementation, but needs to be there or the U-Boot build will fail:
