@@ -1,0 +1,2 @@
+# Start an instance of tee-supplicant service if a /dev/teepriv[0-9]* device is detected
+KERNEL=="teepriv[0-9]*", TAG+="systemd", ENV{SYSTEMD_WANTS}+="tee-supplicant@%k.service"

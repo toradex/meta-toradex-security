@@ -1,0 +1,169 @@
+From 9589e392939abf0b0cd2adf63b46a53ac811aed6 Mon Sep 17 00:00:00 2001
+From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+Date: Mon, 23 Mar 2026 21:53:13 -0300
+Subject: [PATCH 07/10] toradex: integrate fastboot protection (upstream)
+
+This introduces a protection to the "fastboot" protocol. When enabled,
+most fastboot commands are blocked. The commands that are kept are those
+needed (or useful) for flashing a device, namely: "getvar", "download",
+"flash", "erase", "continue", "ucmd" and "acmd".
+
+The protection is enabled by CONFIG_TDX_FB_PROTECTION. Enabling it, does
+not automatically allow the command to pass the whitelist filter. A
+separate option CONFIG_TDX_FB_PROTECTION_ALLOW_CMD allows the command to
+pass the whitelist. The "fastboot" protection should be enabled only
+when strictly needed (which is the case with Toradex Easy Installer).
+
+Upstream-Status: Inappropriate [Torizon OS specific]
+Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
+---
+ Kconfig                       | 20 ++++++++++++++++++
+ drivers/fastboot/fb_command.c | 25 ++++++++++++++++++++++
+ drivers/fastboot/fb_common.c  | 39 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 84 insertions(+)
+
+diff --git a/Kconfig b/Kconfig
+index 311f2ee150a..0c60104a148 100644
+--- a/Kconfig
++++ b/Kconfig
+@@ -835,3 +835,23 @@ config TDX_CP_PROTECTION_ALLOW_CMD
+ 	  the loading of Toradex Easy Installer. If loading of the installer is
+ 	  not needed, this option should not be enabled so as to reduce the attack
+ 	  surface.
++
++config TDX_FB_PROTECTION
++	bool "Enable the Fastboot protections"
++	default n
++	depends on TDX_SECBOOT_HARDENING && TDX_LOAD_PROTECTION
++	help
++	  Enable the protections related to Fastboot which includes placing
++	  constraints on the Fastboot protocol buffer address range and limiting
++	  the commands available via the protocol. To allow the "fastboot" command
++	  to pass the whitelist, TDX_FB_PROTECTION_ALLOW_CMD must still be set.
++
++config TDX_FB_PROTECTION_ALLOW_CMD
++	bool "Allow the execution of the fastboot command"
++	default n
++	depends on TDX_FB_PROTECTION
++	help
++	  Allow the execution of the "fastboot" command (by the whitelist feature)
++	  when that command is protected (hardened). To reduce the attack surface,
++	  this option should be enabled only when strictly required, e.g. when
++	  users want to use a bootloader having Fastboot support to flash a device.
+diff --git a/drivers/fastboot/fb_command.c b/drivers/fastboot/fb_command.c
+index 01443c5d39e..8aab0e8d395 100644
+--- a/drivers/fastboot/fb_command.c
++++ b/drivers/fastboot/fb_command.c
+@@ -66,14 +66,38 @@ static const struct {
+ 		.command = "erase",
+ 		.dispatch = CONFIG_IS_ENABLED(FASTBOOT_FLASH, (erase), (NULL))
+ 	},
++#ifndef CONFIG_TDX_FB_PROTECTION
++	/*
++	 * If the Toradex Fastboot protection is enabled, disable the "boot"
++	 * command since it can be replaced by normal U-Boot commands sent
++	 * via "ucmd", with the advantage that U-Boot commands can be
++	 * restricted by the whitelisting feature.
++	 */
+ 	[FASTBOOT_COMMAND_BOOT] =  {
+ 		.command = "boot",
+ 		.dispatch = okay
+ 	},
++#endif
+ 	[FASTBOOT_COMMAND_CONTINUE] =  {
+ 		.command = "continue",
+ 		.dispatch = okay
+ 	},
++#ifndef CONFIG_TDX_FB_PROTECTION
++	/*
++	 * If the Toradex Fastboot protection is enabled:
++	 *
++	 * - Disable "reboot" - equivalent to U-Boot's "reset" - which can be
++	 *   executed via "ucmd".
++	 *
++	 * - Disable "reboot-*" commands since these are not actually
++	 *   supported and keeping them represents an unnecessary risk.
++	 *
++	 * - Disable "set_active" which is a no-op/dummy command.
++	 *
++	 * - Disable all OEM commands since those can be replaced by normal
++	 *   U-Boot commands sent via "ucmd", with the advantage that U-Boot
++	 *   commands can be restricted by the whitelisting feature.
++	 */
+ 	[FASTBOOT_COMMAND_REBOOT] =  {
+ 		.command = "reboot",
+ 		.dispatch = okay
+@@ -118,6 +142,7 @@ static const struct {
+ 		.command = "oem board",
+ 		.dispatch = CONFIG_IS_ENABLED(FASTBOOT_OEM_BOARD, (oem_board), (NULL))
+ 	},
++#endif
+ 	[FASTBOOT_COMMAND_UCMD] = {
+ 		.command = "UCmd",
+ 		.dispatch = CONFIG_IS_ENABLED(FASTBOOT_UUU_SUPPORT, (run_ucmd), (NULL))
+diff --git a/drivers/fastboot/fb_common.c b/drivers/fastboot/fb_common.c
+index 3576b067729..83648369f4d 100644
+--- a/drivers/fastboot/fb_common.c
++++ b/drivers/fastboot/fb_common.c
+@@ -17,6 +17,12 @@
+ #include <fastboot.h>
+ #include <net.h>
+ 
++#ifdef CONFIG_TDX_FB_PROTECTION
++#include <asm/global_data.h>
++DECLARE_GLOBAL_DATA_PTR;
++#include <lmb.h>
++#endif
++
+ /**
+  * fastboot_buf_addr - base address of the fastboot download buffer
+  */
+@@ -214,6 +220,38 @@ void fastboot_set_progress_callback(void (*progress)(const char *msg))
+ 	fastboot_progress_callback = progress;
+ }
+ 
++static void fastboot_constrain_buffer()
++{
++#ifdef CONFIG_TDX_FB_PROTECTION
++#ifndef CONFIG_LMB
++#error CONFIG_TDX_FB_PROTECTION requires CONFIG_LMB to be enabled
++#endif
++	bool reset_to_default = false;
++	const ulong addr = (ulong) fastboot_buf_addr;
++	const ulong size = (ulong) fastboot_buf_size;
++
++	if (gd->fdt_blob) {
++		int tdx_valid_loadaddr(struct lmb *lmb, phys_addr_t base, phys_size_t size);
++		struct lmb lmb;
++
++		lmb_init_and_reserve(&lmb, gd->bd, (void *) gd->fdt_blob);
++		lmb_dump_all(&lmb);
++
++		if (!tdx_valid_loadaddr(&lmb, addr, size))
++			reset_to_default = true;
++	} else {
++		eputs("## ERROR: Fastboot protection is enabled but fdt_blob == NULL\n");
++		reset_to_default = true;
++	}
++
++	if (reset_to_default) {
++		eputs("## WARNING: Resetting Fastboot buffer address/size to default\n");
++		fastboot_buf_addr = (void *) CONFIG_FASTBOOT_BUF_ADDR;
++		fastboot_buf_size = CONFIG_FASTBOOT_BUF_SIZE;
++	}
++#endif
++}
++
+ /*
+  * fastboot_init() - initialise new fastboot protocol session
+  *
+@@ -225,5 +263,6 @@ void fastboot_init(void *buf_addr, u32 buf_size)
+ 	fastboot_buf_addr = buf_addr ? buf_addr :
+ 				       (void *)CONFIG_FASTBOOT_BUF_ADDR;
+ 	fastboot_buf_size = buf_size ? buf_size : CONFIG_FASTBOOT_BUF_SIZE;
++	fastboot_constrain_buffer();
+ 	fastboot_set_progress_callback(NULL);
+ }
+-- 
+2.43.0
+

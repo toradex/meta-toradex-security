@@ -1,0 +1,47 @@
+From 7a4c1867199fecf9511d0a3ddc2b11f9256b3fe4 Mon Sep 17 00:00:00 2001
+From: Sergio Prado <sergio.prado@e-labworks.com>
+Date: Mon, 26 Jan 2026 21:05:06 +0000
+Subject: [PATCH] lib/rsa: allow matching pkcs11 path by object id
+
+The object= part matches against the label that the pkcs11 token uses
+for that object, but in some cases, specifically with a Yubikey using
+ykcs11, where the keys have been imported, the labels differ between the
+private and public keys [1], making the object= matching useless. These
+keys will have the same id however, so matching against that works for
+both the private and public part.
+
+[1]: https://github.com/Yubico/yubico-piv-tool/blob/master/doc/YKCS11/Functions_and_values.adoc#key-alias-per-slot-and-object-type
+
+Upstream-Status: Backport [0707f73a8ba26f5aeaeada6f5942d003bf67ce06]
+
+Signed-off-by: Tobias Olausson <tobias@eub.se>
+Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
+---
+ lib/rsa/rsa-sign.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/lib/rsa/rsa-sign.c b/lib/rsa/rsa-sign.c
+index d20bdb58a57f..4b42593ce78a 100644
+--- a/lib/rsa/rsa-sign.c
++++ b/lib/rsa/rsa-sign.c
+@@ -114,7 +114,7 @@ static int rsa_engine_get_pub_key(const char *keydir, const char *name,
+ 
+ 	if (engine_id && !strcmp(engine_id, "pkcs11")) {
+ 		if (keydir)
+-			if (strstr(keydir, "object="))
++			if (strstr(keydir, "object=") || strstr(keydir, "id="))
+ 				snprintf(key_id, sizeof(key_id),
+ 					 "pkcs11:%s;type=public",
+ 					 keydir);
+@@ -236,7 +236,7 @@ static int rsa_engine_get_priv_key(const char *keydir, const char *name,
+ 			return -EINVAL;
+ 		}
+ 		if (keydir)
+-			if (strstr(keydir, "object="))
++			if (strstr(keydir, "object=") || strstr(keydir, "id="))
+ 				snprintf(key_id, sizeof(key_id),
+ 					 "pkcs11:%s;type=private",
+ 					 keydir);
+-- 
+2.34.1
+

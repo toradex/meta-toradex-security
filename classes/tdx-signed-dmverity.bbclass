@@ -1,5 +1,5 @@
 # add the class name in the overrides for conditional assignment
-DISTROOVERRIDES:append = ":tdx-signed-dmverity"
+DISTROOVERRIDES .= ":tdx-signed-dmverity"
 
 # a ramdisk is required to check the root hash of the verity image
 INITRAMFS_IMAGE ?= "tdx-reference-ramdisk-image"
@@ -26,6 +26,15 @@ SKIP_META_SECURITY_SANITY_CHECK = "1"
 TEZI_ROOT_SUFFIX = "ext4.verity"
 TEZI_ROOT_FSTYPE = "raw"
 
+# If different images are built, multiple .verity.env files end up in the
+# staging directory, and the ramdisk recipe (tdx-reference-ramdisk-image)
+# fails to pick the right one, as its name might be unpredictable (e.g.
+# Toradex BSP might append a string to it). To solve this, let's remove
+# any previously generated .verity.env file before generating the new one.
+verity_setup:prepend() {
+    rm -f ${STAGING_VERITY_DIR}/*.verity.env
+}
+
 # Easy Installer needs the size of the rootfs image so it can add to image.json
 CONVERSION_DEPENDS_verity:append = " bc-native"
 verity_setup:append() {
@@ -34,8 +43,4 @@ verity_setup:append() {
 }
 
 # fix cyclic dependency when inheriting image_type_tezi.bbclass
-IMAGE_FSTYPES:remove = "wic.bmap wic.gz"
-DEPENDS:remove:pn-${DM_VERITY_IMAGE} = "imx-boot"
-IMAGE_BOOTFS_DEPENDS = "${@ 'virtual/kernel:do_build' if 'pn-${DM_VERITY_IMAGE}' in d.getVar('OVERRIDES').split(':') else ''}"
-IMAGE_BOOTFS_DEPENDS:mx8-generic-bsp = "${@ 'imx-boot:do_build' if 'pn-${DM_VERITY_IMAGE}' in d.getVar('OVERRIDES').split(':') else ''}"
-do_image_bootfs[depends] += "${IMAGE_BOOTFS_DEPENDS}"
+require ${@ 'include/signed/tdx-signed-dmverity-tezi.inc' if 'teziimg' in d.getVar('IMAGE_FSTYPES') else ''}

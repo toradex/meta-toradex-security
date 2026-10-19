@@ -1,5 +1,5 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
 
-SRC_URI:append = "\
-    ${@oe.utils.conditional('TDX_ENC_ENABLE', '1', 'file://tdx-enc-handler-requirements.cfg', '', d)} \
+SRC_URI:append:tdx-encrypted = "\
+    file://tdx-enc-handler-requirements.cfg \
 "

@@ -1,0 +1,111 @@
+From 9e29dc0590c1015898037bde712a609f68164ff6 Mon Sep 17 00:00:00 2001
+From: Sergio Prado <sergio.prado@e-labworks.com>
+Date: Mon, 25 May 2026 15:32:34 -0300
+Subject: [PATCH] binman: x509_cert: support PKCS#11 URI in keyfile for HSM signing
+
+Allow x509 certificate entries to be signed using a key stored in an
+HSM by accepting a PKCS#11 URI (RFC 7512) as the value of the
+'keyfile' entry argument, instead of a path to a PEM key file on
+disk. The URI is forwarded as-is to openssl '-key', which resolves it
+via the pkcs11 provider configured externally through OPENSSL_CONF. Set
+BINMAN_X509_KEY_URI to override the 'keyfile' entry argument:
+
+  make BINMAN_X509_KEY_URI="pkcs11:token=mytk;object=mykey;type=private" \
+       OPENSSL_CONF=/path/to/openssl.cnf
+
+PKCS11_PIN, when set, is appended to the URI as a percent-encoded
+pin-value=<pin> query parameter (per RFC 7512) so signing runs
+non-interactively. The preferred way to deliver the PIN is via
+pkcs11-module-token-pin in openssl.cnf.
+
+This is the minimal subset of the upstream v5 series sent on
+2026-05-25; documentation, tests, and the test fixture are omitted
+to minimise rebase friction when U-Boot is bumped.
+
+Upstream-Status: Submitted [https://lists.denx.de/pipermail/u-boot/2026-May/619780.html]
+Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
+---
+ Makefile                        |  1 +
+ tools/binman/etype/x509_cert.py | 19 +++++++++++++++----
+ 2 files changed, 16 insertions(+), 4 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 6558415a8b5a..785331dcbebd 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1359,6 +1359,7 @@ cmd_binman = $(srctree)/tools/binman/binman $(if $(BINMAN_DEBUG),-D) \
+ 		-a spl-dtb=$(CONFIG_SPL_OF_REAL) \
+ 		-a tpl-dtb=$(CONFIG_TPL_OF_REAL) \
+ 		-a pre-load-key-path=${PRE_LOAD_KEY_PATH} \
++		$(if $(BINMAN_X509_KEY_URI),-a keyfile="$(BINMAN_X509_KEY_URI)") \
+ 		$(BINMAN_$(@F))
+ 
+ OBJCOPYFLAGS_u-boot.ldr.hex := -I binary -O ihex
+diff --git a/tools/binman/etype/x509_cert.py b/tools/binman/etype/x509_cert.py
+index 29630d1b86c8..d6a55f82dcc7 100644
+--- a/tools/binman/etype/x509_cert.py
++++ b/tools/binman/etype/x509_cert.py
+@@ -7,6 +7,7 @@
+ 
+ from collections import OrderedDict
+ import os
++import urllib.parse
+ 
+ from binman.entry import EntryArg
+ from binman.etype.collection import Entry_collection
+@@ -79,6 +80,16 @@ class Entry_x509_cert(Entry_collection):
+         if input_data is None:
+             return None
+ 
++        # When keyfile is a PKCS#11 URI and PKCS11_PIN is set, append the
++        # PIN to the URI. A local variable is used rather than mutating
++        # self.key_fname because ProcessContents() calls GetCertificate()
++        # a second time; mutating in place would double-append the PIN.
++        key_fname = self.key_fname
++        pin = os.environ.get('PKCS11_PIN')
++        if pin and 'pkcs11:' in key_fname:
++            sep = '&' if '?' in key_fname else '?'
++            key_fname = f'{key_fname}{sep}pin-value={urllib.parse.quote(pin, safe="")}'
++
+         uniq = self.GetUniqueName()
+         output_fname = tools.get_output_filename('cert.%s' % uniq)
+         input_fname = tools.get_output_filename('input.%s' % uniq)
+@@ -88,7 +99,7 @@ class Entry_x509_cert(Entry_collection):
+             stdout = self.openssl.x509_cert(
+                 cert_fname=output_fname,
+                 input_fname=input_fname,
+-                key_fname=self.key_fname,
++                key_fname=key_fname,
+                 cn=self._cert_ca,
+                 revision=self._cert_rev,
+                 config_fname=config_fname)
+@@ -96,7 +107,7 @@ class Entry_x509_cert(Entry_collection):
+             stdout = self.openssl.x509_cert_sysfw(
+                 cert_fname=output_fname,
+                 input_fname=input_fname,
+-                key_fname=self.key_fname,
++                key_fname=key_fname,
+                 config_fname=config_fname,
+                 sw_rev=self.sw_rev,
+                 req_dist_name_dict=self.req_dist_name,
+@@ -105,7 +116,7 @@ class Entry_x509_cert(Entry_collection):
+             stdout = self.openssl.x509_cert_rom(
+                 cert_fname=output_fname,
+                 input_fname=input_fname,
+-                key_fname=self.key_fname,
++                key_fname=key_fname,
+                 config_fname=config_fname,
+                 sw_rev=self.sw_rev,
+                 req_dist_name_dict=self.req_dist_name,
+@@ -119,7 +130,7 @@ class Entry_x509_cert(Entry_collection):
+             stdout = self.openssl.x509_cert_rom_combined(
+                 cert_fname=output_fname,
+                 input_fname=input_fname,
+-                key_fname=self.key_fname,
++                key_fname=key_fname,
+                 config_fname=config_fname,
+                 sw_rev=self.sw_rev,
+                 req_dist_name_dict=self.req_dist_name,
+-- 
+2.34.1
+

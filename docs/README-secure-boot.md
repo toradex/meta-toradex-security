@@ -6,13 +6,21 @@ Secure boot is currently supported on the following SoMs:
 
 - Apalis iMX6
 - Apalis iMX8
+- Aquila AM69
+- Aquila iMX95
 - Colibri iMX6DL
 - Colibri iMX6ULL (1GB eMMC variant only)
 - Colibri iMX7D (1GB eMMC variant only)
 - Colibri iMX8X
+- Lino iMX93
+- OSM iMX93
+- SMARC iMX8MP
+- SMARC iMX95
 - Verdin AM62
+- Verdin AM62P
 - Verdin iMX8MM
 - Verdin iMX8MP
+- Verdin iMX95
 
 ## Secure boot implementation
 
@@ -48,13 +56,11 @@ The following sessions describe in detail each of these features.
 
 The bootloader signature checking implementation is dependent on the System on Chip (SoC).
 
-For details on the bootloader signature checking implementation for SoMs that use NXP iMX-based platforms (i.e. iMX6/7/8), see the [README-secure-boot-imx.md](README-secure-boot-imx.md) file.
+For details on the bootloader signature checking implementation for SoMs that use NXP iMX-based platforms (i.e. iMX6/7/8/9x), see the [README-secure-boot-imx.md](README-secure-boot-imx.md) file.
 
-For details on the bootloader signature checking implementation for SoMs that use TI K3-based platforms (i.e. AM62), see the [README-secure-boot-k3.md](README-secure-boot-k3.md) file.
+For details on the bootloader signature checking implementation for SoMs that use TI K3-based platforms (i.e. AM62/AM69), see the [README-secure-boot-k3.md](README-secure-boot-k3.md) file.
 
 ## U-Boot hardening
-
-**Important**: Currently, due to incompatibility with newer Toradex Embedded Linux BSP releases, the U-Boot hardening feature is not supported and is disabled by default (see [Issue #20](https://github.com/toradex/meta-toradex-security/issues/20)). This will be fixed in a future release of this layer.
 
 Toradex is implementing various changes to U-Boot (currently as a series of patches) with the purpose of hardening it for secure boot. The hardening includes the following features:
 
@@ -63,40 +69,46 @@ Toradex is implementing various changes to U-Boot (currently as a series of patc
 - **CLI access prevention**: this is an extra safeguard whereby the access to the U-Boot CLI gets disabled once the device is in closed state; this is what happens by default (but can be overridden).
 - **Kernel command-line protection**: normally U-Boot passes the contents of its environment variable `bootargs` directly to the Linux kernel and this variable in turn has its value set in the persistent U-Boot environment or it is dynamically built by the boot scripts (with Torizon OS following the latter approach) - either way, it is a vector of attack; to prevent tampering of `bootargs` the present protection causes the build to store a copy of the "expected" kernel arguments inside the (signed) FIT image and a related patch to U-Boot to check `bootargs` against that copy at runtime, possibly stopping the boot process in case of a mismatch.
 
-The hardening features above are controlled by the following variables:
+For further details, please refer to the article [Security Hardening of U-Boot](https://developer.toradex.com/torizon/security/u-boot-hardening-for-secure-boot/) at the Toradex website.
+
+The hardening features are controlled by the variables in the following table plus the ones in the next section related to the whitelist:
 
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
-| `TDX_UBOOT_HARDENING_ENABLE` | Enable hardening features as a whole | `1` if building a Torizon OS image with both `TDX_IMX_HAB_ENABLE` and `UBOOT_SIGN_ENABLE` set; `0` otherwise |
-| `TDX_SECBOOT_REQUIRED_BOOTARGS` | Expected value for the fixed part of the kernel command line | Different value for each machine (suitable for Torizon OS) |
+| `TDX_UBOOT_HARDENING_ENABLE` | Enable hardening features as a whole | `1` if both secure boot support (controlled by variable `TDX_IMX_HAB_ENABLE` (NXP) or `TDX_K3_SECBOOT_ENABLE` (TI)) and FIT signing (controlled by `UBOOT_SIGN_ENABLE`) are enabled; `0` otherwise |
+| `TDX_UBOOT_HARDENING_ENABLE_DBG` | Enable debugging of the hardening features; among other things this adds a command to U-Boot that allows the hardening and the device state (open/closed in terms of secure boot) to be manually set for testing purposes - **never** do this in production | `0` |
+| `TDX_UBOOT_HARDENING_ENABLE_CP_PROT` | Enable the hardening of the "cp" command and allow it to pass the whitelist; this should be enabled only when strictly required by the boot script (standard Toradex boot scripts do not need this) | `0` |
+| `TDX_UBOOT_HARDENING_ENABLE_FB_PROT` | Enable the hardening of the Fastboot protocol and allow the "fastboot" command to pass the whitelist; this should be enabled only when building a bootloader for use via Fastboot (such as the one belonging to the Toradex Easy Installer) | `0` |
+| `TDX_SECBOOT_REQUIRED_BOOTARGS` | Expected value for the fixed part of the kernel command line | Different value for each machine |
+| `TDX_AMEND_BOOT_SCRIPT` | When set to `1` the boot script will be amended to make it suitable for secure boot; this only works with the script provided by Toradex for BSP reference images; users employing a custom script should set this to `0` | Same value as variable `TDX_UBOOT_HARDENING_ENABLE` |
+| `TDX_AMEND_CONSOLE_ARGUMENT` | Granular control of the boot script amendment: whether or not to amend the console argument; this only works with the script provided by Toradex for BSP reference images | Same value as variable `TDX_AMEND_BOOT_SCRIPT` |
+| `TDX_AMEND_ROOT_ARGUMENT` | Granular control of the boot script amendment: whether or not to amend the root argument; this only works with the script provided by Toradex for BSP reference images | Same value as variable `TDX_AMEND_BOOT_SCRIPT` |
+| `TDX_CHECK_UNSUPP_BOOTMETH` | Enable a build-time check to determine if an unsupported [bootmeth](https://docs.u-boot.org/en/stable/develop/bootstd/overview.html#bootmeth) is being enabled in U-Boot (which could become an attack vector). | `1` |
+| `TDX_DISABLE_UNSUPP_BOOTMETH`| Enable a config fragment in U-Boot to disable unsupported bootmeths; relevant only if the machine is using [Standard Boot](https://docs.u-boot.org/en/stable/develop/bootstd/index.html). | `1` |
 
-Obs.: Currently, U-Boot hardening is enabled by default only when building the Torizon OS.
+### U-Boot hardening / whitelist setup
 
-The behavior of the different hardening features can be set via the control FDT (see [Devicetree Control in U-Boot](https://u-boot.readthedocs.io/en/stable/develop/devicetree/control.html)). Setting the control FDT at build time can be achieved by adding extra device-tree [.dtsi fragments](https://u-boot.readthedocs.io/en/stable/develop/devicetree/control.html#external-dtsi-fragments) to U-Boot and setting the Kconfig variable `CONFIG_DEVICE_TREE_INCLUDES` appropriately; with Yocto/OE this would normally involve adding small patches to U-Boot and appending changes to its recipe but the details are outside the scope of the present document.
+For fine-tuning the command whitelisting feature the following variables are available:
 
-The following device-tree fragment shows all the nodes and properties that can be present in the control FDT:
+| Variable | Description | Default value |
+| :------- | :---------- | :------------ |
+| `TDX_SECBOOT_WL_ALLOW_OPEN_CATEG` | Command categories to be allowed when the device is open (as a space-separated list). | `""` |
+| `TDX_SECBOOT_WL_ALLOW_CLOSED_CATEG` | Command categories to be allowed when the device is closed (as a space-separated list). | `""` |
+| `TDX_SECBOOT_WL_DENY_OPEN_CATEG`\* | Command categories to be denied when the device is open (as a space-separated list). | `""` |
+| `TDX_SECBOOT_WL_DENY_CLOSED_CATEG`\* | Command categories to be denied when the device is closed (as a space-separated list). | `""` |
+| `TDX_SECBOOT_WL_NEEDED_CATEG`\* | Command categories to be allowed regardless of the device open/closed state. | `""` |
+
+When a variable is empty, the default value encoded in U-Boot is utilized. The command categories are currently only available as part of a [patch](../recipes-bsp/u-boot/files/0001-toradex-common-add-command-whitelisting-modules.patch) in header `cmd-categories.h`. The default configuration is kept in the U-Boot control FDT which is part of another [patch](../recipes-bsp/u-boot/files/0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch) in file `tdx-secboot.dtsi`.
+
+Overall, setting these variables is discouraged (especially the ones with an \*) since they are critical to security. The main use case where some of these variables might be set is when one has a custom boot script requiring commands not present in the Toradex boot scripts. For example, if someone needs to set a GPIO pin in their boot script even when the device is closed they could set (e.g. in their `local.conf` file):
 
 ```
-/ {
-    chosen {
-        toradex,secure-boot {          /* if not present: disable Toradex hardening at runtime */
-            disabled;                  /* if present: disable Toradex hardening at runtime */
-            enable-cli-when-closed;    /* if present: keep u-boot CLI enabled when device is closed */
-            bootloader-commands {
-                allow-open = <...>;    /* list of command categories allowed when device is open */
-                allow-closed = <...>;  /* list of command categories allowed when device is closed */
-                deny-open = <...>;     /* list of command categories denied when device is open (use is discouraged) */
-                deny-closed = <...>;   /* list of command categories denied when device is closed (use is discouraged) */
-                needed = <...>         /* list of command categories strictly needed to boot (use is discouraged) */
-            };
-        };
-    };
-};
+TDX_SECBOOT_WL_ALLOW_CLOSED_CATEG = "CMD_CAT_ALL_SAFE CMD_CAT_GPIO_CONTROL"
 ```
 
-The command categories are currently only available as part of a [patch](./recipes-bsp/u-boot/files/0001-toradex-common-add-command-whitelisting-modules.patch) in header `cmd-categories.h`. The default FDT is part of another [patch](./recipes-bsp/u-boot/files/0002-toradex-dts-add-fragment-file-to-configure-secure-bo.patch) in file `tdx-secboot.dtsi`.
+### U-Boot hardening / known issues
 
-<!-- TODO: Make more user-friendly instructions on setting the control FDT. -->
+- On K3 based platforms (Verdin AM62, Aquila AM69), the hardening does not cover the bootloader running on the R5 processor (the boot master); we have plans to evaluate the need for such a protection and implementing it if actually needed.
 
 ## Configuring FIT image signing
 
@@ -116,6 +128,10 @@ A few variables can be used to configure this feature, including:
 
 The complete list of variables can be found in the `tdx-signed-fit-image.inc` file.
 
+### Configuring FIT image signing / known issues
+
+- On K3 based platforms (Verdin AM62, Aquila AM69), some of the configuration variables (e.g. `UBOOT_SIGN_KEYDIR`, `UBOOT_SIGN_KEYNAME` (check the complete list in `tdx-signed-fit-image.inc`)) are set through override `k3` to ensure the values coming from layer `meta-toradex-security` override those from layer `meta-ti-bsp`. Due to this, the recommended way to set those variables is via override `forcevariable`.
+
 ## Configuring rootfs image signing
 
 When the `tdxref-signed` class is inherited, the rootfs image will be generated using the `dm-verity` kernel feature.
@@ -127,6 +143,16 @@ DM_VERITY_IMAGE = "my-custom-image"
 ```
 
 In case you don't want to boot a signed rootfs image, then instead of inheriting `tdxref-signed`, you should inherit `tdx-signed`. When inheriting `tdx-signed` the bootloader and the FIT image will be signed, but the rootfs image signing process with `dm-verity` will be skipped.
+
+## HSM-backed image signing
+
+By default, `meta-toradex-security` performs signing operations using private keys stored as files on the build host filesystem. This is the simplest setup and works well for development, since the signing tools can directly read the key material from the configured paths.
+
+However, this approach also has some drawbacks. Private keys must be present on the machine running the build, which increases the risk of accidental exposure, improper copying, insecure backups, or misuse in shared development and CI environments. It also makes key management more difficult, especially when stronger access control, auditability, or centralized signing infrastructure is required.
+
+To address these limitations, `meta-toradex-security` also supports HSM-backed signing through PKCS#11. With this flow, private key operations are delegated to a PKCS#11-compatible HSM or token instead of using private key files stored on the build host.
+
+For the more information on using an HSM to sign secure boot images, including the list of supported variables and usage examples, refer to [README-secure-boot-hsm.md](README-secure-boot-hsm.md).
 
 ## Additional partition for persistent data
 

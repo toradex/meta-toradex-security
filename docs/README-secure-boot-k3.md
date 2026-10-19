@@ -6,13 +6,13 @@ This document describes how bootloader signature checking works for System on Mo
 
 The Texas Instruments K3 platform encompasses a family of SoCs (System on Chips) designed to offer a blend of multicore processing capabilities, optimized for high performance and power efficiency across a broad array of industrial, automotive, and other market segments.
 
-The AM62x family of SoCs (part of the K3 platform) has two types of devices: GP (General Purpose) and HS (High Security).
+The AM6x family of SoCs (part of the K3 platform) has two types of devices: GP (General Purpose) and HS (High Security).
 
 General Purpose (GP) devices lack several security features and don't support secure boot.
 
 High Security (HS) devices have all security features available and support encrypted and authenticated (secure) boot.
 
-**IMPORTANT**: To have access to the secure boot feature on Verdin AM62, make sure you are using an SoC of type HS.
+**IMPORTANT**: To have access to the secure boot feature on AM6x based SoMs (Verdin AM62, Aquila AM69), make sure you are using an SoC of type HS.
 
 A High Security (HS) device might be in one of two different states:
 
@@ -21,7 +21,7 @@ A High Security (HS) device might be in one of two different states:
 
 For more details on how secure boot works on K3 platforms, it is recommended to read the documentation provided by Texas Instruments. Since most documentation related to security is provided under NDA, you will need to talk to a TI Sales representative.
 
-## Enabling secure boot on Verdin AM62
+## Enabling secure boot on AM6x based devices
 
 There are three major steps to enable secure boot on Verdin AM62:
 
@@ -41,14 +41,16 @@ The MEK key comes from TI, it is already burned into the SoC and cannot be chang
 
 The SMPK key needs to be created by the user and will be used to sign the bootloader artifacts.
 
-BMPK is a backup key.  Its creation and usage are optional (but recommended). In case the main key (SMPK) is lost or compromised, the user is able to switch to this backup key.
+BMPK is a backup key. Its creation and usage are optional (but recommended). It is not used for signing while the SMPK is the active key. In case the main key (SMPK) is compromised, the user is able to switch to this backup key. The switch needs a certificate signed with both the SMPK and the BMPK private keys, so it is not possible if the SMPK private key is lost. See TI's [Run time read/write to KEYREV and SWREV](https://software-dl.ti.com/tisci/esd/latest/6_topic_user_guides/otp_revision.html) for details.
 
 For signature checking, the following algorithms are supported:
 
-- RSA (2048 and 4096)
-- ECDSA (secp256 and secp521)
+- RSA 4096, on all K3 SoCs.
+- EC keys on AM62x, AM62Ax, AM62Px, AM64x and AM275. There is no public TI documentation on which curves are supported.
 
-Here are some instructions to create the keys. Be aware that this is just an example since you might want to define your own process to create and store the keys.
+This layer has been validated with RSA 4096 keys on Verdin AM62 and Aquila AM69. The supported key types above are based on the [TI Key Writer documentation](https://software-dl.ti.com/tisci/esd/latest/6_topic_user_guides/key_writer.html), which describes the keys that can be programmed as SMPK and BMPK.
+
+The steps below show one way to generate the keys with OpenSSL on the build host. Treat this as a development example — in production you will likely want a different process for creating and storing the keys (see the note on key storage at the end of this section).
 
 Export some variables to configure the location and the name of the keys:
 
@@ -69,17 +71,15 @@ $ mkdir -p "${KEYS_DIR}" && cd "${KEYS_DIR}"
 Create the SMPK key pair and certificate using RSA 4096:
 
 ```
-$ openssl genrsa -F4 -out ${SMPK_NAME}.key 4096
-$ cp ${SMPK_NAME}.key ${SMPK_NAME}.pem
-$ openssl req -batch -new -x509 -key ${SMPK_NAME}.key -out ${SMPK_NAME}.crt
+$ openssl genrsa -F4 -out ${SMPK_NAME}.pem 4096
+$ openssl req -batch -new -x509 -key ${SMPK_NAME}.pem -out ${SMPK_NAME}.crt
 ```
 
 Create the BMPK key pair and certificate using RSA 4096:
 
 ```
-$ openssl genrsa -F4 -out ${BMPK_NAME}.key 4096
-$ cp ${BMPK_NAME}.key ${BMPK_NAME}.pem
-$ openssl req -batch -new -x509 -key ${BMPK_NAME}.key -out ${BMPK_NAME}.crt
+$ openssl genrsa -F4 -out ${BMPK_NAME}.pem 4096
+$ openssl req -batch -new -x509 -key ${BMPK_NAME}.pem -out ${BMPK_NAME}.crt
 ```
 
 Additionally, a key called `ti-degenerate-key` needs to be created. This key is only used when building bootloader artifacts for GP (General Purpose) devices, and it is not used in the secure boot implementation, but needs to be there or the U-Boot build will fail:
@@ -94,7 +94,11 @@ To finish, remove write access to the keys and certificates:
 $ chmod a-w *
 ```
 
-### Signing bootloader artefacts
+**A note on key storage**: the example above stores the private signing keys directly on the build host filesystem. This is convenient for development, but in production it exposes the keys to anyone with access to the build machine (developers, CI runners, backups, container images, etc.), and a single compromise of the host is enough to leak the root of trust of every device signed with those keys.
+
+For production use, this layer supports HSM-backed signing through a PKCS#11 provider, so the private keys never leave the hardware token or HSM. See [README-secure-boot-hsm.md](README-secure-boot-hsm.md) for details.
+
+### Enabling and configuring bootloader signing
 
 When the `tdx-signed` class is inherited, signing bootloader images on K3-based platforms like AM62 is enabled by default.
 
@@ -102,8 +106,39 @@ A few variables can be used to configure its behavior:
 
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
-| `TDX_K3_HSSE_ENABLE` | Enable/disable secure boot support; allowed values: `0` or `1`. | `1` |
-| `TDX_K3_HSSE_KEY_DIR` | Location of the keys and certificates that will be used to sign the bootloader images. See the previous session for an example on how to create the keys. | `${TOPDIR}/keys/ti` |
+| `TDX_K3_SECBOOT_ENABLE` | Enable/disable secure boot support; allowed values: `0` or `1`. | `1` |
+| `TDX_K3_SECBOOT_KEY_DIR` | Location of the keys and certificates that will be used to sign the bootloader images. See the previous session for an example on how to create the keys. | `${TOPDIR}/keys/ti` |
+| `TDX_K3_SECBOOT_TARGET_HSSE_DEVICE` | Whether the build is targeting a HS-FS (`0` (development)) or HS-SE (`1` (production)) device. | `0` |
+| `TDX_K3_SUPPRESS_HSSE_WARNINGS` | Whether to suppress some warning messages about the type of device (HS-FS/HS-SE) that the generated image is targeted. | `0` |
+| `TDX_K3_SECBOOT_REPRODUCIBLE` | Whether to generate the signing certificates reproducibly, so that rebuilding the same sources produces byte-identical bootloader binaries; allowed values: `0` or `1`. | `0` |
+
+**NOTE**: Older versions of this layer provided variables `TDX_K3_HSSE_ENABLE` and `TDX_K3_HSSE_KEY_DIR` which are no longer available. The former has been replaced by `TDX_K3_SECBOOT_ENABLE` along with `TDX_K3_SECBOOT_TARGET_HSSE_DEVICE` and the latter by `TDX_K3_SECBOOT_KEY_DIR`.
+
+#### Signed artifacts and verification chain
+
+The K3 boot chain has three bootloader stages, and all three are signed with the SMPK when secure boot is enabled:
+
+- **`tiboot3.bin`** — first stage, containing the R5 SPL, the TI Foundational Security (TIFS) firmware and configuration data. It is wrapped in a TI-specific x509 certificate signed with the SMPK.
+- **`tispl.bin`** — second stage, a FIT image containing the A53 SPL, ATF (TF-A), OP-TEE and the DM firmware. Each sub-image is individually wrapped in a `ti-secure` x509 certificate signed with the SMPK.
+- **`u-boot.img`** — third stage, also a FIT image; the U-Boot proper payload inside it is wrapped in a `ti-secure` x509 certificate signed with the SMPK.
+
+The verification chain at boot is then:
+
+1. The boot ROM verifies `tiboot3.bin` against the SMPK hash fused into OTP.
+2. The R5 SPL (inside `tiboot3.bin`) loads `tispl.bin` and asks TIFS to verify each `ti-secure`-wrapped sub-image before using it.
+3. The A53 SPL (inside `tispl.bin`) loads `u-boot.img` and likewise asks TIFS to verify the `ti-secure`-wrapped U-Boot payload before jumping into it.
+
+On HS-SE devices, any image that fails verification — or that arrives without a `ti-secure` certificate at all — is rejected and the boot stops.
+
+#### Reproducible bootloader binaries
+
+By default, the signing step embeds a random serial number and a validity period based on the current time in every certificate it generates. Two builds of the same sources therefore produce different `tiboot3.bin`, `tispl.bin` and `u-boot.img`, even though nothing about the images has changed.
+
+Setting `TDX_K3_SECBOOT_REPRODUCIBLE = "1"` makes the certificates deterministic: the serial number is derived from the data being signed, and the validity period runs from `SOURCE_DATE_EPOCH` to the end of 2049. Rebuilding the same sources with the same keys then produces byte-identical bootloader binaries.
+
+The end date is not arbitrary: it is the latest one that X.509 encodes as `UTCTime`, and the boot ROM of the K3 SoCs cannot parse a certificate whose validity is encoded as `GeneralizedTime` - which is what any date from 2050 on requires. A device given such an image **does not boot at all**. Nothing in the boot flow checks whether the certificate has expired, so the date itself carries no meaning; only its encoding does (inferred from [AM6412: TI supports for tiboot3 certificates with validity beyond 2049](https://e2e.ti.com/support/processors-group/processors/f/processors-forum/1491915/am6412-ti-supports-for-tiboot3-certificates-with-validity-beyond-2049)).
+
+This is worth enabling if you re-sign bootloader binaries with your own keys, since it lets you verify a re-signed image by comparing it byte for byte against one produced by the build. It is off by default, so that a build only changes how its certificates are generated when it asks for it.
 
 ### Fusing the keys into the SoC
 
@@ -115,8 +150,31 @@ OTP Key Writer is a single firmware image that has three components:
 - A secure firmware encrypted and signed by TI (provided under NDA) that will run on the ARM Cortex M4 core, being responsible for writing to the fuses.
 - A firmware developed by the user that will run on the ARM Cortex R5 core, being responsible for parsing the certificate and sending messages to the secure firmware, so the keys and other information are written to the OTP fuses.
   
-Also, the VPP pin from the SoC requires 1.8v while programming OTP eFuses and should be floating when not programming. That means the hardware needs to be designed in a way that the state of the VPP pin can be controlled by the OTP Key Writer firmware (e.g. via GPIO pin).
+Also, the *VPP* pins from the SoC (*VPP* on AM62, *VPP_CORE* and *VPP_MCU* on AM69) require 1.8v while programming OTP eFuses and should be floating when not programming. That means the hardware needs to be designed in a way that the state of the *VPP* pins can be controlled by the OTP Key Writer firmware (e.g. via GPIO pin).
 
 The [OTP Keywriter Tutorial](https://dev.ti.com/tirex/explore/node?node=A__AagJ-8QGXM582KzTgxFZbA__AM62-ACADEMY__uiYMDcq__LATEST) provided by TI might help to understand how to implement the OTP KeyWriter software.
+Toradex also provides a [detailed guide to creating the Keywriter software](https://developer.toradex.com/torizon/security/secure-boot-on-am62/) for the AM62 on the developer docs portal.
 
 Additional documentation and sample code are provided by Texas Instruments, but only under NDA. It is recommended to get in touch with a TI Sales representative to get access to it.
+
+### Keywriting failure recovery
+
+As mentioned above, the *VPP* pins require 1.8v while programming. We are aware of reports from users performing key fusing at scale where some devices failed to fully write the keys to the OTP fuses, most likely due to inconsistent voltage on the VPP pins.
+
+In this case, the modules appeared to be in an unrecoverable state: the keys were _partially, but not fully_ written. Using the default Keywriter application a second time to attempt to finish the process was not successful. However, it is actually possible to recover and finish the keywriting process *in this particular failure mode*. The OTP fuses are protected from bits being flipped 1 to 0, but a bit that has not yet been programmed can, at the hardware level, still be programmed. However, to permit the keywriter application to use it, the certificate with the keys to be fused must have some extra override options added.
+
+If you need to recover a module from this partially-programmed state, you can add the following override options when generating the certificate:
+
+```
+--msv-ovrd -s-ovrd --smek-ovrd -b-ovrd --bmek-ovrd --keycnt-ovrd --keyrev-ovrd
+```
+
+For example, if your original certificate generation command was as follows:
+```
+$ ./gen_keywr_cert.sh -t tifek/ti_fek_public.pem --msv 0xC0FFE -a ~/keys/ti/aes256.key -s ~/keys/ti/custMpk.pem --smek ~/keys/ti/smek.key -b ~/keys/ti/backMpk.pem --bmek ~/keys/ti/bmek.key --keycnt 2 --keyrev 1
+```
+
+You would instead use:
+```
+./gen_keywr_cert.sh -t tifek/ti_fek_public.pem --msv 0xC0FFE --msv-ovrd -a ~/keys/ti/aes256.key -s ~/keys/ti/custMpk.pem -s-ovrd --smek ~/keys/ti/smek.key --smek-ovrd -b ~/keys/ti/backMpk.pem -b-ovrd --bmek ~/keys/ti/bmek.key --bmek-ovrd --keycnt 2 --keycnt-ovrd --keyrev 1 --keyrev-ovrd
+```

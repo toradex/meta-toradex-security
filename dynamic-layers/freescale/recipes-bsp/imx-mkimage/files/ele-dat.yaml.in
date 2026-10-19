@@ -1,0 +1,17 @@
+# Debug authentication (DAT) configuration for the NXP SPSDK tools (version 3.x)
+# to answer the debug challenge of the device with the debug credential created
+# from dc.yaml (dc.bin), signed with the debug credential key (DCK). The device
+# must be OEM closed.
+family: @FAMILY@
+revision: latest
+certificate: dc.bin
+srk_set: oem
+used_srk_id: @SRK_ID@
+signer: @DCK_KEY@
+srk_table:
+  flag_ca: @SRK_CA@
+  srk_array:
+    - @SRK_CERT_1@
+    - @SRK_CERT_2@
+    - @SRK_CERT_3@
+    - @SRK_CERT_4@

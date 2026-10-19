@@ -2,40 +2,107 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 inherit imx-hab
 
+# Need this for the create_fuse_cmds.sh script
+DEPENDS += "imx-fuses-native"
+
+# build CST binary from sources
+DEPENDS += "${@ 'imx-code-signing-tool-native' if d.getVar('TDX_IMX_HAB_CST_BUILD_FROM_SOURCE') == '1' else '' }"
+
 SRC_URI:append = "\
-    file://create_fuse_cmds.sh \
     file://mx8_sign.sh \
-    file://mx8_template.csf \
+    file://ahabv1_template.csf \
+    file://ahabv2_template.csf \
 "
 
+# The CSF header version selects the AHAB container format (1: legacy,
+# 2: hybrid) and it must match the format of the SRK table, which is chosen
+# when generating it with "srktool --ahab_ver".
+TDX_IMX_HAB_CST_TEMPLATE:mx8-generic-bsp = "ahabv1_template.csf"
+TDX_IMX_HAB_CST_TEMPLATE:mx9-generic-bsp = "ahabv2_template.csf"
+
+# The iMX93 hashes the SRK table with sha256, and srktool only produces such a
+# table in the legacy format (--ahab_ver 1), so this SoC requires the legacy
+# CSF header instead of the one used by the other iMX9x SoCs.
+TDX_IMX_HAB_CST_TEMPLATE:mx93-generic-bsp = "ahabv1_template.csf"
+
+# Sign the boot container and generate fuse-cmds.txt again when the PKI changes
+do_compile[file-checksums] += "${@tdx_imx_hab_pki_file_checksums(d)}"
+
+# SoC used to select the fuse map when generating the fusing commands. It
+# defaults to the imx-mkimage SoC target, which happens to name the SoC on most
+# platforms, but not on all of them (e.g. the target used by the iMX93 is "iMX9")
+TDX_IMX_HAB_FUSE_SOC = "${IMX_BOOT_SOC_TARGET}"
+TDX_IMX_HAB_FUSE_SOC:mx93-generic-bsp = "iMX93"
+
+require imx-boot-secure-debug.inc
+
+sign_ahab_image() {
+    local orig_image=$1
+    local dest_image=$2
+    local make_target=$3
+
+    local logfile=${WORKDIR}/mkimage-${make_target}.log
+
+    # re-generate image and save logs
+    make SOC=${IMX_BOOT_SOC_TARGET} ${REV_OPTION} dtbs=${UBOOT_DTB_NAME_EXTRA} \
+         ${MKIMAGE_EXTRA_ARGS} ${make_target} > ${logfile} 2>&1
+
+    # sign image
+    TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
+    TDX_IMX_HAB_CST_ARGS="${TDX_IMX_HAB_CST_ARGS}" \
+    TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
+    TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
+    TDX_IMX_HAB_CST_SGK_CERT="${TDX_IMX_HAB_CST_SGK_CERT}" \
+    TDX_IMX_HAB_CST_SGK_SUPP="${TDX_IMX_HAB_CST_SGK_SUPP}" \
+    TDX_IMX_HAB_CST_TEMPLATE="${TDX_IMX_HAB_CST_TEMPLATE}" \
+    TDX_IMX_HAB_CST_HSM="${TDX_SIGNED_HSM}" \
+    TDX_IMX_HAB_CST_SRK_CA="${TDX_IMX_HAB_CST_SRK_CA}" \
+    TDX_IMX_HAB_CST_SRK_INDEX="${TDX_IMX_HAB_CST_SRK_INDEX}" \
+    UNSIGNED_IMAGE="${orig_image}" \
+    LOG_MKIMAGE="${logfile}" \
+    ${WORKDIR}/mx8_sign.sh -t ${make_target}
+
+    # copy signed image
+    cp -v ${orig_image}-signed ${dest_image}
+}
+
 sign_ahab_helper() {
-    MKIMAGE_BUILD_LOG=${WORKDIR}/mkimage.log
-
+    # sign boot container
     for target in ${IMXBOOT_TARGETS}; do
-        IMXBOOT_IMAGE="${S}/${BOOT_CONFIG_MACHINE_EXTRA}-${target}"
+        local imgfile=""
 
-        # re-generate flash.bin and save logs
-        make SOC=${IMX_BOOT_SOC_TARGET} ${REV_OPTION} dtbs=${UBOOT_DTB_NAME_EXTRA} \
-             ${target} > ${MKIMAGE_BUILD_LOG} 2>&1
+        # On iMX9 SoCs, the u-boot-atf-container.img (holding ATF, U-Boot
+        # proper and, when enabled, OP-TEE) is generated separately and only
+        # appended to flash.bin afterwards. Since the signing script only signs
+        # the first container of a given image, this container must be signed
+        # on its own before the final boot container is assembled and signed,
+        # otherwise it would be left unauthenticated.
+        if [ "${IMX_BOOT_SOC_TARGET}" = "iMX9" ] || \
+           [ "${IMX_BOOT_SOC_TARGET}" = "iMX95" ]; then
+            local imgname="u-boot-atf-container.img"
+            imgfile="${BOOT_STAGING}/${imgname}"
 
-        # sign flash.bin
-        TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
-        TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
-        TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
-        TDX_IMX_HAB_CST_SGK_CERT="${TDX_IMX_HAB_CST_SGK_CERT}" \
-        UNSIGNED_IMAGE="${IMXBOOT_IMAGE}" \
-        LOG_MKIMAGE="${MKIMAGE_BUILD_LOG}" \
-        ${WORKDIR}/mx8_sign.sh -t ${target}
+            rm -rf "${imgfile}"
+            sign_ahab_image "${imgfile}" "${imgfile}" "${imgname}"
+        fi
 
-        # update flash.bin to signed image
-        cp -v ${IMXBOOT_IMAGE} ${IMXBOOT_IMAGE}-unsigned
-        cp -v ${IMXBOOT_IMAGE}-signed ${IMXBOOT_IMAGE}
-
-        # create fuse commands
-        ${WORKDIR}/create_fuse_cmds.sh \
-                  ${IMX_BOOT_SOC_TARGET} ${TDX_IMX_HAB_CST_SRK_FUSE} \
-                  ${WORKDIR}/fuse-cmds.txt
+        imgfile="${BOOT_STAGING}/flash.bin"
+        sign_ahab_image "${imgfile}" "${S}/${BOOT_CONFIG_MACHINE_EXTRA}-${target}" "${target}"
     done
+
+    # create fuse commands
+    TDX_IMX_HAB_CST_SRK_FUSE="${TDX_IMX_HAB_CST_SRK_FUSE}" \
+    TDX_SECURE_DEBUG_ENABLE="${TDX_SECURE_DEBUG_ENABLE_INTERNAL}" \
+    TDX_SECURE_DEBUG_MODE="${TDX_SECURE_DEBUG_MODE}" \
+    TDX_SECURE_DEBUG_KEY_FILE="${TDX_SECURE_DEBUG_KEY_FILE}" \
+    TDX_SECURE_DEBUG_TZ_KEY_FILE="${TDX_SECURE_DEBUG_TZ_KEY_FILE}" \
+    TDX_SECURE_DEBUG_SJC_DISABLE="${TDX_SECURE_DEBUG_SJC_DISABLE}" \
+    TDX_SECURE_DEBUG_ELE_JTAG_DISABLE="${TDX_SECURE_DEBUG_ELE_JTAG_DISABLE}" \
+    TDX_SECURE_DEBUG_FUSE_TEMPLATE="${TDX_SECURE_DEBUG_FUSE_TEMPLATE}" \
+    ${STAGING_BINDIR_NATIVE}/create_fuse_cmds.sh \
+        "${TDX_IMX_HAB_FUSE_SOC}" \
+        "${WORKDIR}/fuse-cmds.txt" \
+        "${RECIPE_SYSROOT_NATIVE}${datadir}/imx-fuses"
 }
 
 sign_habv4_helper() {
@@ -53,6 +120,28 @@ sign_common() {
 
     if [ ! -e "${TDX_IMX_HAB_CST_SRK_FUSE}" ]; then
         bberror "Could not find SRK fuse file '${TDX_IMX_HAB_CST_SRK_FUSE}'."
+        exit 1
+    fi
+
+    # show warning if CA flag is enabled but not supported
+    # when an HSM is used, the TDX_IMX_HAB_CST_SRK_CERT is actually a PKCS#11 URI and
+    # cannot be used to check if the CA flag is enabled, so in this case we use the
+    # TDX_IMX_HAB_CST_SRK_CA variable to check if CA is enabled
+    local ca_flag_warn=0
+    if [ "${TDX_SIGNED_HSM}" = "1" ]; then
+        if [ "${TDX_IMX_HAB_CST_SRK_CA}" = "1" ] && [ "${TDX_IMX_HAB_CST_SGK_SUPP}" = "0" ]; then
+            ca_flag_warn=1
+        fi
+    else
+        local srk_cert=${TDX_IMX_HAB_CST_SRK_CERT}
+        if [ "${srk_cert##*_ca_}" = "crt.pem" ] && [ "${TDX_IMX_HAB_CST_SGK_SUPP}" = "0" ]; then
+            ca_flag_warn=1
+        fi
+    fi
+    if [ "${ca_flag_warn}" = "1" ]; then
+        bbwarn "AHAB (Secure Boot) signing keys seem to have the CA flag enabled, but" \
+               "the build target [${MACHINE}] does not support the use of subordinate" \
+               "signing keys. Bootloader will be signed using SRK directly."
     fi
 
     # The basic structure of this comes from meta-freescale/imx-boot_*.bb:
@@ -78,7 +167,7 @@ sign_common() {
                     UBOOT_DTB_NAME_EXTRA="${dtb_name}"
                 fi
                 UBOOT_NAME_EXTRA="u-boot-${MACHINE}.bin-${UBOOT_CONFIG_EXTRA}"
-                BOOT_CONFIG_MACHINE_EXTRA="${BOOT_NAME}-${MACHINE}-${UBOOT_CONFIG_EXTRA}.bin"
+                BOOT_CONFIG_MACHINE_EXTRA="imx-boot-${MACHINE}-${UBOOT_CONFIG_EXTRA}.bin"
 
                 # Copy again artifacts for current U-Boot config to BOOT_STAGING
                 compile_${SOC_FAMILY}
@@ -118,9 +207,16 @@ do_compile:append:mx8x-generic-bsp() {
     sign_common ahab
 }
 
+do_compile:append:mx9-generic-bsp() {
+    sign_common ahab
+}
+
 do_deploy:append() {
     if [ -e ${WORKDIR}/fuse-cmds.txt ]; then
         install -d ${DEPLOYDIR}
         install -m 0644 ${WORKDIR}/fuse-cmds.txt ${DEPLOYDIR}
+        install -m 0644 ${WORKDIR}/imx-config.fuse ${DEPLOYDIR}
     fi
 }
+
+require ${@oe.utils.conditional('TDX_SIGNED_HSM', '1', 'imx-boot-hab-hsm.inc', '', d)}

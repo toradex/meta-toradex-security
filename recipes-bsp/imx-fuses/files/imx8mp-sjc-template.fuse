@@ -1,0 +1,7 @@
+# Secure JTAG mode is defeatured on this SoC (ERR052318), so the
+# JTAG_SMODE_SECURE and SJC_RESP_* rows are intentionally absent.
+H:T:SJC
+SJC:BOOT_CFG_LOCK_OP:0:0:0x00000008
+SJC:JTAG_SMODE_NODEBUG:1:3:0x00C00000
+SJC:SJC_DISABLE:1:3:0x00200000
+SJC:KTE:1:3:0x00100000

@@ -6,13 +6,21 @@ Encryption is currently supported on the following SoMs:
 
 - Apalis iMX6
 - Apalis iMX8
+- Aquila AM69
+- Aquila iMX95
 - Colibri iMX6DL
 - Colibri iMX6ULL (1GB eMMC variant only)
 - Colibri iMX7D (1GB eMMC variant only)
 - Colibri iMX8X
-- Verdin AM62 (requires the availability of a TPM)
+- Lino iMX93
+- OSM iMX93
+- SMARC iMX8MP
+- SMARC iMX95
+- Verdin AM62
+- Verdin AM62P
 - Verdin iMX8MM
 - Verdin iMX8MP
+- Verdin iMX95
 
 ## Data-at-rest encryption implementation
 
@@ -33,7 +41,11 @@ Trusted Keys make it possible to create and manage variable-length symmetric key
 
 Trusted Keys require the availability of a Trust Source for greater security. Different Trust Sources are supported, including CAAM (Cryptographic Acceleration and Assurance Module), TPM (Trusted Platform Module) and TEE (Trusted Execution Environment).
 
-This layer supports using CAAM and TPM as a source for managing the encryption key. CAAM is available on NXP iMX-based SoMs and TPM availability might depend on the selected SoM and carrier board.
+This layer supports using CAAM, TPM or TEE as a source for managing the encryption key.
+
+CAAM is NXP-specific IP, available on most NXP i.MX-based SoMs. One exception is i.MX6ULL, which does not include CAAM. Another exception is the i.MX9x family, such as i.MX93 and i.MX95, which relies on the EdgeLock Enclave (ELE) instead.
+
+On any SoM without CAAM, use the TEE backend (which requires OP-TEE to be enabled, see [README-optee.md](README-optee.md)) or the TPM backend. TPM availability might depend on the selected SoM and carrier board.
 
 ## Block device encryption
 
@@ -55,7 +67,7 @@ Also, it is mandatory to set the `TDX_ENC_STORAGE_LOCATION` variable to the disk
 TDX_ENC_STORAGE_LOCATION = "/dev/sdb1"
 ```
 
-The `TDX_ENC_KEY_BACKEND` variable can be used to configure the trust source for managing the encryption key. If you plan to use CAAM on NXP iMX-based SoMs, you don't have to configure this variable, as it is automatically configured with `caam`. If you plan to use a TPM, you need to configure it as in the example below:
+The `TDX_ENC_KEY_BACKEND` variable can be used to configure the trust source for managing the encryption key. If you plan to use CAAM (available on most NXP iMX-based SoMs), you don't have to configure this variable, as it is automatically configured with `caam`. If you plan to use a TPM or TEE as the backend, you need to configure it. For example, to use a TPM as the backend (i.e. trust source for the Trusted Keys subsystem):
 
 ```
 TDX_ENC_KEY_BACKEND:forcevariable = "tpm"
@@ -63,17 +75,51 @@ TDX_ENC_KEY_BACKEND:forcevariable = "tpm"
 
 Make sure to use the `forcevariable` override, so your configuration takes precedence over the default one.
 
-A few additional variables are available to customize the behavior of the data-at-rest encryption feature. Here is the complete list:
+A few additional variables are available to customize the behavior of the data-at-rest encryption feature. Here is list of the most important ones (for the full list refer to `tdx-encrypted.bbclass`):
 
 | Variable | Description | Default value |
 | :------- | :---------- | :------------ |
-| TDX_ENC_KEY_BACKEND | Backend used to manage the encryption key. Allowed values: `caam`, `tpm` or `cleartext`. If configured with `caam`, it will use Trusted Keys backed by the CAAM device (available on NXP iMX-based SoMs). If configured with `tpm`, it will use Trusted Keys backed by a TPM device (availability depends on the hardware). If configured with `cleartext`, the encryption key will be stored in clear text in the file system (use `cleartext` only for testing purposes!) | `caam` on iMX based SoMs, empty otherwise |
-| TDX_ENC_KEY_DIR | Directory to store the encryption key blob | `/var/local/private/.keys` |
-| TDX_ENC_KEY_FILE | File name of the encryption key blob | `tdx-enc-key.blob` |
-| TDX_ENC_STORAGE_LOCATION | Partition to be encrypted (e.g. `/dev/sdb1`) | Empty |
-| TDX_ENC_STORAGE_MOUNTPOINT | Directory to mount the encrypted partition | `/run/encdata` |
+| `TDX_ENC_KEY_BACKEND` | Backend used to manage the encryption key. Allowed values: `caam`, `tpm`, `tee` or `cleartext`. If configured with `caam`, it will use Trusted Keys backed by the CAAM device (available on NXP iMX-based SoMs). If configured with `tpm`, it will use Trusted Keys backed by a TPM device (availability depends on the hardware). If configured with `tee`, it will use Trusted Keys backed by a Trusted Execution Environment. If configured with `cleartext`, the encryption key will be stored in clear text in the file system (use `cleartext` only for testing purposes!) | `caam` on iMX6/7/8 based SoMs, empty otherwise |
+| `TDX_ENC_CIPHER` | Cipher preset for dm-crypt block device encryption. Allowed values: `aes-cbc` or `aes-xts`. See [Cipher selection](#cipher-selection) for details. | `aes-cbc` |
+| `TDX_ENC_KEY_LOCATION` | Location to store the encryption key blob. Allowed values: `filesystem` or `partition`. If configured with `filesystem`, the encryption key blob will be stored as a file in the filesystem (location defined by the `TDX_ENC_KEY_DIR` variable. If configured with `partition`, the encryption key blob will be stored in a block of the disk outside the dm-crypt partition (useful if the rootfs filesystem is read-only) | `filesystem` |
+| `TDX_ENC_KEY_DIR` | Directory to store the encryption key blob | `/var/local/private/.keys` |
+| `TDX_ENC_KEY_FILE` | File name of the encryption key blob | `tdx-enc-key.blob` |
+| `TDX_ENC_STORAGE_LOCATION` | Partition to be encrypted (e.g. `/dev/sdb1`) | Empty |
+| `TDX_ENC_STORAGE_RESERVE` | Number of blocks to reserve from the partition to be encrypted. Each block is 512-byte in size. Might be useful in case one needs a storage location to save data in raw mode, outside the dm-drypt partition. If `TDX_ENC_KEY_LOCATION` is set to `partition`, then the first reserved block is used to store the encryption key blob. | `0` |
+| `TDX_ENC_STORAGE_MOUNTPOINT` | Directory to mount the encrypted partition | `/run/encdata` |
+| `TDX_ENC_STORAGE_MKFS_ARGS` | Extra arguments to be passed to `mkfs.ext4` when creating the filesystem on the encrypted storage | Empty |
+| `TDX_ENC_STORAGE_MOUNT_ARGS` | Extra arguments to be passed to `mount` when mounting the filesystem on the encrypted storage | Empty |
 
-IMPORTANT: The script that mounts the encrypted partition runs early in the boot process, where not necessarily udev has run/settled. For that reason, it is recommended to use the name of the partition as assigned by the kernel (e.g. `/dev/sdb1`). If one wants to set a name that relies on udev rules then one must review the systemd dependencies of the service to ensure the name is available.
+IMPORTANT:
+
+- When using a SysVinit-based init system, the encryption handler script will execute at runlevel 30 during startup. If necessary, you can adjust the runlevel by creating an append file for the `tdx-enc-handler` recipe and overriding the `INITSCRIPT_PARAMS` variable.
+- When using systemd as the init system, the service that mounts the encrypted partition (`tdx-enc-handler.service`) runs early in the boot process, where not necessarily udev has run/settled. For that reason, it is recommended to use the name of the partition as assigned by the kernel (e.g. `/dev/sdb1`). If one wants to set a name that relies on udev rules then one must review the systemd dependencies of the service to ensure the name is available.
+- Similarly, the location where the encrypted key blob is stored must also be available to the to service; currently the service definition includes dependencies to ensure `/var` is available so that the default configuration works; if storing the key blob outside of `/var` one must review the service definition.
+
+## Cipher selection
+
+The `TDX_ENC_CIPHER` variable selects the dm-crypt cipher preset used when the encrypted mapping is created. 
+
+Two values are currently supported:
+
+| Value | Algorithm | Key size | IV mode |
+| :---- | :-------- | :------- | :------ |
+| `aes-cbc` | AES-CBC | 32-byte key (AES-256) | `plain` (sector number) |
+| `aes-xts` | AES-XTS | 64-byte volume key (XTS-AES-256; two 32-byte AES keys) | `plain64` |
+
+**`aes-cbc` is the default** and is kept for backward compatibility with existing deployments.
+
+**`aes-xts` is recommended for all new deployments.** XTS-AES is the industry-standard mode for storage encryption and avoids the pattern-leakage/watermarking weakness of CBC with a plain sector-number IV. To enable it:
+
+```
+TDX_ENC_CIPHER = "aes-xts"
+```
+
+> **WARNING**: Do not change `TDX_ENC_CIPHER` on a device that already contains data encrypted with the existing mapping. The new cipher configuration will not decrypt the existing ciphertext correctly. To migrate an existing device, back up the data, remove the existing encrypted state/key material used by this workflow, and allow the partition to be initialized again with the new setting.
+
+The dm-crypt subsystem uses the Linux kernel crypto API, so hardware-backed AES acceleration can be used transparently when the appropriate backend is available and loaded (e.g. CAAM on iMX based SoMs).
+
+On TI K3-based SoMs, this layer blacklists the `sa2ul` crypto driver, because its hardware offload does not work correctly when mounting a dm-crypt partition. Encryption on those SoMs therefore falls back to the kernel's CPU-based AES implementation.
 
 ## Notes on using CAAM
 
@@ -85,6 +131,10 @@ Be aware that, if you have a device with a partition encrypted with the test key
 
 To workaround this issue, you can manually remove the key blob, which is by default located at `/var/local/private/.keys/tdx-enc-key.blob`. After removing the key blob and rebooting the device, another key will be generated and the partition will be formatted and encrypted with the new key. As a consequence, you will lose any content on the partition previously encrypted with the test key.
 
+Alternatively, you can provide a script located at `/usr/sbin/encryption_allowed`, which will be used to trigger an `Encryption disabled by the user!` error and exit after initially mounting the partition (this will only occur if the partition has not already been encrypted). This could be used to check the system state, for example reading the SEC_BOOT eFuse (in the case of NXP iMX SoCs) and only enabling encryption once the OTPMK is used, thus avoiding issues when using the initial test key.
+
+NOTE: This user script must be owned and only writable by `root` (example Linux permission of 0755).
+
 ## Notes on using a TPM
 
 Before enabling the TPM backend, you need to make sure there is a TPM device available in the hardware and configured in the operating system. This usually involves enabling the device driver in the Linux kernel and adding a node in the device tree. Be aware that providing access to a TPM device is out of scope in this layer.
@@ -94,6 +144,24 @@ To confirm you have a TPM to be used as a Trust Source for managing the encrypti
 ```
 # ls -l /dev/tpm0
 ```
+
+If your hardware lacks a discrete TPM chip, you may want to consider using an fTPM (firmware-based TPM) running in OP-TEE. For additional details, please refer to the [fTPM session in the OP-TEE documentation](README-optee.md#ftpm-support-in-op-tee).
+
+When more than one TPM device is present (e.g. a discrete TPM and an OP-TEE fTPM), Linux exposes one device per TPM (e.g. `/dev/tpm0` and `/dev/tpm1`), and you may wonder which one the encryption key is bound to. This is **not configurable**: the kernel Trusted Keys subsystem always uses the TPM with the lowest index (`tpm0`), and there is no build-time or runtime option to select a different one. The only way to change which physical TPM manages the key is to change which one enumerates as `tpm0`, and this is determined by device driver probe order (e.g. the device tree), which is outside the scope of this layer. Make sure the TPM you intend to use comes up as `tpm0` before enabling the backend.
+
+The encryption key can only be unsealed by the same TPM that created it. This protects the encrypted data against offline attacks, such as removing the storage device and accessing it on another machine. Because the key blob is bound to a specific TPM, it cannot be migrated to another device. If the TPM is replaced or its owner hierarchy is cleared (e.g., via tpm2_clear), the key blob becomes unrecoverable and the encrypted partition must be reinitialized, resulting in data loss.
+
+In the current implementation, there is no support for an authorization policy (e.g., binding the key to the state of the boot chain). As a result, any code running on the device with sufficient access to the TPM can unseal the key, regardless of the boot state.
+
+Enabling secure boot mitigates this risk by ensuring that only authenticated and trusted software is executed, making it harder for an attacker to run arbitrary code with access to the TPM. However, without an authorization policy, a physical attacker could still attempt hardware-level attacks, such as removing the TPM device to extract secrets.
+
+Binding the key to Platform Configuration Registers (PCRs), thereby tying it to the measured boot chain, is planned for a future implementation.
+
+## Notes on using TEE
+
+Before enabling the TEE backend, ensure that a Trusted Execution Environment (such as OP-TEE) is properly configured and enabled on your platform.
+
+You can use this layer to add OP-TEE support on supported hardware platforms. For more details, refer to the ([README-optee.md](README-optee.md)) documentation.
 
 ## Encrypting a partition in the eMMC
 

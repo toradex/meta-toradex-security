@@ -1,16 +1,27 @@
 # globally enable signed images
-DISTROOVERRIDES:append = ":tdx-signed"
+DISTROOVERRIDES .= ":tdx-signed"
 
 # FIT image configuration
-require tdx-signed-fit-image.inc
+require include/signed/tdx-signed-fit-image.inc
 
-# IXM HAB configuration
+# NXP i.MX HAB configuration
 MACHINEOVERRIDES_EXTENDER ?= ""
-require ${@ 'tdx-signed-imx-hab.inc' if 'imx-generic-bsp' in d.getVar('MACHINEOVERRIDES_EXTENDER').split(':') else ''}
+require ${@ 'include/signed/tdx-signed-imx-hab.inc' if 'imx-generic-bsp' in d.getVar('MACHINEOVERRIDES_EXTENDER').split(':') else ''}
 
-# TI K3 HS-SE (High Security - Security Enforced) configuration
-require ${@ 'tdx-signed-k3-hs-se.inc' if 'k3r5' in d.getVar('OVERRIDES').split(':') else ''}
-require ${@ 'tdx-signed-k3-hs-se.inc' if 'k3' in d.getVar('OVERRIDES').split(':') else ''}
+# TI K3 secure boot configuration
+require ${@ 'include/signed/tdx-signed-k3-secboot.inc' if 'k3r5' in d.getVar('OVERRIDES').split(':') else ''}
+require ${@ 'include/signed/tdx-signed-k3-secboot.inc' if 'k3' in d.getVar('OVERRIDES').split(':') else ''}
 
-# Hardening configuration
-require tdx-signed-harden.inc
+# hardening configuration
+require include/signed/tdx-signed-harden.inc
+
+# HSM configuration
+TDX_SIGNED_HSM ?= "0"
+require ${@oe.utils.conditional('TDX_SIGNED_HSM', '1', 'include/signed/tdx-signed-hsm.inc', '', d)}
+
+# machine-specific fixups for the signed image
+include include/signed/machine/${MACHINE}.inc
+
+# signing class name (informational, may be displayed to users);
+# derived classes should override this
+TDX_SIGNING_CLASS = "tdx-signed"
