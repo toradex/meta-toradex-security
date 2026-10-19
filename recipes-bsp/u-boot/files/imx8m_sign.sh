@@ -9,16 +9,28 @@ UBOOT_SPL_DDR_BINARY="${UBOOT_SPL_DDR_BINARY:-u-boot-spl-ddr.bin}"
 UBOOT_DTB_BINARY="${UBOOT_DTB_BINARY:-u-boot.dtb.out}"
 UBOOT_CONTAINER_BINARY="${UBOOT_CONTAINER_BINARY:-flash.bin}"
 CSF_PREFIX="${CSF_PREFIX:-csf-for-}"
+LIBFAKETIME_PATH="${LIBFAKETIME_PATH}"
+TDX_IMX_HAB_CST_HSM="${TDX_IMX_HAB_CST_HSM:-0}"
+TDX_IMX_HAB_CST_SRK_CA="${TDX_IMX_HAB_CST_SRK_CA:-1}"
+TDX_IMX_HAB_CST_SRK_INDEX="${TDX_IMX_HAB_CST_SRK_INDEX:-1}"
 
+# Timestamp to be used by libfaketime. The date itself isn't important, but this needs
+# to be constant between builds in order to generate deterministic CSF binaries
+# Default value is: November 6, 2024 (12:00 PM UTC)
+FAKETIME=${FAKETIME:-1730894400}
+
+# shellcheck disable=SC2155
 readonly FILE_SCRIPT="$(basename "$0")"
+# shellcheck disable=SC2155
 readonly DIR_SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 readonly CSF_SPL="${CSF_PREFIX}spl"
 readonly CSF_FIT="${CSF_PREFIX}fit"
 
 error() {
-    echo "***"
+    echo "***" >&2
     echo " ERROR: ${1}" >&2
-    echo "***"
+    echo "***" >&2
+    exit 1
 }
 
 help() {
@@ -41,6 +53,15 @@ help() {
     echo
     echo " Optional environment variables:"
     echo
+    echo "    TDX_IMX_HAB_CST_ARGS      Additional parameters to be passed to the CST tool"
+    echo "    TDX_IMX_HAB_CST_HSM       Enable usage of HSM (via PKCS11) when set to 1"
+    echo "                              default: 0"
+    echo "    TDX_IMX_HAB_CST_SRK_CA    Whether or not the SRK certificates have the CA flag"
+    echo "                              Only used when HSM is enabled (TDX_IMX_HAB_CST_HSM=1)"
+    echo "                              default: 1"
+    echo "    TDX_IMX_HAB_CST_SRK_INDEX Index of the SRK to be used for signing (1..4)"
+    echo "                              Only used when HSM is enabled (TDX_IMX_HAB_CST_HSM=1)"
+    echo "                              default: 1"
     echo "    UBOOT_SPL_DDR_BINARY      Name of binary containing SPL plus DDR FW"
     echo "                              default: u-boot-spl-ddr.bin"
     echo "    UBOOT_DTB_BINARY          Name of binary containing U-Boot DTB plus data filled in by BINMAN"
@@ -49,6 +70,8 @@ help() {
     echo "                              default: flash.bin"
     echo "    CSF_PREFIX                Prefix for CSF files to be produced"
     echo "                              default: csf-for-"
+    echo "    LIBFAKETIME_PATH          Path to libfaketime library (needed for reproducible CSF binary builds)"
+    echo "                              default: unset"
     echo
     echo " Optional switches:"
     echo "    -h --help            display this Help message"
@@ -76,11 +99,9 @@ check_fileref() {
     local varname="${2?variable name expected}"
     if [ -z "${file}" ]; then
         error "Please set environment variable '${varname}'"
-        help
     fi
     if [ ! -f "${file}" ]; then
         error "Could not find '${file}' referenced by variable ${varname} (CWD=$(pwd))"
-        exit 1
     fi
     echo "Verified ${varname}=${file}"
 }
@@ -89,15 +110,28 @@ check_fileref() {
 validate_environ() {
     check_fileref "${TDX_IMX_HAB_CST_BIN}" "TDX_IMX_HAB_CST_BIN"
     check_fileref "${TDX_IMX_HAB_CST_SRK}" "TDX_IMX_HAB_CST_SRK"
-    check_fileref "${TDX_IMX_HAB_CST_SRK_CERT}" "TDX_IMX_HAB_CST_SRK_CERT"
-    if [ "${TDX_IMX_HAB_CST_SRK_CERT##*_ca_}" = "crt.pem" ]; then
-        check_fileref "${TDX_IMX_HAB_CST_CSF_CERT}" "TDX_IMX_HAB_CST_CSF_CERT"
-        check_fileref "${TDX_IMX_HAB_CST_IMG_CERT}" "TDX_IMX_HAB_CST_IMG_CERT"
+
+    # Only check certificates if HSM is disabled (when HSM is used, these
+    # variables are actually PKCS11 URIs)
+    if [ "${TDX_IMX_HAB_CST_HSM}" = 0 ]; then
+        check_fileref "${TDX_IMX_HAB_CST_SRK_CERT}" "TDX_IMX_HAB_CST_SRK_CERT"
+        if [ "${TDX_IMX_HAB_CST_SRK_CERT##*_ca_}" = "crt.pem" ]; then
+            check_fileref "${TDX_IMX_HAB_CST_CSF_CERT}" "TDX_IMX_HAB_CST_CSF_CERT"
+            check_fileref "${TDX_IMX_HAB_CST_IMG_CERT}" "TDX_IMX_HAB_CST_IMG_CERT"
+        fi
     fi
 
     check_fileref "${UBOOT_SPL_DDR_BINARY}" "UBOOT_SPL_DDR_BINARY"
     check_fileref "${UBOOT_DTB_BINARY}" "UBOOT_DTB_BINARY"
     check_fileref "${UBOOT_CONTAINER_BINARY}" "UBOOT_CONTAINER_BINARY"
+
+    # Add "-b pkcs11" if HSM is enabled and it's not already present
+    if [ "${TDX_IMX_HAB_CST_HSM}" = 1 ]; then
+        case " ${TDX_IMX_HAB_CST_ARGS} " in
+            *" -b pkcs11 "*) ;;
+            *) TDX_IMX_HAB_CST_ARGS="${TDX_IMX_HAB_CST_ARGS} -b pkcs11" ;;
+        esac
+    fi
 }
 
 # Generate a CSF text file (to be used as input to the CST tool) based on a
@@ -114,18 +148,22 @@ generate_csf_common() {
     echo "Creating CSF file: ${image_csf}"
     cp "${DIR_SCRIPT}/imx8m_template.csf" "${image_csf}"
 
-    # Determine key index (use file name):
+    # Determine key index
     local kidx
-    kidx=${TDX_IMX_HAB_CST_SRK_CERT##*/}
-    kidx=${kidx##SRK}
-    kidx=${kidx%%_*}
+    if [ "${TDX_IMX_HAB_CST_HSM}" = 1 ]; then
+        kidx=${TDX_IMX_HAB_CST_SRK_INDEX}
+    else
+        kidx=${TDX_IMX_HAB_CST_SRK_CERT##*/}
+        kidx=${kidx##SRK}
+        kidx=${kidx%%_*}
+    fi
+
     if [ "${#kidx}" != 1 ]; then
         echo "Certificate file name (defined by TDX_IMX_HAB_CST_SRK_CERT) does" \
              "not match expected pattern - could not determine SRK key index."
         exit 1
     fi
 
-    # TODO: Test signing with indices other than 1.
     if [ "${kidx}" -ge 1 ] && [ "${kidx}" -le 4 ]; then
         echo "Using SRK${kidx} for signing."
     else
@@ -136,7 +174,9 @@ generate_csf_common() {
 
     # Determine whether or not the CA flag was set:
     local ca
-    if [ "${TDX_IMX_HAB_CST_SRK_CERT##*_ca_}" = "crt.pem" ]; then
+    if [ "${TDX_IMX_HAB_CST_HSM}" = 1 ]; then
+        ca=${TDX_IMX_HAB_CST_SRK_CA}
+    elif [ "${TDX_IMX_HAB_CST_SRK_CERT##*_ca_}" = "crt.pem" ]; then
         ca=1
     elif [ "${TDX_IMX_HAB_CST_SRK_CERT##*_usr_}" = "crt.pem" ]; then
         ca=0
@@ -209,7 +249,15 @@ generate_spl_csf_and_update_container() {
     sed -i "/Blocks = / s@.*@    Blocks = ${spl_block_base} 0x0 ${spl_block_size} \"${UBOOT_CONTAINER_BINARY}\"@" "${CSF_SPL}.csf"
 
     # Generate CSF blob:
-    "${TDX_IMX_HAB_CST_BIN}" -i "${CSF_SPL}.csf" -o "${CSF_SPL}.bin" > "${CSF_SPL}.log" 2>&1
+    if ! env ${LIBFAKETIME_PATH+LD_PRELOAD="${LIBFAKETIME_PATH}"
+                                FAKETIME_FMT="%s"
+                                FAKETIME="@${FAKETIME}"} \
+             "${TDX_IMX_HAB_CST_BIN}" ${TDX_IMX_HAB_CST_ARGS} -i "${CSF_SPL}.csf" -o "${CSF_SPL}.bin" > "${CSF_SPL}.log" 2>&1
+    then
+        echo "CST execution log:" >&2
+        cat "${CSF_SPL}.log" | sed 's@^@|@' >&2
+        error "CST failed to execute; please check logs."
+    fi
     cat "${CSF_SPL}.log"
 
     # Patch CSF blob into flash.bin:
@@ -274,7 +322,15 @@ generate_fit_csf_and_update_container() {
     dd if=ivt.bin of="${UBOOT_CONTAINER_BINARY}" bs=1 seek=${ivt_block_offset} conv=notrunc
 
     # Generate CSF blob:
-    "${TDX_IMX_HAB_CST_BIN}" -i "${CSF_FIT}.csf" -o "${CSF_FIT}.bin" > "${CSF_FIT}.log" 2>&1
+    if ! env ${LIBFAKETIME_PATH+LD_PRELOAD="${LIBFAKETIME_PATH}"
+                                FAKETIME_FMT="%s"
+                                FAKETIME="@${FAKETIME}"} \
+             "${TDX_IMX_HAB_CST_BIN}" ${TDX_IMX_HAB_CST_ARGS} -i "${CSF_FIT}.csf" -o "${CSF_FIT}.bin" > "${CSF_FIT}.log" 2>&1
+    then
+        echo "CST execution log:" >&2
+        cat "${CSF_FIT}.log" | sed 's@^@|@' >&2
+        error "CST failed to execute; please check logs."
+    fi
     cat "${CSF_FIT}.log"
 
     # Comment from doc/imx/habv4/csf_examples/mx8m/csf.sh:

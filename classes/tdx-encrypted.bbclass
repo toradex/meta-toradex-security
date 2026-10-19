@@ -1,16 +1,35 @@
-# Enable encryption support
-TDX_ENC_ENABLE = "1"
+# override for conditional assignment
+DISTROOVERRIDES .= ":tdx-encrypted"
 
 # Encryption key backend
 # This variable defines how the encryption key is managed
 # Available options:
 #    cleartext -> key is stored in clear text (for testing purposes only!)
-#    caam      -> use CAAM (available only on iMX based SoMs)
+#    caam      -> use CAAM (available only on iMX6/7/8 based SoMs)
 #    tpm       -> use TPM (Trusted Platform Module)
+#    tee       -> use TEE (Trusted Execution Environment)
 TDX_ENC_KEY_BACKEND ?= ""
-TDX_ENC_KEY_BACKEND:imx-generic-bsp ?= "caam"
+TDX_ENC_KEY_BACKEND:mx6-generic-bsp ?= "caam"
+TDX_ENC_KEY_BACKEND:mx7-generic-bsp ?= "caam"
+TDX_ENC_KEY_BACKEND:mx8-generic-bsp ?= "caam"
+
+# Encryption cipher preset
+# This variable selects the dm-crypt cipher preset (algorithm, key size and IV mode)
+# WARNING: changing this on an already-encrypted device will make data unrecoverable
+# Available options:
+#    aes-cbc -> AES-CBC with plain IV  (default, kept for backward compatibility)
+#    aes-xts -> AES-XTS with plain64 IV (recommended for new deployments)
+TDX_ENC_CIPHER ?= "aes-cbc"
+
+# Encryption key blob location
+# This variable defines where the encrypted key will be stored
+# Available options:
+#    filesystem -> encrypted key blob is stored as a file in the filesystem
+#    partition  -> encrypted key blob is stored in a block of the disk outside the dm-crypt partition
+TDX_ENC_KEY_LOCATION ?= "filesystem"
 
 # directory to store the encryption key blob
+# required if the encryption key location is the filesystem
 TDX_ENC_KEY_DIR ?= "/var/local/private/.keys"
 
 # encryption key blob file name
@@ -25,8 +44,20 @@ TDX_ENC_STORAGE_TYPE ?= "partition"
 # Partition to be encrypted (e.g. /dev/sda1)
 TDX_ENC_STORAGE_LOCATION ?= ""
 
+# Number of blocks to reserve from the partition to be encrypted
+# Useful in case one needs a storage location to save data in raw
+# mode, outside the dm-drypt partition
+TDX_ENC_STORAGE_RESERVE ?= "0"
+
 # Defines where the encrypted storage will be mounted
 TDX_ENC_STORAGE_MOUNTPOINT ?= "/run/encdata"
+
+# Extra arguments passed to "mkfs" when creating the filesystem on top
+# of the encrypted storage
+TDX_ENC_STORAGE_MKFS_ARGS ?= ""
+
+# Extra arguments passed to "mount" when mounting the encrypted storage
+TDX_ENC_STORAGE_MOUNT_ARGS ?= ""
 
 # Enables preservation of existing data on encrypted device
 TDX_ENC_PRESERVE_DATA ?= "0"
@@ -44,11 +75,16 @@ python validate_enc_parameters() {
     key_backend = e.data.getVar('TDX_ENC_KEY_BACKEND')
     if key_backend == "":
         bb.fatal("Please set key backend provider via TDX_ENC_KEY_BACKEND.")
-    supported_key_backends = ['cleartext','caam','tpm']
+    supported_key_backends = ['cleartext','caam','tpm','tee']
     if key_backend not in supported_key_backends:
         bb.fatal("'%s' is invalid. Please set a valid key backend provider via TDX_ENC_KEY_BACKEND." % key_backend)
 
     storage_location = e.data.getVar('TDX_ENC_STORAGE_LOCATION')
     if storage_location == "":
         bb.fatal("Please set storage to be encrypted via TDX_ENC_STORAGE_LOCATION.")
+
+    cipher = e.data.getVar('TDX_ENC_CIPHER')
+    supported_ciphers = ['aes-cbc', 'aes-xts']
+    if cipher not in supported_ciphers:
+        bb.fatal("'%s' is invalid. Please set a valid cipher algorithm via TDX_ENC_CIPHER. Supported: %s" % (cipher, ', '.join(supported_ciphers)))
 }

@@ -5,7 +5,19 @@
 # backend used to manage the encryption key
 TDX_ENC_KEY_BACKEND="@@TDX_ENC_KEY_BACKEND@@"
 
-# directory to store CAAM encrypted key
+# cipher preset
+TDX_ENC_CIPHER="@@TDX_ENC_CIPHER@@"
+
+# dm-crypt cipher specification (initialized at runtime)
+TDX_ENC_CIPHER_SPEC=""
+
+# encryption key size in bytes (initialized at runtime)
+TDX_ENC_KEY_SIZE=""
+
+# encryption key location
+TDX_ENC_KEY_LOCATION="@@TDX_ENC_KEY_LOCATION@@"
+
+# directory to store encrypted key
 TDX_ENC_KEY_DIR="@@TDX_ENC_KEY_DIR@@"
 
 # key file name
@@ -14,13 +26,29 @@ TDX_ENC_KEY_FILE="@@TDX_ENC_KEY_FILE@@"
 # storage location to be encrypted (e.g. partition)
 TDX_ENC_STORAGE_LOCATION="@@TDX_ENC_STORAGE_LOCATION@@"
 
+# Number of blocks to reserve from the partition to be encrypted
+# Useful in case one needs a storage location to save data in raw
+# mode, outside the dm-drypt partition
+TDX_ENC_STORAGE_RESERVE="@@TDX_ENC_STORAGE_RESERVE@@"
+
+# number of blocks in the storage to be encrypted by dm-crypt
+# depends on the size of the partition and the number of blocks
+# reserved (see TDX_ENC_STORAGE_RESERVE), initialized at runtime
+TDX_ENC_STORAGE_NUM_BLOCKS=""
+
 # directory to mount the encrypted storage
 TDX_ENC_STORAGE_MOUNTPOINT="@@TDX_ENC_STORAGE_MOUNTPOINT@@"
+
+# extra arguments to mkfs; used when running mkfs on the encrypted storage
+TDX_ENC_STORAGE_MKFS_ARGS="@@TDX_ENC_STORAGE_MKFS_ARGS@@"
+
+# extra arguments to mount; used when mounting the fs stored on the encrypted storage
+TDX_ENC_STORAGE_MOUNT_ARGS="@@TDX_ENC_STORAGE_MOUNT_ARGS@@"
 
 # dm-crypt device to be created
 TDX_ENC_DM_DEVICE="encdata"
 
-# Flag to enable preservation of data on partition before encryption
+# flag to enable preservation of data on partition before encryption
 TDX_ENC_PRESERVE_DATA=@@TDX_ENC_PRESERVE_DATA@@
 
 # storage location of data backup file (if needed)
@@ -49,6 +77,24 @@ tdx_enc_exit_error() {
     exit 1
 }
 
+# setup dm-crypt cipher spec and key size
+tdx_enc_cipher_configure() {
+    case "${TDX_ENC_CIPHER}" in
+        aes-cbc)
+            TDX_ENC_CIPHER_SPEC="cbc(aes)-plain"
+            TDX_ENC_KEY_SIZE="32"
+            ;;
+        aes-xts)
+            TDX_ENC_CIPHER_SPEC="xts(aes)-plain64"
+            TDX_ENC_KEY_SIZE="64"
+            ;;
+        *)
+            tdx_enc_exit_error "Unsupported cipher preset '${TDX_ENC_CIPHER}'!"
+            ;;
+    esac
+    tdx_enc_log "Cipher: ${TDX_ENC_CIPHER} (${TDX_ENC_CIPHER_SPEC}, key=${TDX_ENC_KEY_SIZE} bytes)"
+}
+
 # All backends: prepare and check system
 tdx_enc_prepare_generic() {
     tdx_enc_log "Preparing and checking system (generic)..."
@@ -59,6 +105,32 @@ tdx_enc_prepare_generic() {
 
     if ! dmsetup targets | grep crypt -q; then
         tdx_enc_exit_error "No support for dm-crypt target!"
+    fi
+
+    TDX_ENC_STORAGE_NUM_BLOCKS=$(blockdev --getsz ${TDX_ENC_STORAGE_LOCATION})
+    if [ "${TDX_ENC_KEY_LOCATION}" = "partition" ] && [ "${TDX_ENC_STORAGE_RESERVE}" = "0" ]; then
+        if [ "${TDX_ENC_CIPHER}" = "aes-cbc" ]; then
+            TDX_ENC_STORAGE_RESERVE="1"
+        else
+            TDX_ENC_STORAGE_RESERVE="4"
+        fi
+    fi
+
+    if [ "${TDX_ENC_KEY_LOCATION}" = "partition" ] && [ "${TDX_ENC_CIPHER}" = "aes-xts" ]; then
+        if [ "${TDX_ENC_STORAGE_RESERVE}" -lt 2 ]; then
+            tdx_enc_exit_error "TDX_ENC_STORAGE_RESERVE must be at least 2 when using aes-xts with partition key location!"
+        fi
+    fi
+
+    TDX_ENC_STORAGE_NUM_BLOCKS=$((TDX_ENC_STORAGE_NUM_BLOCKS - TDX_ENC_STORAGE_RESERVE))
+
+    tdx_enc_log "Blocks to be encrypted: $TDX_ENC_STORAGE_NUM_BLOCKS..."
+    tdx_enc_log "Reserved blocks: $TDX_ENC_STORAGE_RESERVE..."
+
+    if [ "${TDX_ENC_KEY_LOCATION}" = "partition" ]; then
+        TDX_ENC_KEY_DIR="/tmp"
+        TDX_ENC_KEY_FULLPATH="${TDX_ENC_KEY_DIR}/${TDX_ENC_KEY_FILE}"
+        tdx_enc_key_recover_from_partition
     fi
 }
 
@@ -73,10 +145,6 @@ tdx_enc_prepare_caam() {
 
     if ! modprobe trusted source=caam; then
         tdx_enc_exit_error "Error loading trusted module!"
-    fi
-
-    if ! grep -q cbc-aes-caam /proc/crypto; then
-        tdx_enc_exit_error "No support for cbc-aes-caam!"
     fi
 }
 
@@ -97,6 +165,85 @@ tdx_enc_prepare_tpm() {
     fi
 }
 
+# TEE: prepare system
+tdx_enc_prepare_tee() {
+    tdx_enc_log "Preparing and checking system (tee)..."
+
+    if [ ! -c /dev/tee0 ]; then
+        tdx_enc_exit_error "TEE device node not found!"
+    fi
+
+    if ! pgrep "tee-supplicant" > /dev/null; then
+        tdx_enc_exit_error "TEE supplicant daemon not running!"
+    fi
+
+    if ! modprobe trusted source=tee; then
+        tdx_enc_exit_error "Error loading trusted module!"
+    fi
+}
+
+tdx_enc_key_recover_from_partition() {
+    tdx_enc_log "Recovering encrypted key blob from partition ${TDX_ENC_STORAGE_LOCATION}..."
+
+    rm -rf $TDX_ENC_KEY_FULLPATH
+
+    STORAGE_KEY_BLOCK_DATA=$(mktemp /tmp/tdx-enc.XXXXXXXXXX)
+    if ! dd if=${TDX_ENC_STORAGE_LOCATION} of=${STORAGE_KEY_BLOCK_DATA} skip=${TDX_ENC_STORAGE_NUM_BLOCKS} bs=512 count=${TDX_ENC_STORAGE_RESERVE}; then
+        rm -f "${STORAGE_KEY_BLOCK_DATA}"
+        tdx_enc_exit_error "Could not read block from ${TDX_ENC_STORAGE_LOCATION} with key information!"
+    fi
+
+    EOT=$(printf '\004')
+    while read -r line; do
+        echo "$line" | grep -q "$EOT" && break
+        key=$(echo "$line" | cut -d'=' -f1)
+        val=$(echo "$line" | cut -d'=' -f2)
+        case "$key" in
+            "keyname") keyname="${val}" ;;
+            "keydata") keydata="${val}" ;;
+            "keycsum") keycsum="${val}" ;;
+        esac
+    done < ${STORAGE_KEY_BLOCK_DATA}
+    rm -f "${STORAGE_KEY_BLOCK_DATA}"
+
+    if [ "${keyname}" != "${TDX_ENC_KEY_KEYRING_NAME}" ]; then
+        tdx_enc_log "Invalid key name! A new key will be created."
+        return 1
+    fi
+
+    if [ -z "${keydata}" ]; then
+        tdx_enc_log "Invalid key data! A new key will be created."
+        return 1
+    fi
+
+    csum=$(printf "%s" "${keydata}" | sha256sum | cut -d' ' -f1)
+    if [ "${csum}" != "${keycsum}" ]; then
+        tdx_enc_log "Invalid checksum! A new key will be created."
+        return 1
+    fi
+
+    echo "${keydata}" > ${TDX_ENC_KEY_FULLPATH}
+    tdx_enc_log "Encrypted key blob successfully recovered from partition."
+}
+
+tdx_enc_key_save_to_partition() {
+    tdx_enc_log "Saving encrypted key to partition ${TDX_ENC_STORAGE_LOCATION}..."
+
+    STORAGE_KEY_BLOCK_DATA=$(mktemp /tmp/tdx-enc.XXXXXXXXXX)
+    {
+        echo "keyname=${TDX_ENC_KEY_KEYRING_NAME}"
+        echo "keydata=$(cat ${TDX_ENC_KEY_FULLPATH})"
+        echo "keycsum=$(sha256sum ${TDX_ENC_KEY_FULLPATH} | cut -d' ' -f1)"
+        printf "\04"
+    } > ${STORAGE_KEY_BLOCK_DATA}
+
+    if ! dd if=${STORAGE_KEY_BLOCK_DATA} of=${TDX_ENC_STORAGE_LOCATION} seek=${TDX_ENC_STORAGE_NUM_BLOCKS} bs=512; then
+        rm -f "${STORAGE_KEY_BLOCK_DATA}"
+        tdx_enc_exit_error "Could not save encrypted key to partition ${TDX_ENC_STORAGE_LOCATION}!"
+    fi
+    rm -f "${STORAGE_KEY_BLOCK_DATA}"
+}
+
 # configure key in kernel keyring
 tdx_enc_keyring_configure() {
     TDX_ENC_KEY_KEYRING_TYPE="$1"
@@ -106,16 +253,28 @@ tdx_enc_keyring_configure() {
 
     tdx_enc_log "Configuring key in kernel keyring (type=$TDX_ENC_KEY_KEYRING_TYPE keyname=$KEYNAME)..."
 
+    keyctl new_session ${KEYNAME}_session
+
     if [ ! -e "${TDX_ENC_KEY_FULLPATH}" ]; then
         tdx_enc_log "Key blob not found. Creating it..."
         KEYHANDLE="$(keyctl add "${TDX_ENC_KEY_KEYRING_TYPE}" "${KEYNAME}" "$(eval echo ${NEW_KEY_CMD})" @s)"
         mkdir -p "${TDX_ENC_KEY_DIR}"
-        if ! keyctl pipe "$KEYHANDLE" > "${TDX_ENC_KEY_FULLPATH}"; then
+        TDX_ENC_KEY_TMPPATH=$(mktemp "${TDX_ENC_KEY_DIR}/tdx-enc.XXXXXXXXXX")
+        if ! keyctl pipe "$KEYHANDLE" > "${TDX_ENC_KEY_TMPPATH}"; then
+            rm -f "${TDX_ENC_KEY_TMPPATH}"
             tdx_enc_exit_error "Error saving key blob!"
+        fi
+        mv "${TDX_ENC_KEY_TMPPATH}" "${TDX_ENC_KEY_FULLPATH}"
+        if [ "${TDX_ENC_KEY_LOCATION}" = "partition" ]; then
+            tdx_enc_key_save_to_partition
+            rm -f "${TDX_ENC_KEY_FULLPATH}"
         fi
     else
         tdx_enc_log "Encrypted key exists. Importing it..."
         keyctl add "${TDX_ENC_KEY_KEYRING_TYPE}" "${KEYNAME}" "$(eval echo ${LOAD_KEY_CMD})" @s
+        if [ "${TDX_ENC_KEY_LOCATION}" = "partition" ]; then
+            rm -f "${TDX_ENC_KEY_FULLPATH}"
+        fi
     fi
 
     if ! keyctl list @s | grep -q "${TDX_ENC_KEY_KEYRING_TYPE}: ${KEYNAME}"; then
@@ -124,22 +283,24 @@ tdx_enc_keyring_configure() {
 }
 
 # CLEARTEXT: generate/load key
-# the key is generated by using the SoM serial number and no salt,
-# so it is reproducible and doesn't need to be stored in a
-# persistent storage device. This is very insecure, but we
-# don't care about it, since the 'cleartext' backend is only
-# for testing purposes.
+# the key is derived from the SoM serial number with no salt, so it
+# is reproducible and is derived again on every boot. It is still
+# saved in clear text to the key location, like the key blobs of the
+# other backends. This is very insecure, but we don't care about it,
+# since the 'cleartext' backend is only for testing purposes.
 tdx_enc_key_gen_cleartext() {
     tdx_enc_log "Setting up encryption key for cleartext backend..."
     SN=$(cat /sys/firmware/devicetree/base/serial-number)
-    KEY=$(openssl enc -pbkdf2 -aes-128-ecb -nosalt -k "${SN}" -P | cut -d'=' -f 2)
+    # the key is the hex string of the derived key, so the derived
+    # key must have half of TDX_ENC_KEY_SIZE bytes
+    KEY=$(openssl enc -pbkdf2 -aes-$((TDX_ENC_KEY_SIZE * 4))-ecb -nosalt -k "${SN}" -P | cut -d'=' -f 2)
     tdx_enc_keyring_configure "user" "${TDX_ENC_KEY_KEYRING_NAME}" "${KEY}" "${KEY}"
 }
 
 # CAAM: generate/load key
 tdx_enc_key_gen_caam() {
     tdx_enc_log "Setting up encryption key for CAAM backend..."
-    tdx_enc_keyring_configure "trusted" "${TDX_ENC_KEY_KEYRING_NAME}" "new 32" "load \$(cat ${TDX_ENC_KEY_FULLPATH})"
+    tdx_enc_keyring_configure "trusted" "${TDX_ENC_KEY_KEYRING_NAME}" "new ${TDX_ENC_KEY_SIZE}" "load \$(cat ${TDX_ENC_KEY_FULLPATH})"
 }
 
 # TPM: generate/load key
@@ -147,33 +308,58 @@ tdx_enc_key_gen_tpm() {
     tdx_enc_log "Setting up encryption key for TPM backend..."
 
     if [ ! -e "${TDX_ENC_KEY_FULLPATH}" ]; then
+        TPM_KEY_CTXT=$(mktemp /tmp/tdx-enc.XXXXXXXXXX)
 
         # create a private RSA key in the TPM
-        if ! tpm2_createprimary -C o -G rsa2048 -c /tmp/key.ctxt; then
+        if ! tpm2_createprimary -C o -G rsa2048 -c "${TPM_KEY_CTXT}"; then
+            rm -f "${TPM_KEY_CTXT}"
             tdx_enc_exit_error "Error creating a private RSA key in the TPM!"
         fi
 
         # make the key persistent
-        TPMKEYHANDLE=$(tpm2_evictcontrol -C o -c /tmp/key.ctxt | grep persistent-handle | cut -d' ' -f 2)
+        TPMKEYHANDLE=$(tpm2_evictcontrol -C o -c "${TPM_KEY_CTXT}" | grep persistent-handle | cut -d' ' -f 2)
+        rm -f "${TPM_KEY_CTXT}"
         if [ -z "$TPMKEYHANDLE" ]; then
             tdx_enc_exit_error "Error making the TPM key persistent!"
         fi
     fi
 
     tdx_enc_keyring_configure "trusted" "${TDX_ENC_KEY_KEYRING_NAME}" \
-                              "new 32 keyhandle=$TPMKEYHANDLE" \
+                              "new ${TDX_ENC_KEY_SIZE} keyhandle=$TPMKEYHANDLE" \
                               "load \$(cat ${TDX_ENC_KEY_FULLPATH})"
+}
+
+# TEE: generate/load key
+tdx_enc_key_gen_tee() {
+    tdx_enc_log "Setting up encryption key for TEE backend..."
+    tdx_enc_keyring_configure "trusted" "${TDX_ENC_KEY_KEYRING_NAME}" "new ${TDX_ENC_KEY_SIZE}" "load \$(cat ${TDX_ENC_KEY_FULLPATH})"
+}
+
+# initially mount the partition if possible
+tdx_enc_pre_mount() {
+    tdx_enc_log "Attempting partition pre-mount"
+
+    if source=$(findmnt -no SOURCE "${TDX_ENC_STORAGE_MOUNTPOINT}"); then
+        if [ "${source}" = "${TDX_ENC_STORAGE_LOCATION}" ]; then
+            tdx_enc_log "Partition is already mounted to the specified location."
+            return 0
+        fi
+
+        tdx_enc_exit_error "Mount location already points to a different storage location."
+    fi
+
+    mkdir -p "${TDX_ENC_STORAGE_MOUNTPOINT}"
+    if ! mount ${TDX_ENC_STORAGE_LOCATION} "${TDX_ENC_STORAGE_MOUNTPOINT}"; then
+        tdx_enc_log "Unable to mount location, possibly already encrypted..."
+        return 1
+    fi
+    return 0
 }
 
 # backup original data in partition (if not encrypted)
 tdx_enc_backup_data() {
     if [ ${TDX_ENC_PRESERVE_DATA} -ne 1 ]; then
         tdx_enc_log "Data preservation is not enabled"
-        return 0
-    fi
-
-    mkdir -p "${TDX_ENC_STORAGE_MOUNTPOINT}"
-    if ! mount ${TDX_ENC_STORAGE_LOCATION} "${TDX_ENC_STORAGE_MOUNTPOINT}"; then
         return 0
     fi
 
@@ -187,8 +373,25 @@ tdx_enc_backup_data() {
     if [ "$?" -ne 0 ] || echo "${msgs}" | grep -qi 'error\|invalid'; then
         tdx_enc_exit_error "Couldn't save original data."
     fi
+}
 
-    tdx_enc_log "Backup created at: ${TDX_ENC_BACKUP_FILE}"
+# call user check script
+tdx_run_user_check() {
+    TDX_ENC_USER_SCRIPT="/usr/sbin/encryption_allowed"
+    if [ -x ${TDX_ENC_USER_SCRIPT} ]; then
+        if ! [ -O ${TDX_ENC_USER_SCRIPT} -a -G ${TDX_ENC_USER_SCRIPT} ]; then
+            tdx_enc_log "WARNING: Ignoring user check script due to invalid ownership."
+        elif [ $(( 0$(stat -c %a "${TDX_ENC_USER_SCRIPT}") & 07022 )) -ne 0 ]; then
+            tdx_enc_log "WARNING: Ignoring user check script due to invalid permissions."
+        elif ! ${TDX_ENC_USER_SCRIPT}; then
+            tdx_enc_exit_error "Encryption disabled by the user!"
+        fi
+    fi
+}
+
+# unmount the partition if needed ready for encryption
+tdx_enc_pre_unmount() {
+    tdx_enc_log "Unmounting partition ready to encrypt..."
     umount "${TDX_ENC_STORAGE_MOUNTPOINT}"
 }
 
@@ -197,8 +400,8 @@ tdx_enc_partition_setup() {
     tdx_enc_log "Setting up partition with dm-crypt..."
 
     if ! dmsetup -v create ${TDX_ENC_DM_DEVICE} \
-                 --table "0 $(blockdev --getsz ${TDX_ENC_STORAGE_LOCATION}) \
-                 crypt capi:cbc(aes)-plain :32:${TDX_ENC_KEY_KEYRING_TYPE}:${TDX_ENC_KEY_KEYRING_NAME} \
+                 --table "0 ${TDX_ENC_STORAGE_NUM_BLOCKS} \
+                 crypt capi:${TDX_ENC_CIPHER_SPEC} :${TDX_ENC_KEY_SIZE}:${TDX_ENC_KEY_KEYRING_TYPE}:${TDX_ENC_KEY_KEYRING_NAME} \
                  0 ${TDX_ENC_STORAGE_LOCATION} 0 1 sector_size:512"; then
         tdx_enc_exit_error "Error setting up dm-crypt partition!"
     fi
@@ -215,12 +418,12 @@ tdx_enc_partition_mount() {
     # format encrypted partition (if not formatted)
     if ! blkid /dev/mapper/"${TDX_ENC_DM_DEVICE}"; then
         tdx_enc_log "Formatting encrypted partition with ext4..."
-        mkfs.ext4 -q /dev/mapper/"${TDX_ENC_DM_DEVICE}"
+        mkfs.ext4 -q /dev/mapper/"${TDX_ENC_DM_DEVICE}" ${TDX_ENC_STORAGE_MKFS_ARGS}
     fi
 
     # mount encrypted partition
     mkdir -p "${TDX_ENC_STORAGE_MOUNTPOINT}"
-    if ! mount -t ext4 /dev/mapper/"${TDX_ENC_DM_DEVICE}" "${TDX_ENC_STORAGE_MOUNTPOINT}"; then
+    if ! mount -t ext4 /dev/mapper/"${TDX_ENC_DM_DEVICE}" "${TDX_ENC_STORAGE_MOUNTPOINT}" ${TDX_ENC_STORAGE_MOUNT_ARGS}; then
         tdx_enc_exit_error "Could not mount encrypted partition!"
     fi
 }
@@ -254,8 +457,10 @@ tdx_enc_clear_keys_keyring() {
 
 # umount partition
 tdx_enc_partition_umount() {
-    tdx_enc_log "Unmounting dm-crypt partition..."
-    umount "${TDX_ENC_STORAGE_MOUNTPOINT}"
+    for mnt in $(lsblk /dev/mapper/"${TDX_ENC_DM_DEVICE}" -n -o MOUNTPOINTS); do
+        tdx_enc_log "Unmounting dm-crypt partition from '${mnt}'..."
+        umount "${mnt}"
+    done
 }
 
 # remove dm-crypt partition
@@ -266,10 +471,15 @@ tdx_enc_partition_remove() {
 
 # mount encrypted partition
 tdx_enc_main_start() {
+    tdx_enc_cipher_configure
+    if tdx_enc_pre_mount; then
+        tdx_run_user_check
+        tdx_enc_backup_data
+        tdx_enc_pre_unmount
+    fi
     tdx_enc_prepare_generic
     tdx_enc_prepare_${TDX_ENC_KEY_BACKEND}
     tdx_enc_key_gen_${TDX_ENC_KEY_BACKEND}
-    tdx_enc_backup_data
     tdx_enc_partition_setup
     tdx_enc_partition_mount
     tdx_enc_restore_data
