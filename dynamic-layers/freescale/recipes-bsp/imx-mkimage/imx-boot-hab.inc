@@ -60,7 +60,7 @@ sign_ahab_image() {
     TDX_IMX_HAB_CST_SRK_INDEX="${TDX_IMX_HAB_CST_SRK_INDEX}" \
     UNSIGNED_IMAGE="${orig_image}" \
     LOG_MKIMAGE="${logfile}" \
-    ${WORKDIR}/mx8_sign.sh -t ${make_target}
+    ${UNPACKDIR}/mx8_sign.sh -t ${make_target}
 
     # copy signed image
     cp -v ${orig_image}-signed ${dest_image}

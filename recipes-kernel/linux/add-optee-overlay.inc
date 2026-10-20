@@ -17,10 +17,10 @@ gen_optee_dt_overlay() {
         bbfatal "Missing TDX_OPTEE_ADDR_SIZE to setup DT overlay!"
     fi
 
-    sed -i 's|@@TDX_OPTEE_ADDR_LOAD@@|${TDX_OPTEE_ADDR_LOAD}|g' ${WORKDIR}/optee_overlay.dts
-    sed -i 's|@@TDX_OPTEE_ADDR_SIZE@@|${TDX_OPTEE_ADDR_SIZE}|g' ${WORKDIR}/optee_overlay.dts
+    sed -i 's|@@TDX_OPTEE_ADDR_LOAD@@|${TDX_OPTEE_ADDR_LOAD}|g' ${UNPACKDIR}/optee_overlay.dts
+    sed -i 's|@@TDX_OPTEE_ADDR_SIZE@@|${TDX_OPTEE_ADDR_SIZE}|g' ${UNPACKDIR}/optee_overlay.dts
 
-    cp ${WORKDIR}/optee_overlay.dts ${S}/${MACHINE_PREFIX}_optee_overlay.dts
+    cp ${UNPACKDIR}/optee_overlay.dts ${S}/${MACHINE_PREFIX}_optee_overlay.dts
 }
 
 do_patch[postfuncs] += "gen_optee_dt_overlay"

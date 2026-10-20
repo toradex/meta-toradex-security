@@ -152,7 +152,7 @@ imx6_imx7_sign_habv4() {
     CSF_INC_DCD="${csf_inc_dcd}" \
     IMXBOOT="${binary_to_mkcsf}" \
     HAB_LOG="${binary_to_mkcsf}.log" \
-    ${WORKDIR}/imx6_imx7_create_csf.sh -m "${soc}" -c "csf_uboot"
+    ${UNPACKDIR}/imx6_imx7_create_csf.sh -m "${soc}" -c "csf_uboot"
 
     # Save unsigned image and generate signed version by concatenating with the CSF.
     bbdebug 1 "Concatenating CSF binary to U-Boot binary '${binary_to_sign}'"
@@ -176,7 +176,7 @@ imx6_imx7_sign_habv4() {
         TDX_IMX_HAB_CST_ARGS="${TDX_IMX_HAB_CST_ARGS}" \
         IMXBOOT="${SPL_BINARY}" \
         HAB_LOG="${SPL_BINARY}.log" \
-        ${WORKDIR}/imx6_imx7_create_csf.sh -m "${soc}" -c "csf_SPL"
+        ${UNPACKDIR}/imx6_imx7_create_csf.sh -m "${soc}" -c "csf_SPL"
 
         bbdebug 1 "Concatenating CSF binary to the U-Boot SPL"
         # Save unsigned SPL and replace original with signed one:
@@ -215,7 +215,7 @@ imx8m_sign_habv4() {
     TDX_IMX_HAB_CST_HSM="${TDX_SIGNED_HSM}" \
     TDX_IMX_HAB_CST_SRK_CA="${TDX_IMX_HAB_CST_SRK_CA}" \
     TDX_IMX_HAB_CST_SRK_INDEX="${TDX_IMX_HAB_CST_SRK_INDEX}" \
-    ${WORKDIR}/imx8m_sign.sh
+    ${UNPACKDIR}/imx8m_sign.sh
 
     # Create fuse commands
     create_fuse_cmds_helper "${soc}"

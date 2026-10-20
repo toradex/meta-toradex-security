@@ -74,7 +74,7 @@ python secure_debug_ele_templates() {
     # generate the configuration files from the templates
     os.makedirs(outdir)
     for tmpl in ('dc', 'dat'):
-        with open(os.path.join(workdir, 'ele-%s.yaml.in' % tmpl)) as f:
+        with open(os.path.join(d.getVar('UNPACKDIR'), 'ele-%s.yaml.in' % tmpl)) as f:
             text = f.read()
         for name, value in subst.items():
             text = text.replace('@%s@' % name, value)
