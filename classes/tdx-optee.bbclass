@@ -98,6 +98,9 @@ python validate_optee_support() {
     if machine not in supported_machines:
         bb.fatal("OP-TEE is currently not supported on '%s' machine!" % machine)
 
+    if e.data.getVar('TDX_OPTEE_FTPM') == '1' and 'tpm-layer' not in e.data.getVar('BBFILE_COLLECTIONS').split():
+        bb.fatal("OP-TEE fTPM support (TDX_OPTEE_FTPM) requires the meta-tpm layer (meta-security/meta-tpm). Please add it to bblayers.conf.")
+
     if e.data.getVar('TDX_OPTEE_FS_RPMB') == '1' and e.data.getVar('TDX_OPTEE_FS_RPMB_MODE') == 'factory':
         bb.warn("The factory mode for OP-TEE RPMB support is intended for " \
                 "secure factory provisioning environments, and it should " \

@@ -135,6 +135,8 @@ Using this layer, fTPM can be enabled by adding the following line to an OE conf
 TDX_OPTEE_FTPM = "1"
 ```
 
+fTPM support requires the `meta-tpm` layer (from `meta-security`) in `bblayers.conf`.
+
 When fTPM is enabled, you should have a TPM device at `/dev`:
 
 ```

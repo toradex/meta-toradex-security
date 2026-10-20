@@ -75,6 +75,8 @@ TDX_ENC_KEY_BACKEND:forcevariable = "tpm"
 
 Make sure to use the `forcevariable` override, so your configuration takes precedence over the default one.
 
+The `tpm` backend requires the `meta-tpm` layer (from `meta-security`) in `bblayers.conf`.
+
 A few additional variables are available to customize the behavior of the data-at-rest encryption feature. Here is list of the most important ones (for the full list refer to `tdx-encrypted.bbclass`):
 
 | Variable | Description | Default value |

@@ -38,7 +38,14 @@ revision: HEAD
 URI: git://git.toradex.com/meta-toradex-ti.git
 branch: scarthgap
 revision: HEAD
+
+URI: git://git.yoctoproject.org/meta-security
+layers: meta-tpm
+branch: scarthgap
+revision: HEAD
 ```
+
+The `meta-tpm` layer is required only when using the `tpm` encryption key backend (`TDX_ENC_KEY_BACKEND = "tpm"`) or fTPM support in OP-TEE (`TDX_OPTEE_FTPM = "1"`).
 
 # Supported features and SoMs
 
