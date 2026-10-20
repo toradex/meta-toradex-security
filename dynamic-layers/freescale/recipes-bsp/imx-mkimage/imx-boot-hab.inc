@@ -167,7 +167,7 @@ sign_common() {
                     UBOOT_DTB_NAME_EXTRA="${dtb_name}"
                 fi
                 UBOOT_NAME_EXTRA="u-boot-${MACHINE}.bin-${UBOOT_CONFIG_EXTRA}"
-                BOOT_CONFIG_MACHINE_EXTRA="imx-boot-${MACHINE}-${UBOOT_CONFIG_EXTRA}.bin"
+                BOOT_CONFIG_MACHINE_EXTRA="imx-boot${BOOT_VARIANT}-${MACHINE}-${UBOOT_CONFIG_EXTRA}.bin"
 
                 # Copy again artifacts for current U-Boot config to BOOT_STAGING
                 compile_${SOC_FAMILY}
