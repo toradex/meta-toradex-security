@@ -19,7 +19,7 @@ do_deploy:prepend() {
             for type in ${UBOOT_CONFIG}; do
                 j=$(expr $j + 1)
                 if [ $j -eq $i ]; then
-                    cd ${B}/${config}
+                    cd ${B}/${config}-${type}
                     rebuild_uboot $type
                 fi
             done
