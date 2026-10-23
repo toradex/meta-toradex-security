@@ -10,6 +10,8 @@ SRC_URI = "\
     file://99-tpm.rules \
 "
 
+S = "${UNPACKDIR}"
+
 RDEPENDS:${PN} = "\
     openssl-bin \
     cryptsetup \
@@ -33,7 +35,7 @@ SYSTEMD_SERVICE:${PN} = "tdx-enc-handler.service"
 
 do_install() {
     install -d ${D}${sbindir}
-    install -m 0755 ${WORKDIR}/tdx-enc.sh ${D}${sbindir}/tdx-enc.sh
+    install -m 0755 ${S}/tdx-enc.sh ${D}${sbindir}/tdx-enc.sh
 
     sed -i 's|@@TDX_ENC_KEY_BACKEND@@|${TDX_ENC_KEY_BACKEND}|g' ${D}${sbindir}/tdx-enc.sh
     sed -i 's|@@TDX_ENC_KEY_LOCATION@@|${TDX_ENC_KEY_LOCATION}|g' ${D}${sbindir}/tdx-enc.sh
@@ -49,7 +51,7 @@ do_install() {
     sed -i 's|@@TDX_ENC_CIPHER@@|${TDX_ENC_CIPHER}|g' ${D}${sbindir}/tdx-enc.sh
 
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/tdx-enc-handler.service ${D}${systemd_system_unitdir}
+    install -m 0644 ${S}/tdx-enc-handler.service ${D}${systemd_system_unitdir}
 
     # setup systemd service dependencies
     if [ ${TDX_ENC_KEY_BACKEND} = "tpm" ]; then
@@ -69,11 +71,11 @@ do_install() {
     sed -i "/^@@DEPENDENCIES@@/c${dep_all}" ${D}${systemd_system_unitdir}/tdx-enc-handler.service
 
     install -d ${D}${sysconfdir}/init.d
-    install -m 755 ${WORKDIR}/tdx-enc ${D}${sysconfdir}/init.d/tdx-enc
+    install -m 755 ${S}/tdx-enc ${D}${sysconfdir}/init.d/tdx-enc
 
     if [ ${TDX_ENC_KEY_BACKEND} = "tpm" ]; then
         mkdir -p ${D}${sysconfdir}/udev/rules.d/
-        install -m 0644 ${WORKDIR}/99-tpm.rules ${D}${sysconfdir}/udev/rules.d/99-tpm.rules
+        install -m 0644 ${S}/99-tpm.rules ${D}${sysconfdir}/udev/rules.d/99-tpm.rules
     fi
 }
 

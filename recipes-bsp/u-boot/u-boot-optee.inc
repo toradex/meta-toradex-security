@@ -1,17 +1,17 @@
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
+SRC_URI:append:verdin-imx8mm = "\
+    file://u-boot-optee.cfg \
+"
+
 SRC_URI:append:verdin-imx8mp = "\
-    file://0001-imx8mp-binman-add-tee-node.patch \
+    file://u-boot-optee.cfg \
     file://dram-banks.cfg \
 "
 
 SRC_URI:append:toradex-smarc-imx8mp = "\
-    file://0001-imx8mp-binman-add-tee-node.patch \
+    file://u-boot-optee.cfg \
     file://dram-banks.cfg \
-"
-
-SRC_URI:append:verdin-imx8mm = "\
-    file://0001-imx8mm-binman-add-tee-node.patch \
 "
 
 SRC_URI:append:mx7-generic-bsp = "\

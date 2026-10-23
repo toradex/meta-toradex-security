@@ -78,6 +78,8 @@ python validate_enc_parameters() {
     supported_key_backends = ['cleartext','caam','tpm','tee']
     if key_backend not in supported_key_backends:
         bb.fatal("'%s' is invalid. Please set a valid key backend provider via TDX_ENC_KEY_BACKEND." % key_backend)
+    if key_backend == "tpm" and 'tpm-layer' not in e.data.getVar('BBFILE_COLLECTIONS').split():
+        bb.fatal("The 'tpm' key backend requires the meta-tpm layer (meta-security/meta-tpm). Please add it to bblayers.conf.")
 
     storage_location = e.data.getVar('TDX_ENC_STORAGE_LOCATION')
     if storage_location == "":

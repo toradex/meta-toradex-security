@@ -54,7 +54,7 @@ concat_dtb:append:mx8m-generic-bsp() {
     bbdebug 1 "Re-generating flash.bin with an updated DTB"
 
     # Copy signature from u-boot.dtb-signed to the DTs listed in CONFIG_OF_LIST.
-    ${WORKDIR}/imx8m_copy_signature_node_to_fdts.sh "${UBOOT_DTB_SIGNED}"
+    ${UNPACKDIR}/imx8m_copy_signature_node_to_fdts.sh "${UBOOT_DTB_SIGNED}"
 
     # Execute make again to generate flash.bin. We could execute "make" passing
     # EXT_DTB="${UBOOT_DTB_SIGNED}" but this wouldn't help (or hurt) because the

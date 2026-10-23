@@ -60,7 +60,7 @@ sign_ahab_image() {
     TDX_IMX_HAB_CST_SRK_INDEX="${TDX_IMX_HAB_CST_SRK_INDEX}" \
     UNSIGNED_IMAGE="${orig_image}" \
     LOG_MKIMAGE="${logfile}" \
-    ${WORKDIR}/mx8_sign.sh -t ${make_target}
+    ${UNPACKDIR}/mx8_sign.sh -t ${make_target}
 
     # copy signed image
     cp -v ${orig_image}-signed ${dest_image}
@@ -167,7 +167,7 @@ sign_common() {
                     UBOOT_DTB_NAME_EXTRA="${dtb_name}"
                 fi
                 UBOOT_NAME_EXTRA="u-boot-${MACHINE}.bin-${UBOOT_CONFIG_EXTRA}"
-                BOOT_CONFIG_MACHINE_EXTRA="imx-boot-${MACHINE}-${UBOOT_CONFIG_EXTRA}.bin"
+                BOOT_CONFIG_MACHINE_EXTRA="imx-boot${BOOT_VARIANT}-${MACHINE}-${UBOOT_CONFIG_EXTRA}.bin"
 
                 # Copy again artifacts for current U-Boot config to BOOT_STAGING
                 compile_${SOC_FAMILY}

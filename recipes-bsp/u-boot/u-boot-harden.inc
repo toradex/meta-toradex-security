@@ -171,11 +171,13 @@ extend_device_tree_includes_config() {
     config=$1
     type=$2
 
-    frag="${WORKDIR}/.add-dt-includes-${type}.cfg"
-    _make_dt_includes_fragment "${B}/${config}/.config" "${frag}"
+    builddir="${B}/${config}-${type}"
 
-    merge_config.sh -m -O "${B}/${config}" "${B}/${config}/.config" "${frag}"
-    oe_runmake -C "${S}" O="${B}/${config}" oldconfig
+    frag="${WORKDIR}/.add-dt-includes-${type}.cfg"
+    _make_dt_includes_fragment "${builddir}/.config" "${frag}"
+
+    merge_config.sh -m -O "${builddir}" "${builddir}/.config" "${frag}"
+    oe_runmake -C "${S}" O="${builddir}" oldconfig
 }
 
 extend_device_tree_includes() {
@@ -211,7 +213,12 @@ check_dotconfig_compat_all() {
 
 check_dotconfig_compat() {
     config=$1
-    dotconfig="${B}/${config}/.config"
+    type=$2
+    if [ -n "${config}" ]; then
+        dotconfig="${B}/${config}-${type}/.config"
+    else
+        dotconfig="${B}/.config"
+    fi
 
     # TODO: Consider performing the checks only if CONFIG_BOOTSTD=y (Standard Boot enabled).
     # NOTE: Currently only the "Script" bootmeth is supported.

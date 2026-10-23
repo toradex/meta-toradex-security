@@ -14,8 +14,6 @@ DEPENDS = "openssl pcsc-lite libcheck gengetopt-native"
 SRC_URI = "git://github.com/Yubico/yubico-piv-tool;protocol=https;branch=master"
 SRCREV = "ed1cd7862d39a92502c0476f53dfcf93f195007a"
 
-S = "${WORKDIR}/git"
-
 EXTRA_OECMAKE += " \
     -DGENERATE_MAN_PAGES=OFF \
     -DBUILD_TESTING=OFF \

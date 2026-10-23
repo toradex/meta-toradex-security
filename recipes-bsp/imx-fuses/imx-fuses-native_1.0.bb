@@ -25,12 +25,14 @@ SRC_URI = "\
     file://imx95-ele-template.fuse \
 "
 
+S = "${UNPACKDIR}"
+
 inherit native
 
 do_install() {
     install -d ${D}${bindir}
-    install -m 0755 ${WORKDIR}/create_fuse_cmds.sh ${D}${bindir}/create_fuse_cmds.sh
+    install -m 0755 ${S}/create_fuse_cmds.sh ${D}${bindir}/create_fuse_cmds.sh
 
     install -d ${D}${datadir}/${BPN}
-    install -m 0644 ${WORKDIR}/*-template.fuse ${D}${datadir}/${BPN}
+    install -m 0644 ${S}/*-template.fuse ${D}${datadir}/${BPN}
 }
