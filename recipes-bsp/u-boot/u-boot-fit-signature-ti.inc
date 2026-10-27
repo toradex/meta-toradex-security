@@ -1,8 +1,6 @@
 rebuild_uboot() {
     type=$1
-    eval $(cat include/config/auto.conf | grep ^CONFIG_DEFAULT_DEVICE_TREE)
-    install -m 0644 u-boot.dtb arch/arm/dts/${CONFIG_DEFAULT_DEVICE_TREE}.dtb
-    oe_runmake ${UBOOT_MAKE_TARGET}
+    oe_runmake EXT_DTB="$(pwd)/${UBOOT_DTB_SIGNED}" ${UBOOT_MAKE_TARGET}
     if [ -n "$type" ]; then
         install -m 0644 ${UBOOT_BINARY} u-boot-${type}.img
     fi
