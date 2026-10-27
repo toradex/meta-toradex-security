@@ -42,6 +42,36 @@ tdx_signed_hsm_vars_export() {
     [ -r "${PKCS11_MODULE_PATH}" ] || bbfatal "PKCS#11 module missing or not readable: ${PKCS11_MODULE_PATH}"
 }
 
+# Python counterpart of tdx_signed_hsm_vars_export, for Python tasks
+def tdx_signed_hsm_vars_export_py(d):
+    import os
+
+    pin = d.getVar('TDX_SIGNED_HSM_TOKEN_PIN')
+    if not pin:
+        bb.fatal("Missing PIN to access the HSM. Please configure it via TDX_SIGNED_HSM_TOKEN_PIN variable.")
+
+    module = d.getVar('TDX_SIGNED_HSM_PKCS11_MODULE_PATH') or ''
+    if 'libsofthsm2.so' in module:
+        softhsm_conf = d.getVar('TDX_SIGNED_HSM_PKCS11_SOFTHSM_CONF')
+        if not os.access(softhsm_conf, os.R_OK):
+            bb.fatal("Cannot access SoftHSM configuration file: %s" % softhsm_conf)
+        os.environ['SOFTHSM2_CONF'] = softhsm_conf
+
+    for engines in ('engines-3', 'engines-1.1'):
+        engines_dir = os.path.join(d.getVar('STAGING_LIBDIR_NATIVE'), engines)
+        if os.path.isdir(engines_dir):
+            os.environ['OPENSSL_ENGINES'] = engines_dir
+            break
+    else:
+        bb.fatal("OpenSSL engines directory not found in native sysroot.")
+
+    os.environ['MKIMAGE_SIGN_PIN'] = pin
+
+    module_path = d.getVar('RECIPE_SYSROOT_NATIVE') + '/' + module
+    if not os.access(module_path, os.R_OK):
+        bb.fatal("PKCS#11 module missing or not readable: %s" % module_path)
+    os.environ['PKCS11_MODULE_PATH'] = module_path
+
 # Set up the environment so binman can sign TI K3 boot containers via a key stored in an HSM
 tdx_signed_hsm_vars_export_k3_binman() {
     # common configuration
