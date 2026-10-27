@@ -114,7 +114,15 @@ TDX_SECBOOT_WL_ALLOW_CLOSED_CATEG = "CMD_CAT_ALL_SAFE CMD_CAT_GPIO_CONTROL"
 
 When the `tdx-signed` or `tdxref-signed` class is inherited, generating and signing a FIT image is enabled by default. Set `UBOOT_SIGN_ENABLE` to `0` to disable it.
 
-This feature uses the default FIT image signing support provided by the `uboot-sign` and `kernel-fitimage` classes from OpenEmbedded Core. See the [Yocto Project documentation](https://docs.yoctoproject.org/ref-manual/classes.html#kernel-fitimage) for more details.
+This feature uses the default FIT image signing support provided by the `uboot-sign` and `kernel-fit-image` classes from OpenEmbedded Core. See the [Yocto Project documentation](https://docs.yoctoproject.org/ref-manual/classes.html) for more details.
+
+The FIT image is built by a separate recipe, `linux-yocto-fitimage` from OpenEmbedded Core by default, and deployed as `fitImage`. To use your own FIT image recipe, which must inherit `kernel-fit-image`, set `TDX_KERNEL_FIT_RECIPE` to its name and include the layer configuration of the FIT image (OP-TEE nodes, HSM signing) in the recipe or in a bbappend of it:
+
+```
+require recipes-kernel/linux/linux-fitimage-sec-features.inc
+```
+
+The build fails with an error when the recipe selected by `TDX_KERNEL_FIT_RECIPE` does not include this file.
 
 A few variables can be used to configure this feature, including:
 
@@ -125,12 +133,13 @@ A few variables can be used to configure this feature, including:
 | `UBOOT_SIGN_KEYDIR` | Location of the RSA key and certificate used for signing | `${TOPDIR}/keys/fit` |
 | `UBOOT_SIGN_KEYNAME` | The name of the key used for signing configuration nodes | `dev` |
 | `UBOOT_SIGN_IMG_KEYNAME` | The name of the key used for signing individual images | `dev2` |
+| `TDX_KERNEL_FIT_RECIPE` | The recipe that builds the FIT image | `linux-yocto-fitimage` |
 
 The complete list of variables can be found in the `tdx-signed-fit-image.inc` file.
 
 ### Configuring FIT image signing / known issues
 
-- On K3 based platforms (Verdin AM62, Aquila AM69), some of the configuration variables (e.g. `UBOOT_SIGN_KEYDIR`, `UBOOT_SIGN_KEYNAME` (check the complete list in `tdx-signed-fit-image.inc`)) are set through override `k3` to ensure the values coming from layer `meta-toradex-security` override those from layer `meta-ti-bsp`. Due to this, the recommended way to set those variables is via override `forcevariable`.
+- On K3 based platforms (Verdin AM62, Aquila AM69), some of the configuration variables (e.g. `FIT_KERNEL_SIGN_KEYNAME`, `FIT_HASH_ALG` (check the complete list in `tdx-signed-fit-image.inc`)) are set through override `k3` to ensure the values coming from layer `meta-toradex-security` override those from layer `meta-ti-bsp`. Due to this, the recommended way to set those variables is via override `forcevariable`. The `UBOOT_SIGN_*` variables can be set normally.
 
 ## Configuring rootfs image signing
 
