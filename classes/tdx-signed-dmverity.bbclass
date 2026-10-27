@@ -5,9 +5,6 @@ DISTROOVERRIDES .= ":tdx-signed-dmverity"
 INITRAMFS_IMAGE ?= "tdx-reference-ramdisk-image"
 INITRAMFS_IMAGE_BUNDLE ?= "0"
 
-# use the FIT image with the ramdisk
-KERNEL_IMAGE_NAME:prepend = "${INITRAMFS_IMAGE_NAME}-"
-
 # rootfs image that will be used to create dm-verity image
 # override it when building a different image recipe
 DM_VERITY_IMAGE ?= "tdx-reference-minimal-image"
