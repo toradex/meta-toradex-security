@@ -1,6 +1,6 @@
-# OpenEmbedded layer with security-related metadata for Toradex SoMs
+# OpenEmbedded layer with security-related metadata
 
-This layer contains metadata to enable security features when building a Linux system for Toradex SoMs.
+This layer contains metadata to enable security features when building a Linux system for Toradex SoMs and other supported hardware platforms. See [MAINTAINERS.md](MAINTAINERS.md) for the maintainers of each platform and the contribution process.
 
 For more information on available Toradex SoMs, please visit:
 
@@ -71,7 +71,7 @@ For more information on the available features, please check the corresponding d
 | [docs/README-secure-debug-ele.md](docs/README-secure-debug-ele.md) | Details on the secure debug implementation for NXP iMX9 based SoMs |
 | [docs/README-data-partition.md](docs/README-data-partition.md) | Documentation on how to create an additional partition for storing persistent data |
 
-This layer only works on Toradex Embedded Linux BSP 6.3.0 and newer releases.
+On Toradex SoMs, use this layer with the Toradex Embedded Linux BSP release based on the same Yocto release as this branch.
 
 # License
 
