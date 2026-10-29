@@ -12,8 +12,8 @@ TDX_SIGNED_HSM_PKCS11_MODULE_PROVIDER ?= ""
 # Example: "/usr/lib/softhsm/libsofthsm2.so"
 TDX_SIGNED_HSM_PKCS11_MODULE_PATH ?= ""
 
-# HSM token URL in PKCS#11 URI format to sign the FIT image
-# Example: "model=SoftHSM%20v2;manufacturer=SoftHSM%20project;serial=b70b88ff742c63b9;token=virtual-hsm"
+# HSM token URL in PKCS#11 URI format to sign the FIT image (the "pkcs11:" scheme is added when missing)
+# Example: "pkcs11:model=SoftHSM%20v2;manufacturer=SoftHSM%20project;serial=b70b88ff742c63b9;token=virtual-hsm"
 TDX_SIGNED_HSM_FIT_TOKEN_URL ?= ""
 
 # HSM token object label of the private key to sign the FIT image
@@ -22,7 +22,7 @@ TDX_SIGNED_HSM_FIT_TOKEN_LABEL ?= ""
 
 # FIT image configuration to use the HSM for signing
 FIT_GENERATE_KEYS = "0"
-UBOOT_SIGN_KEYDIR:forcevariable = "${TDX_SIGNED_HSM_FIT_TOKEN_URL}"
+UBOOT_SIGN_KEYDIR:forcevariable = "${@tdx_signed_hsm_pkcs11_uri(d.getVar('TDX_SIGNED_HSM_FIT_TOKEN_URL'))}"
 UBOOT_SIGN_KEYNAME:forcevariable = "${TDX_SIGNED_HSM_FIT_TOKEN_LABEL}"
 UBOOT_MKIMAGE_SIGN_ARGS:append = " -N pkcs11"
 
@@ -52,3 +52,8 @@ python validate_hsm_configuration() {
         if e.data.getVar("TDX_SIGNED_HSM_PKCS11_MODULE_PATH") == "":
             bb.warn("Missing PKCS11 module path. Please configure it via TDX_SIGNED_HSM_PKCS11_MODULE_PATH variable.")
 }
+
+def tdx_signed_hsm_pkcs11_uri(uri):
+    if uri and not uri.startswith('pkcs11:'):
+        return 'pkcs11:' + uri
+    return uri or ''

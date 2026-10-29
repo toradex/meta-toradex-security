@@ -173,11 +173,11 @@ In this case, however, the configuration is split into two variables: `TDX_SIGNE
 The example below demonstrates the use of these variables:
 
 ```conf
-TDX_SIGNED_HSM_FIT_TOKEN_URL = "model=SoftHSM%20v2;manufacturer=SoftHSM%20project;serial=984ed1d2002d1c09;token=fit-hsm"
+TDX_SIGNED_HSM_FIT_TOKEN_URL = "pkcs11:model=SoftHSM%20v2;manufacturer=SoftHSM%20project;serial=984ed1d2002d1c09;token=fit-hsm"
 TDX_SIGNED_HSM_FIT_TOKEN_LABEL = "fit-sign-key"
 ```
 
-> **Note:** The exact token URL format depends on the PKCS#11 provider and the token being used. Attributes such as `model`, `manufacturer`, `serial`, and `token` may vary depending on the device and on how the token was provisioned.
+> **Note:** The exact token URL format depends on the PKCS#11 provider and the token being used. Attributes such as `model`, `manufacturer`, `serial`, and `token` may vary depending on the device and on how the token was provisioned. If the URL does not start with `pkcs11:`, the build adds it.
 
 ### Final configuration examples
 
@@ -193,7 +193,7 @@ TDX_IMX_HAB_CST_SRK_CERT = "pkcs11:token=cst-hsm;object=SRK1_sha256_2048_65537_v
 TDX_IMX_HAB_CST_CSF_CERT = "pkcs11:token=cst-hsm;object=CSF1_1_sha256_2048_65537_v3_usr;type=cert;pin-value=${TDX_SIGNED_HSM_TOKEN_PIN}"
 TDX_IMX_HAB_CST_IMG_CERT = "pkcs11:token=cst-hsm;object=IMG1_1_sha256_2048_65537_v3_usr;type=cert;pin-value=${TDX_SIGNED_HSM_TOKEN_PIN}"
 
-TDX_SIGNED_HSM_FIT_TOKEN_URL = "model=SoftHSM%20v2;manufacturer=SoftHSM%20project;serial=984ed1d2002d1c09;token=fit-hsm"
+TDX_SIGNED_HSM_FIT_TOKEN_URL = "pkcs11:model=SoftHSM%20v2;manufacturer=SoftHSM%20project;serial=984ed1d2002d1c09;token=fit-hsm"
 TDX_SIGNED_HSM_FIT_TOKEN_LABEL = "fit-sign-key"
 ```
 
@@ -208,7 +208,7 @@ TDX_SIGNED_HSM_PKCS11_MODULE_PATH = "/usr/lib/libykcs11.so"
 TDX_IMX_HAB_CST_SRK_CERT = "pkcs11:token=YubiKey%20PIV%20%2322863375;id=%06;type=cert;pin-value=${TDX_SIGNED_HSM_TOKEN_PIN}" 
 TDX_IMX_HAB_CST_SGK_CERT = "pkcs11:token=YubiKey%20PIV%20%2322863375;id=%07;type=cert;pin-value=${TDX_SIGNED_HSM_TOKEN_PIN}"
 
-TDX_SIGNED_HSM_FIT_TOKEN_URL = "model=YubiKey%20YK5;manufacturer=Yubico%20%28www.yubico.com%29;serial=22863375;token=YubiKey%20PIV%20%2322863375;id=%12"
+TDX_SIGNED_HSM_FIT_TOKEN_URL = "pkcs11:model=YubiKey%20YK5;manufacturer=Yubico%20%28www.yubico.com%29;serial=22863375;token=YubiKey%20PIV%20%2322863375;id=%12"
 TDX_SIGNED_HSM_FIT_TOKEN_LABEL = "yk-dev-key"
 ```
 
@@ -222,7 +222,7 @@ TDX_SIGNED_HSM_PKCS11_MODULE_PATH = "/usr/lib/softhsm/libsofthsm2.so"
 
 TDX_SIGNED_HSM_K3_BINMAN_KEY_URL = "pkcs11:token=boot-hsm;object=custMpk;type=private"
 
-TDX_SIGNED_HSM_FIT_TOKEN_URL = "model=SoftHSM%20v2;manufacturer=SoftHSM%20project;serial=984ed1d2002d1c09;token=fit-hsm"
+TDX_SIGNED_HSM_FIT_TOKEN_URL = "pkcs11:model=SoftHSM%20v2;manufacturer=SoftHSM%20project;serial=984ed1d2002d1c09;token=fit-hsm"
 TDX_SIGNED_HSM_FIT_TOKEN_LABEL = "fit-sign-key"
 ```
 
@@ -236,7 +236,7 @@ TDX_SIGNED_HSM_PKCS11_MODULE_PATH = "/usr/lib/libykcs11.so"
 
 TDX_SIGNED_HSM_K3_BINMAN_KEY_URL = "pkcs11:token=YubiKey%20PIV%20%2322863375;id=%05;type=private"
 
-TDX_SIGNED_HSM_FIT_TOKEN_URL = "token=YubiKey%20PIV%20%2322863375;id=%06"
+TDX_SIGNED_HSM_FIT_TOKEN_URL = "pkcs11:token=YubiKey%20PIV%20%2322863375;id=%06"
 TDX_SIGNED_HSM_FIT_TOKEN_LABEL = "yk-dev-key"
 ```
 

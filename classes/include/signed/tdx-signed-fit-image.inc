@@ -1,6 +1,5 @@
-# enable FIT image
-KERNEL_CLASSES:append = " kernel-fitimage"
-KERNEL_IMAGETYPE:forcevariable = "fitImage"
+# boot the kernel from a FIT image
+require tdx-signed-fit-image-boot.inc
 
 # enable signature checking of FIT images
 UBOOT_SIGN_ENABLE ?= "1"
@@ -26,9 +25,9 @@ FIT_SIGN_INDIVIDUAL = "0"
 #
 # NOTICE: a side effect of these assignments is that users will need to use
 #         :forcevariable (or an override stronger than :k3) to set them.
-UBOOT_SIGN_KEYDIR:k3 ?= "${TOPDIR}/keys/fit"
-UBOOT_SIGN_KEYNAME:k3 ?= "dev"
-UBOOT_SIGN_IMG_KEYNAME:k3 ?= "dev2"
+FIT_KERNEL_SIGN_ENABLE:k3 ?= "${UBOOT_SIGN_ENABLE}"
+FIT_KERNEL_SIGN_KEYNAME:k3 ?= "${UBOOT_SIGN_KEYNAME}"
+FIT_KERNEL_SIGN_KEYDIR:k3 ?= "${UBOOT_SIGN_KEYDIR}"
 FIT_HASH_ALG:k3 ?= "sha256"
 FIT_SIGN_ALG:k3 ?= "rsa2048"
 FIT_SIGN_NUMBITS:k3 ?= "2048"

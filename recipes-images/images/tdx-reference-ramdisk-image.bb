@@ -61,7 +61,7 @@ IMAGE_ROOTFS_EXTRA_SPACE = "0"
 # deploy verity hash into ramdisk image
 deploy_verity_hash() {
     install -D -m 0644 \
-        ${STAGING_VERITY_DIR}/*.${DM_VERITY_IMAGE_TYPE}.verity.env \
+        ${STAGING_VERITY_DIR}/${DM_VERITY_IMAGE}.${DM_VERITY_IMAGE_TYPE}.verity.env \
         ${IMAGE_ROOTFS}${datadir}/misc/dm-verity.env
 }
 IMAGE_PREPROCESS_COMMAND += "deploy_verity_hash;"
