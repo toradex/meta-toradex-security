@@ -10,10 +10,24 @@ bootm"
 KERNEL_BOOTCMD:mx6-generic-bsp = "${KERNEL_BOOTCMD_OPTEE}"
 KERNEL_BOOTCMD:mx7-generic-bsp = "${KERNEL_BOOTCMD_OPTEE}"
 
-# DTB_PREFIX is an internal recipe variable used to append a value
-# to the FIT image configuration node that will be used to boot.
-# Here we add 'optee_' so the configuration node with OP-TEE is used
-# for selected platforms
+# When booting a FIT image, use the configuration node with OP-TEE for the
+# base device tree on selected platforms. Only configurations with a kernel
+# have an OP-TEE variant, so overlay configurations keep their name, which is
+# why DTB_PREFIX (also used for the overlays) is not changed.
 DTB_PREFIX_OPTEE = "optee_"
-DTB_PREFIX:prepend:mx6-generic-bsp = "${DTB_PREFIX_OPTEE}"
-DTB_PREFIX:prepend:mx7-generic-bsp = "${DTB_PREFIX_OPTEE}"
+
+amend_optee_fit_conf() {
+    if ! grep -q '#conf-${DTB_PREFIX}\\\$''{fdtfile}' boot.cmd; then
+        bbfatal "Amendments to bootscript must be reviewed: FIT configuration of the base device tree wasn't found."
+    fi
+    sed -e 's/#conf-${DTB_PREFIX}\\\$''{fdtfile}/#conf-${DTB_PREFIX_OPTEE}${DTB_PREFIX}\\\$''{fdtfile}/' \
+        -i boot.cmd
+}
+
+do_compile:append:mx6-generic-bsp() {
+    amend_optee_fit_conf
+}
+
+do_compile:append:mx7-generic-bsp() {
+    amend_optee_fit_conf
+}
