@@ -63,7 +63,10 @@ TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT:toradex-osm-imx93 ?= "ro rootwait console=
 TDX_SECBOOT_REQUIRED_BOOTARGS ?= "${TDX_SECBOOT_REQUIRED_BOOTARGS_DEFAULT}"
 
 # Name of the overlay file (without extension) that will contain the fixed part
-# of the kernel command line; this will be stored inside the FIT image; notice
-# we add the machine prefix to ensure the overlay is identified as a machine-
-# specific one and picked up by toradex-devicetree.bbclass.
+# of the kernel command line, stored inside the FIT image. It must not match
+# TDX_KERNEL_DEVICETREE_PREFIX, or the BSP would also add it to KERNEL_DEVICETREE,
+# listing it twice (which breaks the FIT build)
 TDX_SECBOOT_KARGS_OVERLAY = "${MACHINE}-secboot-kargs_overlay"
+
+# The overlay is generated in the kernel tree, so build it from there
+KERNEL_DEVICETREE:append = "${@oe.utils.conditional('TDX_UBOOT_HARDENING_ENABLE', '1', ' ${KERNEL_DTB_PREFIX}${TDX_SECBOOT_KARGS_OVERLAY}.dtbo', '', d)}"
