@@ -1,0 +1,43 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Ana Bobillo <anabobillo3@gmail.com>
+Date: Wed, 04 Nov 2026 07:17:57 +0000
+Subject: [PATCH] usb: gadget: f_sdp: drop an empty data packet
+
+sdp_rx_data_complete() takes the payload length of a report 2 packet as
+req->actual - 1, one byte for the report ID. A completed transfer of
+zero bytes makes that -1, which passes the dnl_bytes_remaining check as
+a huge unsigned value and is then given to memcpy() as the copy length,
+reading and writing far past both buffers. Whether it gets there
+depends only on the stale report ID byte left in the request buffer by
+the previous packet.
+
+Drop a packet too short to carry its report ID before acting on that
+byte, and wait for the next one.
+
+Fixes: 5661f08a7144 ("usb: gadget: add SDP driver")
+Upstream-Status: Submitted [https://lore.kernel.org/all/4bdba9dc-0c21-4e33-8f20-2c0a7ebba0d6@gmail.com/]
+Link: https://lore.kernel.org/u-boot/c8ea2d0b-88cf-4499-9e80-8433e1acab6a@gmail.com/
+Signed-off-by: Ana Bobillo <anabobillo3@gmail.com>
+---
+ drivers/usb/gadget/f_sdp.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/usb/gadget/f_sdp.c b/drivers/usb/gadget/f_sdp.c
+index cd2c282247a..20de9507d36 100644
+--- a/drivers/usb/gadget/f_sdp.c
++++ b/drivers/usb/gadget/f_sdp.c
+@@ -386,6 +386,13 @@ static void sdp_rx_data_complete(struct usb_ep *ep, struct usb_request *req)
+ 		return;
+ 	}
+ 
++	/* A report 2 packet carries at least its report ID: drop it */
++	if (req->actual < 1) {
++		if (sdp->state == SDP_STATE_RX_FILE_DATA_BUSY)
++			sdp->state = SDP_STATE_RX_FILE_DATA;
++		return;
++	}
++
+ 	if (report != 2) {
+ 		pr_err("Unexpected report %d\n", report);
+ 		return;
+

@@ -1,0 +1,61 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Ana Bobillo <anabobillo3@gmail.com>
+Date: Wed, 04 Nov 2026 07:17:57 +0000
+Subject: [PATCH] usb: gadget: composite: bound ep0 requests to the request buffer
+
+composite_setup() hands every control request's wLength on, unchecked,
+as the data stage length, while the ep0 request it queues, cdev->req,
+has a buffer of USB_BUFSIZ (4096) bytes. Two handlers take that length
+as it comes: the OS descriptor vendor request clears and returns
+wLength bytes of that buffer, and the SDP function's report 2
+SET_REPORT queues wLength bytes into it. A host sending a longer
+wLength has the data stage run past the end of the buffer.
+
+Linux closed this for all of its composite functions in one place,
+commit 36dfdf11af49 ("USB: gadget: detect too-big endpoint 0
+requests"), and barebox carries the same check: stall an OUT request
+longer than the buffer, and shorten an IN request to it. Do the same
+here, so no function behind the composite layer can be handed a data
+stage the buffer does not hold.
+
+No request a gadget function handles needs more: the largest legitimate
+data stages are DFU's DNLOAD/UPLOAD at DFU_USB_BUFSIZ (4096) and the
+SDP report 2 of 1025 bytes.
+
+Fixes: a764c941289c ("usb: gadget: OS Feature Descriptors support")
+Fixes: 5661f08a7144 ("usb: gadget: add SDP driver")
+Upstream-Status: Submitted [https://lore.kernel.org/all/4bdba9dc-0c21-4e33-8f20-2c0a7ebba0d6@gmail.com/]
+Link: https://lore.kernel.org/u-boot/3f4477b0-1aa7-47f8-97e6-3391dce81d94@gmail.com/
+Signed-off-by: Ana Bobillo <anabobillo3@gmail.com>
+---
+ drivers/usb/gadget/composite.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/drivers/usb/gadget/composite.c b/drivers/usb/gadget/composite.c
+index 04b85419931..d6147d22936 100644
+--- a/drivers/usb/gadget/composite.c
++++ b/drivers/usb/gadget/composite.c
+@@ -1019,6 +1019,22 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
+ 	u8				endp;
+ 	struct usb_configuration	*c;
+ 
++	/*
++	 * The data stage of every request handled here, or by a function
++	 * through cdev->req, goes through the USB_BUFSIZ ep0 buffer.
++	 */
++	if (w_length > USB_BUFSIZ) {
++		if (ctrl->bRequestType & USB_DIR_IN) {
++			/* Cast away the const, we are going to overwrite on purpose. */
++			__le16 *temp = (__le16 *)&ctrl->wLength;
++
++			*temp = cpu_to_le16(USB_BUFSIZ);
++			w_length = USB_BUFSIZ;
++		} else {
++			goto done;
++		}
++	}
++
+ 	/*
+ 	 * partial re-init of the response message; the function or the
+ 	 * gadget might need to intercept e.g. a control-OUT completion
+

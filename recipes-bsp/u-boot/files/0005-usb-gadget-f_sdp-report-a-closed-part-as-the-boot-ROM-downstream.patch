@@ -1,0 +1,104 @@
+From b2e4fb6e443b0aaf4b4436aa0fdd4fa46ebe90ab Mon Sep 17 00:00:00 2001
+From: Ana Bobillo <anabobillo3@gmail.com>
+Date: Wed, 4 Nov 2026 12:52:08 +0100
+Subject: [PATCH] usb: gadget: f_sdp: report a closed part as the boot ROM does
+
+Add sdp_is_closed() for ELE AHAB on NXP downstream U-Boot, and report
+SDP_SECURITY_CLOSED from the SDP gadget when the part is closed.
+
+The ELE hook reuses tdx_secboot_ele_ahab_dev_is_closed(), added earlier
+in this layer's patch stack, rather than decoding the lifecycle a second
+time: it treats an unknown lifecycle as closed. The upstream series also
+adds a HAB hook in hab.c. That hunk is dropped here, as no machine using
+this patch builds hab.c (CONFIG_IMX_HAB is not set).
+
+Upstream-Status: Submitted [https://lore.kernel.org/all/4bdba9dc-0c21-4e33-8f20-2c0a7ebba0d6@gmail.com/]
+Signed-off-by: Ana Bobillo <anabobillo3@gmail.com>
+Signed-off-by: Jon Oster <jon.oster@toradex.com>
+---
+ arch/arm/mach-imx/ele_ahab.c |  7 +++++++
+ drivers/usb/gadget/f_sdp.c   |  7 ++++++-
+ include/sdp.h                | 19 +++++++++++++++++++
+ 3 files changed, 32 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm/mach-imx/ele_ahab.c b/arch/arm/mach-imx/ele_ahab.c
+--- a/arch/arm/mach-imx/ele_ahab.c
++++ b/arch/arm/mach-imx/ele_ahab.c
+@@ -16,6 +16,7 @@
+ #include <asm/arch/sys_proto.h>
+ #include <console.h>
+ #include <cpu_func.h>
++#include <sdp.h>
+ #include <asm/global_data.h>
+ #include <stdio.h>
+ 
+@@ -593,6 +594,12 @@ static int confirm_close(void)
+ 	return 0;
+ }
+ 
++/* Secure boot is enforced: the SDP gadget then behaves as the ROM's does */
++bool sdp_is_closed(void)
++{
++	return tdx_secboot_ele_ahab_dev_is_closed();
++}
++
+ static int do_ahab_close(struct cmd_tbl *cmdtp, int flag, int argc,
+ 			 char *const argv[])
+ {
+diff --git a/drivers/usb/gadget/f_sdp.c b/drivers/usb/gadget/f_sdp.c
+index a5202ad48fb6efd5011542bb81d111bab552620f..213fe00497f5e6bee3743dc90f153ceb0418bfb6 100644
+--- a/drivers/usb/gadget/f_sdp.c
++++ b/drivers/usb/gadget/f_sdp.c
+@@ -289,6 +289,11 @@ static inline void *sdp_ptr(u32 val)
+ 	return (void *)(uintptr_t)val;
+ }
+ 
++__weak bool sdp_is_closed(void)
++{
++	return false;
++}
++
+ static void sdp_rx_command_complete(struct usb_ep *ep, struct usb_request *req)
+ {
+ 	struct f_sdp *sdp = req->context;
+@@ -803,7 +808,7 @@ static int sdp_handle_in_ep(struct spl_image_info *spl_image,
+ 		debug("Report 3: HAB security\n");
+ 		data[0] = 3;
+ 
+-		status = SDP_SECURITY_OPEN;
++		status = sdp_is_closed() ? SDP_SECURITY_CLOSED : SDP_SECURITY_OPEN;
+ 		memcpy(&data[1], &status, 4);
+ 		sdp_func->in_req->length = 5;
+ 		usb_ep_queue(sdp_func->in_ep, sdp_func->in_req, 0);
+diff --git a/include/sdp.h b/include/sdp.h
+index 5492f9c47d29983ccf61d044e28558018ac9c672..44920d59f2e2289e9a9eba527784a6793de1bdec 100644
+--- a/include/sdp.h
++++ b/include/sdp.h
+@@ -9,8 +9,27 @@
+ #ifndef __SDP_H_
+ #define __SDP_H_
+ 
++#include <linux/types.h>
++
++struct udevice;
++
+ int sdp_init(struct udevice *udc);
+ 
++/**
++ * sdp_is_closed() - Tell whether secure boot is enforced on this part
++ *
++ * The SDP gadget emulates the i.MX boot ROM's serial download mode. On a
++ * part with secure boot fused (HAB closed, AHAB OEM closed), the ROM refuses
++ * the operations that would bypass the signature chain, and SDP has to do the
++ * same, or it is a way around secure boot on an otherwise locked device.
++ *
++ * The weak default says open; i.MX code overrides it per secure boot
++ * mechanism.
++ *
++ * Return: true if the part is closed, false otherwise
++ */
++bool sdp_is_closed(void);
++
+ #ifdef CONFIG_SPL_BUILD
+ #include <spl.h>
+ 
