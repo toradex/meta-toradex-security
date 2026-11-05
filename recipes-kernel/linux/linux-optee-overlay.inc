@@ -20,7 +20,7 @@ gen_optee_dt_overlay() {
     sed -i 's|@@TDX_OPTEE_ADDR_LOAD@@|${TDX_OPTEE_ADDR_LOAD}|g' ${UNPACKDIR}/optee_overlay.dts
     sed -i 's|@@TDX_OPTEE_ADDR_SIZE@@|${TDX_OPTEE_ADDR_SIZE}|g' ${UNPACKDIR}/optee_overlay.dts
 
-    cp ${UNPACKDIR}/optee_overlay.dts ${S}/${MACHINE_PREFIX}_optee_overlay.dts
+    cp ${UNPACKDIR}/optee_overlay.dts ${S}/arch/${ARCH}/boot/dts/${KERNEL_DTB_PREFIX}${TDX_OPTEE_DT_OVERLAY_NAME}.dtso
 }
 
 do_patch[postfuncs] += "gen_optee_dt_overlay"

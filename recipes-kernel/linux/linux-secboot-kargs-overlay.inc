@@ -14,12 +14,10 @@ gen_secboot_kargs() {
 	       "of the kernel command line as passed by the bootloader to the kernel."
     fi
 
-    cd "${S}"
-
-    # Generate overlay:
+    # Generate overlay in the kernel tree (built from KERNEL_DEVICETREE):
     bbdebug 1 "Generating overlay file with secure boot bootargs..."
-    local dts="${TDX_SECBOOT_KARGS_OVERLAY}.dts"
-    cat <<EOF >"${dts}"
+    local dtso="${S}/arch/${ARCH}/boot/dts/${KERNEL_DTB_PREFIX}${TDX_SECBOOT_KARGS_OVERLAY}.dtso"
+    cat <<EOF >"${dtso}"
 /* Automatically generated file - do not edit. */
 
 /dts-v1/;
@@ -33,19 +31,6 @@ gen_secboot_kargs() {
 	};
 };
 EOF
-
-    # Add overlay to Makefile:
-    local dtbo="${TDX_SECBOOT_KARGS_OVERLAY}.dtbo"
-    local newrow="dtb-y += ${dtbo}"
-    if ! grep -qF "dtb-y +=" Makefile; then
-	bbfatal "Cannot patch device-tree-overlays Makefile!"
-    fi
-    if ! grep -qF "${newrow}"; then
-	bbdebug 1 "Patching Makefile..."
-        sed -i "$(grep -nF 'dtb-y +=' Makefile | tail -1 | cut -d':' -f1)a ${newrow}" Makefile
-    else
-        bbdebug 1 "Makefile already patched!"
-    fi
 }
 
 do_patch[postfuncs] += "gen_secboot_kargs"

@@ -9,7 +9,7 @@
 # for Toradex BSP Reference images, this is done by the u-boot-distro-boot
 # recipe provided by layer meta-toradex-bsp-common.
 #
-FITCONF_FDT_OVERLAYS .= "${@oe.utils.conditional('TDX_UBOOT_HARDENING_ENABLE', '1', '#conf-${TDX_SECBOOT_KARGS_OVERLAY}.dtbo', '', d)}"
+FITCONF_FDT_OVERLAYS .= "${@oe.utils.conditional('TDX_UBOOT_HARDENING_ENABLE', '1', '#conf-${DTB_PREFIX}${TDX_SECBOOT_KARGS_OVERLAY}.dtbo', '', d)}"
 
 # Whether or not to amend the boot script (this only works with the Toradex-
 # provided boot script for BSP images); users utilizing a custom boot script

@@ -8,3 +8,9 @@ require ${@ 'linux-dm-crypt.inc' if 'tdx-encrypted' in d.getVar('OVERRIDES').spl
 
 # op-tee support
 require ${@ 'linux-optee.inc' if d.getVar('TDX_OPTEE_ENABLE') == '1' else ''}
+
+# device tree overlay for U-Boot hardening
+require ${@ 'linux-secboot-kargs-overlay.inc' if 'tdx-signed' in d.getVar('OVERRIDES').split(':') else ''}
+
+# device tree overlay for OP-TEE
+require ${@ 'linux-optee-overlay.inc' if d.getVar('TDX_OPTEE_DT_OVERLAY') == '1' else ''}
