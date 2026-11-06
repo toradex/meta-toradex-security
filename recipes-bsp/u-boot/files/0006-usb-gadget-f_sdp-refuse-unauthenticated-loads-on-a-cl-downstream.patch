@@ -1,0 +1,251 @@
+From f308cba273143e05010ef58350916348d9e42f37 Mon Sep 17 00:00:00 2001
+From: Ana Bobillo <anabobillo3@gmail.com>
+Date: Wed, 4 Nov 2026 12:53:23 +0100
+Subject: [PATCH] usb: gadget: f_sdp: refuse unauthenticated loads on a closed
+ part
+
+On a closed part, skip the raw IVT jump, refuse READ_REGISTER, drop
+WRITE_FILE that targets the loader's memory, and only take images via
+authenticating FIT/container/legacy paths.
+
+Backport of Ana Bobillo's upstream series for NXP downstream U-Boot
+toradex_imx_lf_v2024.04: CONFIG_XPL_BUILD becomes CONFIG_SPL_BUILD,
+jump_to_image() becomes jump_to_image_no_args(), and the load paths keep
+their open coded struct spl_load_info set-up.
+
+Upstream-Status: Submitted [https://lore.kernel.org/all/4bdba9dc-0c21-4e33-8f20-2c0a7ebba0d6@gmail.com/]
+Signed-off-by: Ana Bobillo <anabobillo3@gmail.com>
+Signed-off-by: Jon Oster <jon.oster@toradex.com>
+---
+ drivers/usb/gadget/f_sdp.c | 125 ++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 122 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/usb/gadget/f_sdp.c b/drivers/usb/gadget/f_sdp.c
+index 213fe00497f5e6bee3743dc90f153ceb0418bfb6..10e187c800da58fb4cbbf9b4b2c9e2e975995e4d 100644
+--- a/drivers/usb/gadget/f_sdp.c
++++ b/drivers/usb/gadget/f_sdp.c
+@@ -23,12 +23,16 @@
+ #include <log.h>
+ #include <malloc.h>
+ #include <linux/printk.h>
++#include <linux/sizes.h>
+ 
+ #include <linux/usb/ch9.h>
+ #include <linux/usb/gadget.h>
+ #include <linux/usb/composite.h>
+ 
++#include <config.h>
+ #include <asm/io.h>
++#include <asm/global_data.h>
++#include <asm/sections.h>
+ #include <g_dnl.h>
+ #include <sdp.h>
+ #include <spl.h>
+@@ -37,6 +41,8 @@
+ #include <imx_container.h>
+ #include <watchdog.h>
+ 
++DECLARE_GLOBAL_DATA_PTR;
++
+ #define HID_REPORT_ID_MASK	0x000000ff
+ 
+ /*
+@@ -70,6 +76,8 @@ struct hid_report {
+ #define SDP_WRITE_REGISTER_COMPLETE	0x128A8A12
+ #define SDP_SKIP_DCD_HEADER_COMPLETE	0x900DD009
+ #define SDP_ERROR_IMXHEADER		0x000a0533
++/* Status of a command refused on a closed part (HAB_FAILURE is 0x33) */
++#define SDP_ERROR_CLOSED		0x33333333
+ 
+ #define SDP_COMMAND_LEN		16
+ 
+@@ -114,6 +122,7 @@ struct f_sdp {
+ 	u32				dnl_bytes;
+ 	u32				dnl_bytes_remaining;
+ 	u32				jmp_address;
++	bool				dnl_discard;
+ 	bool				always_send_status;
+ 	u32				error_status;
+ 
+@@ -294,6 +303,61 @@ __weak bool sdp_is_closed(void)
+ 	return false;
+ }
+ 
++/*
++ * On a closed part the image is authenticated when the host jumps to it, so
++ * its download must not change what runs before then: it has to land in
++ * DRAM, clear of this phase's BSS, heaps, stack, device tree and page tables.
++ * SPL runs from on-chip RAM below DRAM; U-Boot proper runs from the top of
++ * DRAM, which the stack range covers there.
++ */
++static bool sdp_write_allowed(u32 addr, u32 cnt)
++{
++	const gd_t *g = gd;
++	ulong start = addr, end = start + cnt;
++	ulong sp = (ulong)&start;
++	ulong top = (ulong)g + sizeof(*g);
++	const void *fdt = g->fdt_blob;
++	int i;
++
++	if (!sdp_is_closed())
++		return true;
++
++#ifdef CFG_SYS_SDRAM_BASE
++	if (start < CFG_SYS_SDRAM_BASE || cnt > U32_MAX - addr)
++		return false;
++#else
++	return false;
++#endif
++
++	if (!IS_ENABLED(CONFIG_SPL_BUILD)) {
++		/* ram_top may be 4 GiB, which a 32-bit ulong holds as 0 */
++		top = (ulong)g->ram_top;
++		if (!top)
++			top = ULONG_MAX;
++	}
++
++	/* Stack (up to ram_top once relocated), BSS, heaps, DT, page tables */
++	ulong busy[][2] = {
++		{ sp > SZ_64K ? sp - SZ_64K : 0, top },
++		{ (ulong)__bss_start, (ulong)__bss_end },
++		{ mem_malloc_start, mem_malloc_end },
++		{ (ulong)fdt, fdt ? (ulong)fdt + fdt_totalsize(fdt) : 0 },
++#if CONFIG_IS_ENABLED(SYS_MALLOC_F)
++		{ g->malloc_base, g->malloc_base + g->malloc_limit },
++#endif
++#if defined(CONFIG_ARM) && \
++	!(CONFIG_IS_ENABLED(SYS_ICACHE_OFF) && CONFIG_IS_ENABLED(SYS_DCACHE_OFF))
++		{ g->arch.tlb_addr, g->arch.tlb_addr + g->arch.tlb_size },
++#endif
++	};
++
++	for (i = 0; i < ARRAY_SIZE(busy); i++)
++		if (start < busy[i][1] && busy[i][0] < end)
++			return false;
++
++	return true;
++}
++
+ static void sdp_rx_command_complete(struct usb_ep *ep, struct usb_request *req)
+ {
+ 	struct f_sdp *sdp = req->context;
+@@ -327,6 +391,14 @@ static void sdp_rx_command_complete(struct usb_ep *ep, struct usb_request *req)
+ 		sdp->dnl_address = addr;
+ 		sdp->dnl_bytes_remaining = cnt;
+ 		sdp->next_state = SDP_STATE_TX_REGISTER;
++
++		/* Nothing is read out of a closed part */
++		if (sdp_is_closed()) {
++			sdp->error_status = SDP_ERROR_CLOSED;
++			sdp->next_state = SDP_STATE_IDLE;
++			break;
++		}
++
+ 		printf("Reading %d registers at 0x%08x... ",
+ 		       sdp->dnl_bytes_remaining, sdp->dnl_address);
+ 		break;
+@@ -340,6 +412,12 @@ static void sdp_rx_command_complete(struct usb_ep *ep, struct usb_request *req)
+ 		sdp->dnl_bytes = sdp->dnl_bytes_remaining;
+ 		sdp->next_state = SDP_STATE_IDLE;
+ 
++		/* A refused download is received and dropped, then reported */
++		sdp->dnl_discard = !sdp_write_allowed(sdp->dnl_address,
++						      sdp->dnl_bytes);
++		if (sdp->dnl_discard)
++			sdp->error_status = SDP_ERROR_CLOSED;
++
+ 		printf("Downloading file of size %d to 0x%08x... ",
+ 		       sdp->dnl_bytes_remaining, sdp->dnl_address);
+ 
+@@ -415,7 +493,7 @@ static void sdp_rx_data_complete(struct usb_ep *ep, struct usb_request *req)
+ 	}
+ 	sdp->dnl_bytes_remaining -= datalen;
+ 
+-	if (sdp->state == SDP_STATE_RX_FILE_DATA_BUSY) {
++	if (sdp->state == SDP_STATE_RX_FILE_DATA_BUSY && !sdp->dnl_discard) {
+ 		memcpy(sdp_ptr(sdp->dnl_address), req->buf + 1, datalen);
+ 		sdp->dnl_address += datalen;
+ 	}
+@@ -759,6 +837,23 @@ static u32 sdp_jump_imxheader(void *address)
+ 	return 0;
+ }
+ 
++/*
++ * On a closed part the ROM only runs an image it has authenticated: take an
++ * image only by a load path that authenticates it, else report the failure.
++ */
++static bool sdp_jump_refused(bool authenticated)
++{
++	if (authenticated || !sdp_is_closed())
++		return false;
++
++	debug("%s: refused on a closed part\n", __func__);
++	sdp_func->error_status = SDP_ERROR_CLOSED;
++	sdp_func->next_state = SDP_STATE_IDLE;
++	sdp_func->state = SDP_STATE_TX_STATUS;
++
++	return true;
++}
++
+ #ifdef CONFIG_SPL_BUILD
+ static ulong sdp_load_read(struct spl_load_info *load, ulong sector,
+ 			   ulong count, void *buf)
+@@ -844,7 +939,10 @@ static int sdp_handle_in_ep(struct spl_image_info *spl_image,
+ 		break;
+ 	case SDP_STATE_JUMP:
+ 		printf("Jumping to header at 0x%08x\n", sdp_func->jmp_address);
+-		status = sdp_jump_imxheader(sdp_ptr(sdp_func->jmp_address));
++		/* An IVT entry is called as it is, unauthenticated */
++		status = SDP_ERROR_IMXHEADER;
++		if (!sdp_is_closed())
++			status = sdp_jump_imxheader(sdp_ptr(sdp_func->jmp_address));
+ 
+ 		/* If imx header fails, try some U-Boot specific headers */
+ 		if (status) {
+@@ -866,6 +964,10 @@ static int sdp_handle_in_ep(struct spl_image_info *spl_image,
+ 				int ret;
+ 
+ 				debug("Found FIT\n");
++				/* spl_load_simple_fit_fix_load() authenticates it */
++				if (sdp_jump_refused(IS_ENABLED(CONFIG_IMX_HAB)))
++					return 0;
++
+ 				load.priv = header;
+ 				spl_set_bl_len(&load, 1);
+ 				load.read = sdp_load_read;
+@@ -882,6 +984,10 @@ static int sdp_handle_in_ep(struct spl_image_info *spl_image,
+ 				struct spl_load_info load;
+ 				int ret;
+ 
++				/* spl_load_imx_container() authenticates it */
++				if (sdp_jump_refused(IS_ENABLED(CONFIG_AHAB_BOOT)))
++					return 0;
++
+ 				load.priv = header;
+ 				spl_set_bl_len(&load, 1);
+ 				load.read = sdp_load_read;
+@@ -895,10 +1001,23 @@ static int sdp_handle_in_ep(struct spl_image_info *spl_image,
+ 			/* In SPL, allow jumps to U-Boot images */
+ 			struct spl_image_info spl_image = {};
+ 			struct spl_boot_device bootdev = {};
+-			spl_parse_image_header(&spl_image, &bootdev, header);
++			int err = spl_parse_image_header(&spl_image, &bootdev,
++							 header);
++
++			/*
++			 * The i.MX jump_to_image_no_args() authenticates from load_addr
++			 * on, so the header is signed only if it lies there
++			 */
++			if (sdp_jump_refused(IS_ENABLED(CONFIG_IMX_HAB) && !err &&
++					     spl_image.load_addr == sdp_func->jmp_address))
++				return 0;
+ 			spl_board_prepare_for_boot();
+ 			jump_to_image_no_args(&spl_image);
+ #else
++			/* Nothing authenticates a script */
++			if (sdp_jump_refused(false))
++				return 0;
++
+ 			/* In U-Boot, allow jumps to scripts */
+ 			cmd_source_script(sdp_func->jmp_address, NULL, NULL);
+ #endif
