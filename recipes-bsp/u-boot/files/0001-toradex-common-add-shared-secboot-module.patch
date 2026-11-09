@@ -17,7 +17,6 @@ Those properties can be checked by a boot script to take wiser decisions
 and/or to provide diagnostics to the user.
 
 Upstream-Status: Inappropriate [Torizon OS specific]
-
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  common/tdx-secboot.c  | 310 ++++++++++++++++++++++++++++++++++++++++++
@@ -28,7 +27,7 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 
 diff --git a/common/tdx-secboot.c b/common/tdx-secboot.c
 new file mode 100644
-index 00000000000..28d517a5b51
+index 000000000000..76ebee1bc527
 --- /dev/null
 +++ b/common/tdx-secboot.c
 @@ -0,0 +1,310 @@
@@ -37,11 +36,11 @@ index 00000000000..28d517a5b51
 + * Copyright 2024 Toradex
 + */
 +
-+#include <common.h>
 +#include <command.h>
 +#include <env.h>
 +#include <malloc.h>
 +#include <tdx-secboot.h>
++#include <vsprintf.h>
 +
 +#ifdef CONFIG_TDX_SECBOOT_HARDENING
 +#include <tdx-harden.h>
@@ -344,7 +343,7 @@ index 00000000000..28d517a5b51
 +);
 diff --git a/include/tdx-secboot.h b/include/tdx-secboot.h
 new file mode 100644
-index 00000000000..f71016fd456
+index 000000000000..f71016fd4563
 --- /dev/null
 +++ b/include/tdx-secboot.h
 @@ -0,0 +1,21 @@
@@ -369,6 +368,3 @@ index 00000000000..f71016fd456
 +int tdx_secboot_dev_is_open(void);
 +
 +#endif	/* __TDX_SECBOOT_H */
--- 
-2.34.1
-
