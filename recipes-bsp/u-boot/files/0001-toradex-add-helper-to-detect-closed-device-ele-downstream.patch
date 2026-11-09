@@ -22,18 +22,17 @@ disabled without any indication, so it is preferable to break the build
 until the encoding is confirmed for the SoC being added.
 
 Upstream-Status: Inappropriate [Torizon OS specific]
-
 Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
 Signed-off-by: Rogerio Borin <rogerio.borin@toradex.com>
 ---
- arch/arm/mach-imx/ele_ahab.c | 76 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ arch/arm/mach-imx/ele_ahab.c | 76 ++++++++++++++++++++++++++++++++++++
  1 file changed, 76 insertions(+)
 
 diff --git a/arch/arm/mach-imx/ele_ahab.c b/arch/arm/mach-imx/ele_ahab.c
-index cdf73ba30412..1c5d47d9c979 100644
+index a06dda2dd6c8..9d76b0a5821c 100644
 --- a/arch/arm/mach-imx/ele_ahab.c
 +++ b/arch/arm/mach-imx/ele_ahab.c
-@@ -501,6 +501,82 @@
+@@ -503,6 +503,82 @@ static void display_life_cycle(u32 lc)
  }
  #endif
  
@@ -115,7 +114,4 @@ index cdf73ba30412..1c5d47d9c979 100644
 +
  static int confirm_close(void)
  {
- 	puts("Warning: Please ensure your sample is in NXP closed state, "
--- 
-2.34.1
-
+ 	puts("Warning: Please ensure your sample lifecycle is OEM Open state, "
