@@ -25,19 +25,18 @@ actually relies on data structures present only when CONFIG_LMB is
 enabled.
 
 Upstream-Status: Inappropriate [Torizon OS specific]
-
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  Kconfig   |  7 ++++++
  fs/fs.c   |  6 +++++
- lib/lmb.c | 65 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 78 insertions(+)
+ lib/lmb.c | 66 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 79 insertions(+)
 
 diff --git a/Kconfig b/Kconfig
-index 4a4b1005688..1425c764c93 100644
+index be4f3d616d6b..28d64bde5ad1 100644
 --- a/Kconfig
 +++ b/Kconfig
-@@ -761,6 +761,7 @@ config TDX_SECBOOT_HARDENING
+@@ -820,6 +820,7 @@ config TDX_SECBOOT_HARDENING
  	bool "Toradex Secure Boot hardening"
  	select TDX_CMD_WHITELIST
  	select TDX_BOOTM_PROTECTION
@@ -45,7 +44,7 @@ index 4a4b1005688..1425c764c93 100644
  	select TDX_CLI_PROTECTION
  	select TDX_BOOTARGS_PROTECTION
  	help
-@@ -794,6 +795,12 @@ config TDX_BOOTM_PROTECTION
+@@ -853,6 +854,12 @@ config TDX_BOOTM_PROTECTION
  	  Enable the protection in bootm to prevent execution of unsigned
  	  images.
  
@@ -59,43 +58,43 @@ index 4a4b1005688..1425c764c93 100644
  	bool
  	help
 diff --git a/fs/fs.c b/fs/fs.c
-index acf465bdd80..b7ede5068a1 100644
+index 8ea50a6c13c4..59cc65f92cd7 100644
 --- a/fs/fs.c
 +++ b/fs/fs.c
-@@ -553,6 +553,12 @@ static int fs_read_lmb_check(const char *filename, ulong addr, loff_t offset,
- 	lmb_init_and_reserve(&lmb, gd->bd, (void *)gd->fdt_blob);
- 	lmb_dump_all(&lmb);
+@@ -593,6 +593,12 @@ static int fs_read_lmb_check(const char *filename, ulong addr, loff_t offset,
+ 
+ 	lmb_dump_all();
  
 +#if CONFIG_IS_ENABLED(TDX_LOAD_PROTECTION)
-+	int tdx_valid_loadaddr(struct lmb *lmb, phys_addr_t base, phys_size_t size);
-+	if (!tdx_valid_loadaddr(&lmb, addr, read_len))
++	int tdx_valid_loadaddr(phys_addr_t base, phys_size_t size);
++	if (!tdx_valid_loadaddr(addr, read_len))
 +		return -EFAULT;
 +#endif
 +
- 	if (lmb_alloc_addr(&lmb, addr, read_len) == addr)
- 		return 0;
- 
+ 	read_addr = (phys_addr_t)addr;
+ 	if (!lmb_alloc_mem(LMB_MEM_ALLOC_ADDR, 0, &read_addr, read_len,
+ 			   LMB_NONE))
 diff --git a/lib/lmb.c b/lib/lmb.c
-index 8bcceb47bd7..bde85e67f82 100644
+index 275d105c5aa2..b8cd720a97ba 100644
 --- a/lib/lmb.c
 +++ b/lib/lmb.c
-@@ -12,6 +12,8 @@
- #include <lmb.h>
+@@ -16,6 +16,7 @@
  #include <log.h>
  #include <malloc.h>
-+#include <linux/sizes.h>
+ #include <spl.h>
 +#include <tdx-harden.h>
  
  #include <asm/global_data.h>
  #include <asm/sections.h>
-@@ -598,3 +600,66 @@ __weak void arch_lmb_reserve(struct lmb *lmb)
- {
- 	/* please define platform specific arch_lmb_reserve() */
+@@ -899,3 +900,68 @@ void lmb_pop(struct lmb *store)
+ 	lmb = *store;
  }
+ #endif /* UNIT_TEST */
 +
 +#if CONFIG_IS_ENABLED(TDX_LOAD_PROTECTION)
-+int tdx_valid_loadaddr(struct lmb *lmb, phys_addr_t base, phys_size_t size)
++int tdx_valid_loadaddr(phys_addr_t base, phys_size_t size)
 +{
++	struct lmb_region *mem = lmb.available_mem.data;
 +	long rgn;
 +	phys_addr_t end, off, lim;
 +
@@ -104,7 +103,8 @@ index 8bcceb47bd7..bde85e67f82 100644
 +	if (!gd->fdt_blob)
 +		return 1;	/* no hardening */
 +
-+	rgn = lmb_overlaps_region(&lmb->memory, base, size);
++	rgn = lmb_overlap_checks(&lmb.available_mem, base, size, LMB_NONE,
++				 true);
 +	if (rgn != 0) {
 +		debug("Load address range does not overlap first "
 +		      "memory region\n");
@@ -112,13 +112,13 @@ index 8bcceb47bd7..bde85e67f82 100644
 +	}
 +
 +	end = base + size - 1;
-+	if (!lmb_addrs_overlap(lmb->memory.region[rgn].base,
-+			       lmb->memory.region[rgn].size, base, 1)) {
++	if (!lmb_addrs_overlap(mem[rgn].base,
++			       mem[rgn].size, base, 1)) {
 +		debug("Start address does not fall into memory region\n");
 +		goto err;
 +	}
-+	if (!lmb_addrs_overlap(lmb->memory.region[rgn].base,
-+			       lmb->memory.region[rgn].size, end, 1)) {
++	if (!lmb_addrs_overlap(mem[rgn].base,
++			       mem[rgn].size, end, 1)) {
 +		debug("End address does not fall into memory region\n");
 +		goto err;
 +	}
@@ -129,15 +129,15 @@ index 8bcceb47bd7..bde85e67f82 100644
 +	 * 64MB to use at the end of the memory and it should be compatible with
 +	 * all Toradex boot scripts.
 +	 */
-+	off = end - lmb->memory.region[rgn].base;
-+	lim = min(lmb->memory.region[rgn].size, SZ_1G);
-+	lim = max(lim, SZ_64M) - SZ_64M;
++	off = end - mem[rgn].base;
++	lim = min_t(phys_size_t, mem[rgn].size, SZ_1G);
++	lim = max_t(phys_size_t, lim, SZ_64M) - SZ_64M;
 +
 +	debug("Checking offset 0x%llx against limit 0x%llx; "
 +	      "memory start: 0x%llx, size: 0x%llx\n",
 +	      (u64) off, (u64) lim,
-+	      (u64) lmb->memory.region[rgn].base,
-+	      (u64) lmb->memory.region[rgn].size);
++	      (u64) mem[rgn].base,
++	      (u64) mem[rgn].size);
 +
 +	if (off >= lim) {
 +		debug("End offset (0x%llx) >= limit (0x%llx)\n",
@@ -155,6 +155,3 @@ index 8bcceb47bd7..bde85e67f82 100644
 +	return 0;
 +}
 +#endif
--- 
-2.43.0
-

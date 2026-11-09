@@ -30,19 +30,19 @@ Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
  2 files changed, 16 insertions(+), 4 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 6558415a8b5a..785331dcbebd 100644
+index 7f5d83658d75..ed900dff69a7 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -1359,6 +1359,7 @@ cmd_binman = $(srctree)/tools/binman/binman $(if $(BINMAN_DEBUG),-D) \
- 		-a spl-dtb=$(CONFIG_SPL_OF_REAL) \
- 		-a tpl-dtb=$(CONFIG_TPL_OF_REAL) \
+@@ -1704,6 +1704,7 @@ cmd_binman = $(srctree)/tools/binman/binman $(if $(BINMAN_DEBUG),-D) \
+ 		-a vpl-dtb=$(CONFIG_VPL_OF_REAL) \
  		-a pre-load-key-path=${PRE_LOAD_KEY_PATH} \
+ 		-a of-spl-remove-props=$(CONFIG_OF_SPL_REMOVE_PROPS) \
 +		$(if $(BINMAN_X509_KEY_URI),-a keyfile="$(BINMAN_X509_KEY_URI)") \
  		$(BINMAN_$(@F))
  
  OBJCOPYFLAGS_u-boot.ldr.hex := -I binary -O ihex
 diff --git a/tools/binman/etype/x509_cert.py b/tools/binman/etype/x509_cert.py
-index 29630d1b86c8..d6a55f82dcc7 100644
+index b6e8b0b4fb09..bed69cecdce0 100644
 --- a/tools/binman/etype/x509_cert.py
 +++ b/tools/binman/etype/x509_cert.py
 @@ -7,6 +7,7 @@
@@ -53,7 +53,7 @@ index 29630d1b86c8..d6a55f82dcc7 100644
  
  from binman.entry import EntryArg
  from binman.etype.collection import Entry_collection
-@@ -79,6 +80,16 @@ class Entry_x509_cert(Entry_collection):
+@@ -80,6 +81,16 @@ class Entry_x509_cert(Entry_collection):
          if input_data is None:
              return None
  
@@ -70,7 +70,7 @@ index 29630d1b86c8..d6a55f82dcc7 100644
          uniq = self.GetUniqueName()
          output_fname = tools.get_output_filename('cert.%s' % uniq)
          input_fname = tools.get_output_filename('input.%s' % uniq)
-@@ -88,7 +99,7 @@ class Entry_x509_cert(Entry_collection):
+@@ -90,7 +101,7 @@ class Entry_x509_cert(Entry_collection):
              stdout = self.openssl.x509_cert(
                  cert_fname=output_fname,
                  input_fname=input_fname,
@@ -79,7 +79,7 @@ index 29630d1b86c8..d6a55f82dcc7 100644
                  cn=self._cert_ca,
                  revision=self._cert_rev,
                  config_fname=config_fname)
-@@ -96,7 +107,7 @@ class Entry_x509_cert(Entry_collection):
+@@ -98,7 +109,7 @@ class Entry_x509_cert(Entry_collection):
              stdout = self.openssl.x509_cert_sysfw(
                  cert_fname=output_fname,
                  input_fname=input_fname,
@@ -88,7 +88,7 @@ index 29630d1b86c8..d6a55f82dcc7 100644
                  config_fname=config_fname,
                  sw_rev=self.sw_rev,
                  req_dist_name_dict=self.req_dist_name,
-@@ -105,7 +116,7 @@ class Entry_x509_cert(Entry_collection):
+@@ -107,7 +118,7 @@ class Entry_x509_cert(Entry_collection):
              stdout = self.openssl.x509_cert_rom(
                  cert_fname=output_fname,
                  input_fname=input_fname,
@@ -97,7 +97,7 @@ index 29630d1b86c8..d6a55f82dcc7 100644
                  config_fname=config_fname,
                  sw_rev=self.sw_rev,
                  req_dist_name_dict=self.req_dist_name,
-@@ -119,7 +130,7 @@ class Entry_x509_cert(Entry_collection):
+@@ -122,7 +133,7 @@ class Entry_x509_cert(Entry_collection):
              stdout = self.openssl.x509_cert_rom_combined(
                  cert_fname=output_fname,
                  input_fname=input_fname,
@@ -106,6 +106,3 @@ index 29630d1b86c8..d6a55f82dcc7 100644
                  config_fname=config_fname,
                  sw_rev=self.sw_rev,
                  req_dist_name_dict=self.req_dist_name,
--- 
-2.34.1
-

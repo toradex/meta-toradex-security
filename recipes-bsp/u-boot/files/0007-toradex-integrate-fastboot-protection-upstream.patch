@@ -17,16 +17,16 @@ when strictly needed (which is the case with Toradex Easy Installer).
 Upstream-Status: Inappropriate [Torizon OS specific]
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
- Kconfig                       | 20 ++++++++++++++++++
- drivers/fastboot/fb_command.c | 25 ++++++++++++++++++++++
- drivers/fastboot/fb_common.c  | 39 +++++++++++++++++++++++++++++++++++
- 3 files changed, 84 insertions(+)
+ Kconfig                       | 20 +++++++++++++++++++
+ drivers/fastboot/fb_command.c | 25 +++++++++++++++++++++++
+ drivers/fastboot/fb_common.c  | 37 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 82 insertions(+)
 
 diff --git a/Kconfig b/Kconfig
-index 311f2ee150a..0c60104a148 100644
+index 6ef5922e1cf9..fc6e35ba5bef 100644
 --- a/Kconfig
 +++ b/Kconfig
-@@ -835,3 +835,23 @@ config TDX_CP_PROTECTION_ALLOW_CMD
+@@ -894,3 +894,23 @@ config TDX_CP_PROTECTION_ALLOW_CMD
  	  the loading of Toradex Easy Installer. If loading of the installer is
  	  not needed, this option should not be enabled so as to reduce the attack
  	  surface.
@@ -51,10 +51,10 @@ index 311f2ee150a..0c60104a148 100644
 +	  this option should be enabled only when strictly required, e.g. when
 +	  users want to use a bootloader having Fastboot support to flash a device.
 diff --git a/drivers/fastboot/fb_command.c b/drivers/fastboot/fb_command.c
-index 01443c5d39e..8aab0e8d395 100644
+index 18d86988f4c9..134e3fc0f1b1 100644
 --- a/drivers/fastboot/fb_command.c
 +++ b/drivers/fastboot/fb_command.c
-@@ -66,14 +66,38 @@ static const struct {
+@@ -68,14 +68,38 @@ static const struct {
  		.command = "erase",
  		.dispatch = CONFIG_IS_ENABLED(FASTBOOT_FLASH, (erase), (NULL))
  	},
@@ -93,7 +93,7 @@ index 01443c5d39e..8aab0e8d395 100644
  	[FASTBOOT_COMMAND_REBOOT] =  {
  		.command = "reboot",
  		.dispatch = okay
-@@ -118,6 +142,7 @@ static const struct {
+@@ -120,6 +144,7 @@ static const struct {
  		.command = "oem board",
  		.dispatch = CONFIG_IS_ENABLED(FASTBOOT_OEM_BOARD, (oem_board), (NULL))
  	},
@@ -102,12 +102,12 @@ index 01443c5d39e..8aab0e8d395 100644
  		.command = "UCmd",
  		.dispatch = CONFIG_IS_ENABLED(FASTBOOT_UUU_SUPPORT, (run_ucmd), (NULL))
 diff --git a/drivers/fastboot/fb_common.c b/drivers/fastboot/fb_common.c
-index 3576b067729..83648369f4d 100644
+index 9c52e0045881..c96ff49d5bd4 100644
 --- a/drivers/fastboot/fb_common.c
 +++ b/drivers/fastboot/fb_common.c
 @@ -17,6 +17,12 @@
- #include <fastboot.h>
  #include <net.h>
+ #include <vsprintf.h>
  
 +#ifdef CONFIG_TDX_FB_PROTECTION
 +#include <asm/global_data.h>
@@ -118,11 +118,11 @@ index 3576b067729..83648369f4d 100644
  /**
   * fastboot_buf_addr - base address of the fastboot download buffer
   */
-@@ -214,6 +220,38 @@ void fastboot_set_progress_callback(void (*progress)(const char *msg))
+@@ -226,6 +232,36 @@ void fastboot_set_progress_callback(void (*progress)(const char *msg))
  	fastboot_progress_callback = progress;
  }
  
-+static void fastboot_constrain_buffer()
++static void fastboot_constrain_buffer(void)
 +{
 +#ifdef CONFIG_TDX_FB_PROTECTION
 +#ifndef CONFIG_LMB
@@ -133,13 +133,11 @@ index 3576b067729..83648369f4d 100644
 +	const ulong size = (ulong) fastboot_buf_size;
 +
 +	if (gd->fdt_blob) {
-+		int tdx_valid_loadaddr(struct lmb *lmb, phys_addr_t base, phys_size_t size);
-+		struct lmb lmb;
++		int tdx_valid_loadaddr(phys_addr_t base, phys_size_t size);
 +
-+		lmb_init_and_reserve(&lmb, gd->bd, (void *) gd->fdt_blob);
-+		lmb_dump_all(&lmb);
++		lmb_dump_all();
 +
-+		if (!tdx_valid_loadaddr(&lmb, addr, size))
++		if (!tdx_valid_loadaddr(addr, size))
 +			reset_to_default = true;
 +	} else {
 +		eputs("## ERROR: Fastboot protection is enabled but fdt_blob == NULL\n");
@@ -157,13 +155,11 @@ index 3576b067729..83648369f4d 100644
  /*
   * fastboot_init() - initialise new fastboot protocol session
   *
-@@ -225,5 +263,6 @@ void fastboot_init(void *buf_addr, u32 buf_size)
+@@ -242,6 +278,7 @@ void fastboot_init(void *buf_addr, u32 buf_size)
  	fastboot_buf_addr = buf_addr ? buf_addr :
  				       (void *)CONFIG_FASTBOOT_BUF_ADDR;
  	fastboot_buf_size = buf_size ? buf_size : CONFIG_FASTBOOT_BUF_SIZE;
 +	fastboot_constrain_buffer();
  	fastboot_set_progress_callback(NULL);
+ 
  }
--- 
-2.43.0
-

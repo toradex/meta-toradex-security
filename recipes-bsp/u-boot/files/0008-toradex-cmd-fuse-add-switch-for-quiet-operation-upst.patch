@@ -7,17 +7,16 @@ Subject: [PATCH 08/10] toradex: cmd: fuse: add switch for quiet operation
 Add switch -q for quiet operation to all fuse subcommands.
 
 Upstream-Status: Pending
-
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  cmd/fuse.c | 79 ++++++++++++++++++++++++++++++++++--------------------
  1 file changed, 50 insertions(+), 29 deletions(-)
 
 diff --git a/cmd/fuse.c b/cmd/fuse.c
-index f884c894fb0..3446736df0e 100644
+index e2206cdf0d54..d209272e3f2b 100644
 --- a/cmd/fuse.c
 +++ b/cmd/fuse.c
-@@ -45,14 +45,30 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
+@@ -35,14 +35,30 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
  		   char *const argv[])
  {
  	const char *op = cmd_arg1(argc, argv);
@@ -49,10 +48,10 @@ index f884c894fb0..3446736df0e 100644
 +		argv++;
 +	}
  
- 	if (argc < 2 || strtou32(argv[0], 0, &bank) ||
- 			strtou32(argv[1], 0, &word))
-@@ -64,18 +80,18 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
- 		else if (argc != 3 || strtou32(argv[2], 0, &cnt))
+ 	if (IS_ENABLED(CONFIG_CMD_FUSE_WRITEBUFF) && !strcmp(op, "writebuff")) {
+ 		if (argc == 1)
+@@ -65,18 +81,18 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
+ 		else
  			return CMD_RET_USAGE;
  
 -		printf("Reading bank %u:\n", bank);
@@ -74,7 +73,7 @@ index f884c894fb0..3446736df0e 100644
  	} else if (!strcmp(op, "readm")) {
  		if (argc == 3)
  			cnt = 1;
-@@ -87,7 +103,8 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
+@@ -90,7 +106,8 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
  		start = map_sysmem(addr, 4);
  		buf = start;
  
@@ -84,8 +83,8 @@ index f884c894fb0..3446736df0e 100644
  		for (i = 0; i < cnt; i++, word++) {
  			ret = fuse_read(bank, word, &val);
  			if (ret)
-@@ -102,38 +119,38 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
- 		if (argc != 3 || strtou32(argv[2], 0, &cmp))
+@@ -107,20 +124,20 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
+ 		else
  			return CMD_RET_USAGE;
  
 -		printf("Comparing bank %u:\n", bank);
@@ -111,7 +110,8 @@ index f884c894fb0..3446736df0e 100644
  	} else if (!strcmp(op, "sense")) {
  		if (argc == 2)
  			cnt = 1;
- 		else if (argc != 3 || strtou32(argv[2], 0, &cnt))
+@@ -129,18 +146,18 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
+ 		else
  			return CMD_RET_USAGE;
  
 -		printf("Sensing bank %u:\n", bank);
@@ -133,9 +133,9 @@ index f884c894fb0..3446736df0e 100644
  	} else if (!strcmp(op, "prog")) {
  		if (argc < 3)
  			return CMD_RET_USAGE;
-@@ -142,8 +159,9 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
- 			if (strtou32(argv[i], 16, &val))
- 				return CMD_RET_USAGE;
+@@ -148,8 +165,9 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
+ 		for (i = 2; i < argc; i++, word++) {
+ 			val = simple_strtoul(argv[i], NULL, 16);
  
 -			printf("Programming bank %u word 0x%.8x to 0x%.8x...\n",
 -					bank, word, val);
@@ -145,9 +145,9 @@ index f884c894fb0..3446736df0e 100644
  			if (!confirmed && !confirm_prog())
  				return CMD_RET_FAILURE;
  			ret = fuse_prog(bank, word, val);
-@@ -158,8 +176,9 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
- 			if (strtou32(argv[i], 16, &val))
- 				return CMD_RET_USAGE;
+@@ -163,8 +181,9 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
+ 		for (i = 2; i < argc; i++, word++) {
+ 			val = simple_strtoul(argv[i], NULL, 16);
  
 -			printf("Overriding bank %u word 0x%.8x with "
 -					"0x%.8x...\n", bank, word, val);
@@ -157,7 +157,7 @@ index f884c894fb0..3446736df0e 100644
  			ret = fuse_override(bank, word, val);
  			if (ret)
  				goto err;
-@@ -171,23 +190,25 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
+@@ -185,24 +204,26 @@ static int do_fuse(struct cmd_tbl *cmdtp, int flag, int argc,
  	return 0;
  
  err:
@@ -188,8 +188,6 @@ index f884c894fb0..3446736df0e 100644
  	"    several fuse words, starting at 'word' (PERMANENT)\n"
 -	"fuse override <bank> <word> <hexval> [<hexval>...] - override 1 or\n"
 +	"fuse override [-q] <bank> <word> <hexval> [<hexval>...] - override 1 or\n"
- 	"    several fuse words, starting at 'word'"
- );
--- 
-2.43.0
-
+ 	"    several fuse words, starting at 'word'\n"
+ #ifdef CONFIG_CMD_FUSE_WRITEBUFF
+ 	"fuse writebuff [-y] <addr> - program fuse data\n"

@@ -17,14 +17,14 @@ Upstream-Status: Inappropriate [Torizon OS specific]
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  Kconfig   | 20 ++++++++++++++++++++
- cmd/mem.c | 25 +++++++++++++++++++++++++
- 2 files changed, 45 insertions(+)
+ cmd/mem.c | 28 ++++++++++++++++++++++++++++
+ 2 files changed, 48 insertions(+)
 
 diff --git a/Kconfig b/Kconfig
-index 1425c764c93..311f2ee150a 100644
+index 28d64bde5ad1..6ef5922e1cf9 100644
 --- a/Kconfig
 +++ b/Kconfig
-@@ -815,3 +815,23 @@ config TDX_BOOTARGS_PROTECTION
+@@ -874,3 +874,23 @@ config TDX_BOOTARGS_PROTECTION
  	  against information in the device-tree provided to the bootm
  	  command. Since the device-tree is supposed to come from a signed
  	  FIT image, it is expected to be a trustworthy source of information.
@@ -49,20 +49,32 @@ index 1425c764c93..311f2ee150a 100644
 +	  not needed, this option should not be enabled so as to reduce the attack
 +	  surface.
 diff --git a/cmd/mem.c b/cmd/mem.c
-index 768057e4d3f..743753e7907 100644
+index 68eb6989b945..c410b664c6fc 100644
 --- a/cmd/mem.c
 +++ b/cmd/mem.c
-@@ -21,6 +21,9 @@
+@@ -22,6 +22,10 @@
  #include <flash.h>
  #endif
  #include <hash.h>
 +#ifdef CONFIG_TDX_CP_PROTECTION
 +#include <lmb.h>
++#include <asm/global_data.h>
 +#endif
  #include <log.h>
  #include <mapmem.h>
  #include <rand.h>
-@@ -335,6 +338,28 @@ static int do_mem_cp(struct cmd_tbl *cmdtp, int flag, int argc,
+@@ -34,6 +38,10 @@
+ #include <linux/ctype.h>
+ #include <linux/delay.h>
+ 
++#ifdef CONFIG_TDX_CP_PROTECTION
++DECLARE_GLOBAL_DATA_PTR;
++#endif
++
+ /* Create a compile-time value */
+ #if MEM_SUPPORT_64BIT_DATA
+ #define HELP_Q ", .q"
+@@ -335,6 +343,26 @@ static int do_mem_cp(struct cmd_tbl *cmdtp, int flag, int argc,
  		return 1;
  	}
  
@@ -71,14 +83,12 @@ index 768057e4d3f..743753e7907 100644
 +#error TDX_CP_PROTECTION requires CONFIG_LMB to be enabled
 +#endif
 +	if (gd->fdt_blob) {
-+		int tdx_valid_loadaddr(struct lmb *lmb, phys_addr_t base, phys_size_t size);
-+		struct lmb lmb;
++		int tdx_valid_loadaddr(phys_addr_t base, phys_size_t size);
 +
-+		lmb_init_and_reserve(&lmb, gd->bd, (void *) gd->fdt_blob);
-+		lmb_dump_all(&lmb);
++		lmb_dump_all();
 +
-+		if (!tdx_valid_loadaddr(&lmb, addr, count * (ulong) size) ||
-+		    !tdx_valid_loadaddr(&lmb, dest, count * (ulong) size)) {
++		if (!tdx_valid_loadaddr(addr, count * (ulong) size) ||
++		    !tdx_valid_loadaddr(dest, count * (ulong) size)) {
 +			debug("Invalid source/destination address\n");
 +			return 2;
 +		}
@@ -91,6 +101,3 @@ index 768057e4d3f..743753e7907 100644
  	src = map_sysmem(addr, count * size);
  	dst = map_sysmem(dest, count * size);
  
--- 
-2.43.0
-
