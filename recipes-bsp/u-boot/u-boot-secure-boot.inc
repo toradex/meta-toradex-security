@@ -10,17 +10,15 @@ TDX_UBOOT_SECBOOT_PATCHES_UPSTREAM = " \
     file://0001-toradex-integrate-shared-secboot-module-upstream.patch \
 "
 
+TDX_UBOOT_SECBOOT_PATCHES_UPSTREAM_K3 = " \
+    ${TDX_UBOOT_SECBOOT_PATCHES_UPSTREAM} \
+    file://0001-toradex-add-helper-to-detect-closed-device-k3.patch \
+"
+
 # NOTE: NXP downstream does not need patch "lmb: prevent alloc overlap with reserved regions"
 TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM = " \
     ${TDX_UBOOT_SECBOOT_PATCHES_COMMON} \
     file://0001-toradex-add-helper-to-detect-closed-device-ele-downstream.patch \
-    file://0001-toradex-integrate-shared-secboot-module-downstream.patch \
-"
-
-TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM_K3 = " \
-    ${TDX_UBOOT_SECBOOT_PATCHES_COMMON} \
-    file://0001-lmb-prevent-alloc-overlap-with-reserved-regions-k3.patch \
-    file://0001-toradex-add-helper-to-detect-closed-device-k3.patch \
     file://0001-toradex-integrate-shared-secboot-module-downstream.patch \
 "
 
@@ -32,7 +30,7 @@ TDX_UBOOT_SECBOOT_PATCHES:verdin-imx95 = "${TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM
 TDX_UBOOT_SECBOOT_PATCHES:aquila-imx95 = "${TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM}"
 TDX_UBOOT_SECBOOT_PATCHES:lino-imx93 = "${TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM}"
 TDX_UBOOT_SECBOOT_PATCHES:toradex-osm-imx93 = "${TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM}"
-TDX_UBOOT_SECBOOT_PATCHES:k3 = "${TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM_K3}"
+TDX_UBOOT_SECBOOT_PATCHES:k3 = "${TDX_UBOOT_SECBOOT_PATCHES_UPSTREAM_K3}"
 TDX_UBOOT_SECBOOT_PATCHES:k3r5 = ""
 
 SRC_URI:append = " \
