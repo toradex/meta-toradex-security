@@ -6,7 +6,6 @@ TDX_UBOOT_SECBOOT_PATCHES_COMMON = " \
 
 TDX_UBOOT_SECBOOT_PATCHES_UPSTREAM = " \
     ${TDX_UBOOT_SECBOOT_PATCHES_COMMON} \
-    file://0001-lmb-prevent-alloc-overlap-with-reserved-regions-upst.patch \
     file://0001-toradex-integrate-shared-secboot-module-upstream.patch \
 "
 
@@ -15,7 +14,6 @@ TDX_UBOOT_SECBOOT_PATCHES_UPSTREAM_K3 = " \
     file://0001-toradex-add-helper-to-detect-closed-device-k3.patch \
 "
 
-# NOTE: NXP downstream does not need patch "lmb: prevent alloc overlap with reserved regions"
 TDX_UBOOT_SECBOOT_PATCHES_DOWNSTREAM = " \
     ${TDX_UBOOT_SECBOOT_PATCHES_COMMON} \
     file://0001-toradex-add-helper-to-detect-closed-device-ele-downstream.patch \
