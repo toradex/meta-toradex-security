@@ -20,7 +20,6 @@ that purpose was 126, just like the code produced by Bash when it cannot
 execute a given command.
 
 Upstream-Status: Inappropriate [Torizon OS specific]
-
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  Kconfig           | 28 ++++++++++++++++++++++++++++
@@ -30,10 +29,10 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  4 files changed, 36 insertions(+)
 
 diff --git a/Kconfig b/Kconfig
-index 82df59f176e..62d66b831af 100644
+index 99b896b6cf1c..80c10a94d93e 100644
 --- a/Kconfig
 +++ b/Kconfig
-@@ -756,3 +756,31 @@ source "lib/Kconfig"
+@@ -815,3 +815,31 @@ source "lib/Kconfig"
  source "test/Kconfig"
  
  source "tools/Kconfig"
@@ -66,10 +65,10 @@ index 82df59f176e..62d66b831af 100644
 +	help
 +	  Enable the command white-listing feature provided by Toradex.
 diff --git a/common/Makefile b/common/Makefile
-index c0d4fd330cd..c241b4a7ae1 100644
+index 1c9204d931c4..1494ec7840e5 100644
 --- a/common/Makefile
 +++ b/common/Makefile
-@@ -25,6 +25,8 @@ obj-$(CONFIG_MII) += miiphyutil.o
+@@ -32,6 +32,8 @@ obj-$(CONFIG_MII) += miiphyutil.o
  obj-$(CONFIG_CMD_MII) += miiphyutil.o
  obj-$(CONFIG_PHYLIB) += miiphyutil.o
  obj-y += tdx-secboot.o
@@ -79,18 +78,18 @@ index c0d4fd330cd..c241b4a7ae1 100644
  obj-$(CONFIG_USB_HOST) += usb.o usb_hub.o
  obj-$(CONFIG_USB_GADGET) += usb.o
 diff --git a/common/command.c b/common/command.c
-index af8ffdba8f8..8a0442b3fff 100644
+index 0f9dd06d72be..089102fcfd40 100644
 --- a/common/command.c
 +++ b/common/command.c
-@@ -18,6 +18,7 @@
- #include <mapmem.h>
+@@ -19,6 +19,7 @@
+ #include <time.h>
  #include <asm/global_data.h>
  #include <linux/ctype.h>
 +#include <tdx-harden.h>
  
  DECLARE_GLOBAL_DATA_PTR;
  
-@@ -578,6 +579,10 @@ static int cmd_call(struct cmd_tbl *cmdtp, int flag, int argc,
+@@ -579,6 +580,10 @@ static int cmd_call(struct cmd_tbl *cmdtp, int flag, int argc,
  {
  	int result;
  
@@ -102,10 +101,10 @@ index af8ffdba8f8..8a0442b3fff 100644
  	if (result)
  		debug("Command failed, result=%d\n", result);
 diff --git a/include/command.h b/include/command.h
-index 4158ca11b0e..433ed201a3b 100644
+index 5d225cd197f7..b61a78ea896d 100644
 --- a/include/command.h
 +++ b/include/command.h
-@@ -259,6 +259,7 @@ int setexpr_regex_sub(char *data, uint data_size, char *nbuf, uint nbuf_size,
+@@ -258,6 +258,7 @@ int setexpr_regex_sub(char *data, uint data_size, char *nbuf, uint nbuf_size,
  enum command_ret_t {
  	CMD_RET_SUCCESS,	/* 0 = Success */
  	CMD_RET_FAILURE,	/* 1 = Failure */
@@ -113,6 +112,3 @@ index 4158ca11b0e..433ed201a3b 100644
  	CMD_RET_USAGE = -1,	/* Failure, please report 'usage' error */
  };
  
--- 
-2.43.0
-

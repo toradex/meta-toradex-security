@@ -4,7 +4,6 @@ Date: Thu, 26 Oct 2023 12:40:46 -0300
 Subject: [PATCH 4/8] toradex: integrate bootargs protection (downstream)
 
 Upstream-Status: Inappropriate [Torizon OS specific]
-
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  Kconfig            | 10 ++++++++++
@@ -12,10 +11,10 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  2 files changed, 30 insertions(+)
 
 diff --git a/Kconfig b/Kconfig
-index f8df1a262a1..c35fa239f18 100644
+index 236d1827482b..2bc2d940517e 100644
 --- a/Kconfig
 +++ b/Kconfig
-@@ -748,6 +748,7 @@ config TDX_SECBOOT_HARDENING
+@@ -823,6 +823,7 @@ config TDX_SECBOOT_HARDENING
  	select TDX_CMD_WHITELIST
  	select TDX_BOOTM_PROTECTION
  	select TDX_CLI_PROTECTION
@@ -23,7 +22,7 @@ index f8df1a262a1..c35fa239f18 100644
  	help
  	  This causes the Secure Boot hardening features added by Toradex
  	  to be built into U-Boot, including:
-@@ -784,3 +785,12 @@ config TDX_CLI_PROTECTION
+@@ -859,3 +860,12 @@ config TDX_CLI_PROTECTION
  	help
  	  Enable the protection where the CLI is disabled when the device
  	  is in closed state.
@@ -37,12 +36,12 @@ index f8df1a262a1..c35fa239f18 100644
 +	  command. Since the device-tree is supposed to come from a signed
 +	  FIT image, it is expected to be a trustworthy source of information.
 diff --git a/boot/fdt_support.c b/boot/fdt_support.c
-index 090d82ee80a..9477a2dcb7b 100644
+index 1c215e548db8..c0dce858d473 100644
 --- a/boot/fdt_support.c
 +++ b/boot/fdt_support.c
-@@ -23,6 +23,10 @@
- #include <fdtdec.h>
- #include <version.h>
+@@ -31,6 +31,10 @@
+ 
+ DECLARE_GLOBAL_DATA_PTR;
  
 +#ifdef CONFIG_TDX_BOOTARGS_PROTECTION
 +#include <tdx-harden.h>
@@ -51,9 +50,9 @@ index 090d82ee80a..9477a2dcb7b 100644
  /**
   * fdt_getprop_u32_default_node - Return a node's property or a default
   *
-@@ -310,6 +314,22 @@ int fdt_chosen(void *fdt)
- 
- 	str = board_fdt_chosen_bootargs();
+@@ -370,6 +374,22 @@ int fdt_chosen(void *fdt)
+ 	str = board_fdt_chosen_bootargs(fdt_get_property(fdt, nodeoffset,
+ 							 "bootargs", NULL));
  
 +#ifdef CONFIG_TDX_BOOTARGS_PROTECTION
 +	if (tdx_hardening_enabled()) {
@@ -74,6 +73,3 @@ index 090d82ee80a..9477a2dcb7b 100644
  	if (str) {
  		err = fdt_setprop(fdt, nodeoffset, "bootargs", str,
  				  strlen(str) + 1);
--- 
-2.34.1
-

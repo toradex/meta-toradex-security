@@ -55,11 +55,11 @@ v4:
 Upstream-Status: Inappropriate [Torizon OS specific]
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
- common/tdx-harden.c                           | 497 ++++++++++
- common/whitelist.c                            | 895 ++++++++++++++++++
+ common/tdx-harden.c                           | 496 ++++++++++
+ common/whitelist.c                            | 894 ++++++++++++++++++
  .../dt-bindings/secure-boot/cmd-categories.h  | 111 +++
  include/tdx-harden.h                          |  59 ++
- 4 files changed, 1562 insertions(+)
+ 4 files changed, 1560 insertions(+)
  create mode 100644 common/tdx-harden.c
  create mode 100644 common/whitelist.c
  create mode 100644 include/dt-bindings/secure-boot/cmd-categories.h
@@ -67,10 +67,10 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 
 diff --git a/common/tdx-harden.c b/common/tdx-harden.c
 new file mode 100644
-index 00000000000..31e832ccb9f
+index 000000000000..402452036d03
 --- /dev/null
 +++ b/common/tdx-harden.c
-@@ -0,0 +1,497 @@
+@@ -0,0 +1,496 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2023 Toradex
@@ -80,7 +80,6 @@ index 00000000000..31e832ccb9f
 +/* #define DEBUG */
 +/* #define LOG_DEBUG */
 +
-+#include <common.h>
 +#include <compiler.h>
 +#include <command.h>
 +#include <console.h>
@@ -570,10 +569,10 @@ index 00000000000..31e832ccb9f
 +#endif
 diff --git a/common/whitelist.c b/common/whitelist.c
 new file mode 100644
-index 00000000000..6f66a667474
+index 000000000000..12dabf02678a
 --- /dev/null
 +++ b/common/whitelist.c
-@@ -0,0 +1,895 @@
+@@ -0,0 +1,894 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright 2023 Toradex
@@ -583,7 +582,6 @@ index 00000000000..6f66a667474
 +/* #define DEBUG */
 +/* #define LOG_DEBUG */
 +
-+#include <common.h>
 +#include <compiler.h>
 +#include <command.h>
 +#include <log.h>
@@ -1471,7 +1469,7 @@ index 00000000000..6f66a667474
 +}
 diff --git a/include/dt-bindings/secure-boot/cmd-categories.h b/include/dt-bindings/secure-boot/cmd-categories.h
 new file mode 100644
-index 00000000000..ce92cb8a17d
+index 000000000000..ce92cb8a17dc
 --- /dev/null
 +++ b/include/dt-bindings/secure-boot/cmd-categories.h
 @@ -0,0 +1,111 @@
@@ -1588,7 +1586,7 @@ index 00000000000..ce92cb8a17d
 +#endif
 diff --git a/include/tdx-harden.h b/include/tdx-harden.h
 new file mode 100644
-index 00000000000..150558ab0d3
+index 000000000000..150558ab0d3f
 --- /dev/null
 +++ b/include/tdx-harden.h
 @@ -0,0 +1,59 @@
@@ -1651,6 +1649,3 @@ index 00000000000..150558ab0d3
 +#endif
 +
 +#endif	/* __TDX_HARDEN_H */
--- 
-2.43.0
-

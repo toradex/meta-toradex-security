@@ -9,7 +9,6 @@ signing) one can ensure only signed FIT images can be booted when the
 hardening is enabled at runtime.
 
 Upstream-Status: Inappropriate [Torizon OS specific]
-
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  Kconfig      |  7 ++++++
@@ -17,10 +16,10 @@ Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
  2 files changed, 70 insertions(+), 1 deletion(-)
 
 diff --git a/Kconfig b/Kconfig
-index 5f6ec0afbbf..73a0dd8cfd8 100644
+index c72ad74123a2..5652de3a5470 100644
 --- a/Kconfig
 +++ b/Kconfig
-@@ -746,6 +746,7 @@ source "tools/Kconfig"
+@@ -821,6 +821,7 @@ source "tools/Kconfig"
  config TDX_SECBOOT_HARDENING
  	bool "Toradex Secure Boot hardening"
  	select TDX_CMD_WHITELIST
@@ -28,7 +27,7 @@ index 5f6ec0afbbf..73a0dd8cfd8 100644
  	help
  	  This causes the Secure Boot hardening features added by Toradex
  	  to be built into U-Boot, including:
-@@ -770,3 +771,9 @@ config TDX_CMD_WHITELIST
+@@ -845,3 +846,9 @@ config TDX_CMD_WHITELIST
  	bool
  	help
  	  Enable the command white-listing feature provided by Toradex.
@@ -39,18 +38,18 @@ index 5f6ec0afbbf..73a0dd8cfd8 100644
 +	  Enable the protection in bootm to prevent execution of unsigned
 +	  images.
 diff --git a/boot/bootm.c b/boot/bootm.c
-index d071537d692..b38182dd887 100644
+index 4bdca22ea8cf..4e2a9bbe1887 100644
 --- a/boot/bootm.c
 +++ b/boot/bootm.c
-@@ -34,6 +34,7 @@
- 
+@@ -35,6 +35,7 @@
  #include <bootm.h>
  #include <image.h>
+ #include <u-boot/zlib.h>
 +#include <tdx-harden.h>
  
  #define MAX_CMDLINE_SIZE	SZ_4K
  
-@@ -125,6 +126,7 @@ static int boot_get_kernel(const char *addr_fit, struct bootm_headers *images,
+@@ -126,6 +127,7 @@ static int boot_get_kernel(const char *addr_fit, struct bootm_headers *images,
  	struct legacy_img_hdr	*hdr;
  #endif
  	ulong		img_addr;
@@ -58,7 +57,7 @@ index d071537d692..b38182dd887 100644
  	const void *buf;
  	const char *fit_uname_config = NULL, *fit_uname_kernel = NULL;
  #if CONFIG_IS_ENABLED(FIT)
-@@ -146,7 +148,45 @@ static int boot_get_kernel(const char *addr_fit, struct bootm_headers *images,
+@@ -147,7 +149,45 @@ static int boot_get_kernel(const char *addr_fit, struct bootm_headers *images,
  	/* check image type, for FIT images get FIT kernel node */
  	*os_data = *os_len = 0;
  	buf = map_sysmem(img_addr, 0);
@@ -105,7 +104,7 @@ index d071537d692..b38182dd887 100644
  #if CONFIG_IS_ENABLED(LEGACY_IMAGE_FORMAT)
  	case IMAGE_FORMAT_LEGACY:
  		printf("## Booting kernel from Legacy Image at %08lx ...\n",
-@@ -259,7 +299,29 @@ static inline void boot_start_lmb(struct bootm_headers *images) { }
+@@ -243,7 +283,29 @@ static int boot_get_kernel(const char *addr_fit, struct bootm_headers *images,
  static int bootm_start(void)
  {
  	memset((void *)&images, 0, sizeof(images));
@@ -133,8 +132,5 @@ index d071537d692..b38182dd887 100644
  	images.verify = env_get_yesno("verify");
 +#endif
  
- 	boot_start_lmb(&images);
- 
--- 
-2.34.1
-
+ 	bootstage_mark_name(BOOTSTAGE_ID_BOOTM_START, "bootm_start");
+ 	images.state = BOOTM_STATE_START;

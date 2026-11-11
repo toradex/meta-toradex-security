@@ -17,20 +17,6 @@ TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM = "\
     file://0008-toradex-cmd-setexpr-integrate-protections-downstream.patch \
 "
 
-# TODO: Add "cp" protection to TI downstream U-Boot.
-# TODO: Add "fastboot" protection to TI downstream U-Boot.
-TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM_K3 = "\
-    ${TDX_UBOOT_HARDENING_PATCHES_COMMON} \
-    file://0001-toradex-integrate-command-whitelisting-k3.patch \
-    file://0002-toradex-integrate-bootm-protection-downstream.patch \
-    file://0003-toradex-integrate-CLI-access-protection-downstream.patch \
-    file://0004-toradex-integrate-bootargs-protection-k3.patch \
-    file://0005-toradex-integrate-load-protection-k3.patch \
-    file://0006-toradex-cmd-fuse-add-switch-for-quiet-operation-down.patch \
-    file://0007-toradex-cmd-fuse-add-readv-command-downstream.patch \
-    file://0008-toradex-cmd-setexpr-integrate-protections-downstream.patch \
-"
-
 TDX_UBOOT_HARDENING_PATCHES_UPSTREAM = "\
     ${TDX_UBOOT_HARDENING_PATCHES_COMMON} \
     file://0001-toradex-integrate-command-whitelisting-upstream.patch \
@@ -53,7 +39,6 @@ TDX_UBOOT_HARDENING_PATCHES:verdin-imx95 = "${TDX_UBOOT_HARDENING_PATCHES_DOWNST
 TDX_UBOOT_HARDENING_PATCHES:aquila-imx95 = "${TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM}"
 TDX_UBOOT_HARDENING_PATCHES:lino-imx93 = "${TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM}"
 TDX_UBOOT_HARDENING_PATCHES:toradex-osm-imx93 = "${TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM}"
-TDX_UBOOT_HARDENING_PATCHES:k3 = "${TDX_UBOOT_HARDENING_PATCHES_DOWNSTREAM_K3}"
 TDX_UBOOT_HARDENING_PATCHES:k3r5 = ""
 
 SRC_URI:append = "\
