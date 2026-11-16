@@ -16,7 +16,7 @@ time and runtime properties of the bootloader, such as:
 Those properties can be checked by a boot script to take wiser decisions
 and/or to provide diagnostics to the user.
 
-Upstream-Status: Inappropriate [Torizon OS specific]
+Upstream-Status: Inappropriate [Toradex specific]
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  common/tdx-secboot.c  | 310 ++++++++++++++++++++++++++++++++++++++++++

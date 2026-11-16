@@ -10,7 +10,7 @@ enable at runtime the various hardening features in U-Boot (mostly by
 Toradex). This of course assumes these U-Boot features were enabled at
 build-time via config options.
 
-Upstream-Status: Inappropriate [Torizon OS specific]
+Upstream-Status: Inappropriate [Toradex specific]
 
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---

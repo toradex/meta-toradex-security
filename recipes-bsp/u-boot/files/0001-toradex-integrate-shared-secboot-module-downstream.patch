@@ -3,7 +3,7 @@ From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Thu, 27 Feb 2025 23:59:12 -0300
 Subject: [PATCH] toradex: integrate shared secboot module (downstream)
 
-Upstream-Status: Inappropriate [Torizon OS specific]
+Upstream-Status: Inappropriate [Toradex specific]
 
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
