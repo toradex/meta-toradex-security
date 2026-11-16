@@ -9,7 +9,6 @@ signing) one can ensure only signed FIT images can be booted when the
 hardening is enabled at runtime.
 
 Upstream-Status: Inappropriate [Toradex specific]
-
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  Kconfig      |  7 ++++++

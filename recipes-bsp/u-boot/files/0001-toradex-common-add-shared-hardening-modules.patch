@@ -3,58 +3,66 @@ From: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 Date: Mon, 28 Aug 2023 13:28:50 -0300
 Subject: [PATCH 1/2] toradex: common: add shared hardening modules
 
-v1:
+Add the modules implementing the Toradex hardening of U-Boot that are
+shared by all U-Boot trees where it is used: command whitelisting, CLI
+access protection and bootargs protection. Separate commits integrate
+them into each tree (upstream, downstream and possibly others).
 
-- Add modules implementing the command whitelisting feature to be
-  integrated into U-Boot on a separate commit.
+The whitelist marks "fuse cmp" and "fuse readv" as needed by the fusing
+feature, so they are available whether the device is open or closed.
+"fuse readv" replaces "fuse readm", which allows arbitrary memory
+writes. "setexpr" is allowed, and a separate commit restricts it to its
+safe uses. "fastboot" and "cp" are allowed only when
+CONFIG_TDX_FB_PROTECTION_ALLOW_CMD and CONFIG_TDX_CP_PROTECTION_ALLOW_CMD
+are set, respectively.
 
-v2:
-
-- Get rid of code now provided by tdx-secboot (former tdx-hab-utils).
-- Rename some local functions for consistency.
-- Add commands related to PCI and NVMe.
-- Add commands required for the fusing feature, namely:
-  * "fuse cmp": this command is generally secure and therefore was
-    simply marked as "needed" in the whitelist (thus being available
-    both when the device is open or closed).
-  * "fuse readv": this command is a new one introduced by Toradex to
-    replace the usage of "fuse readm" (which is a very insecure command
-    allowing arbitrary memory writes).
-  * "setexpr": this one allows arbitrary memory reads which in theory is
-    not insecure but it is undesirable; because of that we enable it
-    in the whitelist but as a separate commit we also add protections
-    to the command itself to allow only the secure usage.
-  * "tdx_secboot_get": this is a Toradex-specific command that is secure
-    being therefore marked both as safe and needed.
-- Squash with "toradex: add CLI access protection code (common)"
-  Add the common code (i.e. shared by all branches of U-Boot where the
-  hardening might be used) to support the hardening feature called "CLI
-  access protection", without integrating it. The integration is left to
-  separate commits handling specific cases (upstream, downstream and
-  possibly others).
-- Squash with "toradex: add implementation of bootargs protection"
-  This only adds the code implementing the feature but does not
-  integrate it into U-Boot.
-- Squash with "toradex: show message if CLI access allowed"
-  Before, a message was shown only when the device was closed and the
-  CLI access was disabled by the CLI protection feature. Now we show a
-  message also when the device is open which is helpful when someone
-  wants to ensure the protection is compiled in without having to close
-  the device.
-
-v3:
-
-- Add the bootflow command to the whitelist; also ensure no unsupported
-  bootmeths are enabled.
-
-v4:
-
-- Allow fastboot command when CONFIG_TDX_FB_PROTECTION_ALLOW_CMD is set.
-- Allow cp command when CONFIG_TDX_CP_PROTECTION_ALLOW_CMD is set.
+A message tells whether CLI access is enabled both when the device is
+open and when it is closed, so one can check that the protection is
+compiled in without closing the device. The build fails if any bootmeth
+other than BOOTMETH_SCRIPT is enabled.
 
 Upstream-Status: Inappropriate [Toradex specific]
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
+Changes v1 -> v2:
+  - Get rid of code now provided by tdx-secboot (former tdx-hab-utils).
+  - Rename some local functions for consistency.
+  - Add commands related to PCI and NVMe.
+  - Add commands required for the fusing feature, namely:
+    * "fuse cmp": this command is generally secure and therefore was
+      simply marked as "needed" in the whitelist (thus being available
+      both when the device is open or closed).
+    * "fuse readv": this command is a new one introduced by Toradex to
+      replace the usage of "fuse readm" (which is a very insecure
+      command allowing arbitrary memory writes).
+    * "setexpr": this one allows arbitrary memory reads which in theory
+      is not insecure but it is undesirable; because of that we enable
+      it in the whitelist but as a separate commit we also add
+      protections to the command itself to allow only the secure usage.
+    * "tdx_secboot_get": this is a Toradex-specific command that is
+      secure being therefore marked both as safe and needed.
+  - Squash with "toradex: add CLI access protection code (common)":
+    Add the common code (i.e. shared by all branches of U-Boot where the
+    hardening might be used) to support the hardening feature called
+    "CLI access protection", without integrating it. The integration is
+    left to separate commits handling specific cases (upstream,
+    downstream and possibly others).
+  - Squash with "toradex: add implementation of bootargs protection":
+    This only adds the code implementing the feature but does not
+    integrate it into U-Boot.
+  - Squash with "toradex: show message if CLI access allowed":
+    Before, a message was shown only when the device was closed and the
+    CLI access was disabled by the CLI protection feature. Now we show a
+    message also when the device is open which is helpful when someone
+    wants to ensure the protection is compiled in without having to
+    close the device.
+Changes v2 -> v3:
+  - Add the bootflow command to the whitelist; also ensure no
+    unsupported bootmeths are enabled.
+Changes v3 -> v4:
+  - Allow fastboot command when CONFIG_TDX_FB_PROTECTION_ALLOW_CMD is
+    set.
+  - Allow cp command when CONFIG_TDX_CP_PROTECTION_ALLOW_CMD is set.
  common/tdx-harden.c                           | 497 ++++++++++
  common/whitelist.c                            | 895 ++++++++++++++++++
  .../dt-bindings/secure-boot/cmd-categories.h  | 111 +++

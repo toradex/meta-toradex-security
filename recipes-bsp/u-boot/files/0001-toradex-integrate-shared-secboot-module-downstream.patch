@@ -4,7 +4,6 @@ Date: Thu, 27 Feb 2025 23:59:12 -0300
 Subject: [PATCH] toradex: integrate shared secboot module (downstream)
 
 Upstream-Status: Inappropriate [Toradex specific]
-
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  common/Makefile | 1 +

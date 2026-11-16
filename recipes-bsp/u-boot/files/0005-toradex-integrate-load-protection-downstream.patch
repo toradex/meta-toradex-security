@@ -25,7 +25,6 @@ actually relies on data structures present only when CONFIG_LMB is
 enabled.
 
 Upstream-Status: Inappropriate [Toradex specific]
-
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  Kconfig   |  7 ++++++

@@ -8,7 +8,6 @@ allows arbitrary memory reads which is an undesirable operation in a
 secure boot environment.
 
 Upstream-Status: Inappropriate [Toradex specific]
-
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  cmd/setexpr.c | 38 ++++++++++++++++++++++++++++++++++++++

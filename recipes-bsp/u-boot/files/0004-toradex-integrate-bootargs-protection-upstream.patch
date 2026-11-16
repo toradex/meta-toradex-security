@@ -4,7 +4,6 @@ Date: Thu, 26 Oct 2023 12:40:46 -0300
 Subject: [PATCH 04/10] toradex: integrate bootargs protection (upstream)
 
 Upstream-Status: Inappropriate [Toradex specific]
-
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  Kconfig            | 10 ++++++++++

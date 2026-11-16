@@ -7,7 +7,6 @@ Integrate the protection in U-Boot to prevent access to its CLI once the
 device is closed; this is part of the hardening for Secure Boot.
 
 Upstream-Status: Inappropriate [Toradex specific]
-
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  Kconfig       | 7 +++++++

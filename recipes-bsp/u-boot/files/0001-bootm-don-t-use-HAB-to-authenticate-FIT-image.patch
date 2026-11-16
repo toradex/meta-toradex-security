@@ -8,7 +8,6 @@ authenticate image; instead assume FIT signature validation will be
 used for image authentication, when needed.
 
 Upstream-Status: Inappropriate [Toradex specific]
-
 Signed-off-by: Sergio Prado <sergio.prado@toradex.com>
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---

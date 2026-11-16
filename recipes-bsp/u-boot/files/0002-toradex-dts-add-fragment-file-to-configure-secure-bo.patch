@@ -11,7 +11,6 @@ Toradex). This of course assumes these U-Boot features were enabled at
 build-time via config options.
 
 Upstream-Status: Inappropriate [Toradex specific]
-
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  arch/arm/dts/tdx-secboot.dtsi | 20 ++++++++++++++++++++
