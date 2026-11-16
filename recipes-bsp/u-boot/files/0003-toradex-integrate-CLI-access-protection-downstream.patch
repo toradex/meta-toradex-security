@@ -6,7 +6,7 @@ Subject: [PATCH 3/8] toradex: integrate CLI access protection (downstream)
 Integrate the protection in U-Boot to prevent access to its CLI once the
 device is closed; this is part of the hardening for Secure Boot.
 
-Upstream-Status: Inappropriate [Torizon OS specific]
+Upstream-Status: Inappropriate [Toradex specific]
 
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---

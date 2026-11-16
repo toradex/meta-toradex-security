@@ -6,7 +6,7 @@ Subject: [PATCH 08/10] toradex: cmd: fuse: add switch for quiet operation
 
 Add switch -q for quiet operation to all fuse subcommands.
 
-Upstream-Status: Pending
+Upstream-Status: Inappropriate [Toradex specific]
 
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---

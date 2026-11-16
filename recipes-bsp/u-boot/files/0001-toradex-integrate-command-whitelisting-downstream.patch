@@ -19,7 +19,7 @@ it was blocked by the whitelist feature. The numeric code chosen for
 that purpose was 126, just like the code produced by Bash when it cannot
 execute a given command.
 
-Upstream-Status: Inappropriate [Torizon OS specific]
+Upstream-Status: Inappropriate [Toradex specific]
 
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
