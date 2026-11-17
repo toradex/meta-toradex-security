@@ -14,7 +14,7 @@ separate option CONFIG_TDX_FB_PROTECTION_ALLOW_CMD allows the command to
 pass the whitelist. The "fastboot" protection should be enabled only
 when strictly needed (which is the case with Toradex Easy Installer).
 
-Upstream-Status: Inappropriate [Torizon OS specific]
+Upstream-Status: Inappropriate [Toradex specific]
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
  Kconfig                       | 20 ++++++++++++++++++

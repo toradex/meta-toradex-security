@@ -21,8 +21,7 @@ a closed device would be reported as open and the hardening would be
 disabled without any indication, so it is preferable to break the build
 until the encoding is confirmed for the SoC being added.
 
-Upstream-Status: Inappropriate [Torizon OS specific]
-
+Upstream-Status: Inappropriate [Toradex specific]
 Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
 Signed-off-by: Rogerio Borin <rogerio.borin@toradex.com>
 ---
