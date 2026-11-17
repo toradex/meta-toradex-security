@@ -2,7 +2,7 @@
 DISTROOVERRIDES .= ":tdx-signed"
 
 # FIT image configuration
-require include/signed/tdx-signed-fit-image.inc
+require ${@ 'include/signed/tdx-signed-fit-image.inc' if 'intel-corei7-64' not in d.getVar('MACHINEOVERRIDES').split(':') else ''}
 
 # NXP i.MX HAB configuration
 MACHINEOVERRIDES_EXTENDER ?= ""
@@ -11,6 +11,9 @@ require ${@ 'include/signed/tdx-signed-imx-hab.inc' if 'imx-generic-bsp' in d.ge
 # TI K3 secure boot configuration
 require ${@ 'include/signed/tdx-signed-k3-secboot.inc' if 'k3r5' in d.getVar('OVERRIDES').split(':') else ''}
 require ${@ 'include/signed/tdx-signed-k3-secboot.inc' if 'k3' in d.getVar('OVERRIDES').split(':') else ''}
+
+# x86-64 UEFI Secure Boot configuration
+require ${@ 'include/signed/tdx-signed-uefi-secboot.inc' if 'intel-corei7-64' in d.getVar('MACHINEOVERRIDES').split(':') else ''}
 
 # hardening configuration
 require include/signed/tdx-signed-harden.inc
