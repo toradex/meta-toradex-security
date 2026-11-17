@@ -1,0 +1,80 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Ana Bobillo <anabobillo3@gmail.com>
+Date: Wed, 04 Nov 2026 07:17:57 +0000
+Subject: [PATCH] usb: gadget: f_sdp: decode the command's address and count once
+
+sdp_rx_command_complete() converts the big-endian addr and cnt fields
+of the command in each case that uses them. struct sdp_command is
+packed and starts one byte into the report, so every conversion is a
+run of byte loads: six of them across four commands.
+
+Convert both fields once, before the switch. No functional change: an
+addr of zero still selects CONFIG_SDP_LOADADDR. This takes 96 bytes
+off the SPL of imx6dl_mamoj, room the closed-part checks later in this
+series need to stay within that board's SPL size limit.
+
+Upstream-Status: Submitted [https://lore.kernel.org/all/4bdba9dc-0c21-4e33-8f20-2c0a7ebba0d6@gmail.com/]
+Link: https://lore.kernel.org/u-boot/86dbb40f-372d-4894-bdd2-b45f38b28e94@gmail.com/
+Signed-off-by: Ana Bobillo <anabobillo3@gmail.com>
+---
+ drivers/usb/gadget/f_sdp.c | 17 +++++++++--------
+ 1 file changed, 9 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/usb/gadget/f_sdp.c b/drivers/usb/gadget/f_sdp.c
+index 9af411f16ec..aff69c3a138 100644
+--- a/drivers/usb/gadget/f_sdp.c
++++ b/drivers/usb/gadget/f_sdp.c
+@@ -306,10 +306,11 @@ static void sdp_rx_command_complete(struct usb_ep *ep, struct usb_request *req)
+ 	}
+ 
+ 	struct sdp_command *cmd = req->buf + 1;
++	u32 addr = be32_to_cpu(cmd->addr);
++	u32 cnt = be32_to_cpu(cmd->cnt);
+ 
+ 	debug("%s: command: %04x, addr: %08x, cnt: %u\n",
+-	      __func__, be16_to_cpu(cmd->cmd),
+-	      be32_to_cpu(cmd->addr), be32_to_cpu(cmd->cnt));
++	      __func__, be16_to_cpu(cmd->cmd), addr, cnt);
+ 
+ 	switch (be16_to_cpu(cmd->cmd)) {
+ 	case SDP_READ_REGISTER:
+@@ -317,8 +318,8 @@ static void sdp_rx_command_complete(struct usb_ep *ep, struct usb_request *req)
+ 		sdp->error_status = 0x0;
+ 
+ 		sdp->state = SDP_STATE_TX_SEC_CONF;
+-		sdp->dnl_address = be32_to_cpu(cmd->addr);
+-		sdp->dnl_bytes_remaining = be32_to_cpu(cmd->cnt);
++		sdp->dnl_address = addr;
++		sdp->dnl_bytes_remaining = cnt;
+ 		sdp->next_state = SDP_STATE_TX_REGISTER;
+ 		printf("Reading %d registers at 0x%08x... ",
+ 		       sdp->dnl_bytes_remaining, sdp->dnl_address);
+@@ -328,8 +329,8 @@ static void sdp_rx_command_complete(struct usb_ep *ep, struct usb_request *req)
+ 		sdp->error_status = SDP_WRITE_FILE_COMPLETE;
+ 
+ 		sdp->state = SDP_STATE_RX_FILE_DATA;
+-		sdp->dnl_address = cmd->addr ? be32_to_cpu(cmd->addr) : CONFIG_SDP_LOADADDR;
+-		sdp->dnl_bytes_remaining = be32_to_cpu(cmd->cnt);
++		sdp->dnl_address = addr ? addr : CONFIG_SDP_LOADADDR;
++		sdp->dnl_bytes_remaining = cnt;
+ 		sdp->dnl_bytes = sdp->dnl_bytes_remaining;
+ 		sdp->next_state = SDP_STATE_IDLE;
+ 
+@@ -349,14 +350,14 @@ static void sdp_rx_command_complete(struct usb_ep *ep, struct usb_request *req)
+ 		sdp->error_status = SDP_WRITE_REGISTER_COMPLETE;
+ 
+ 		sdp->state = SDP_STATE_RX_DCD_DATA;
+-		sdp->dnl_bytes_remaining = be32_to_cpu(cmd->cnt);
++		sdp->dnl_bytes_remaining = cnt;
+ 		sdp->next_state = SDP_STATE_IDLE;
+ 		break;
+ 	case SDP_JUMP_ADDRESS:
+ 		sdp->always_send_status = false;
+ 		sdp->error_status = 0;
+ 
+-		sdp->jmp_address = cmd->addr ? be32_to_cpu(cmd->addr) : CONFIG_SDP_LOADADDR;
++		sdp->jmp_address = addr ? addr : CONFIG_SDP_LOADADDR;
+ 		sdp->state = SDP_STATE_TX_SEC_CONF;
+ 		sdp->next_state = SDP_STATE_JUMP;
+ 		break;
+

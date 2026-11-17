@@ -45,6 +45,19 @@ The complete list of variables can be found in the `imx-hab.bbclass` file.
 
 **NOTE**: For HAB signing, [libfaketime](https://github.com/wolfcw/libfaketime) is used when generating the CSF binaries with CST in order to create reproducible bootloader image builds.
 
+### SDP on closed devices
+
+U-Boot's USB SDP gadget (used by SPL when `SPL_USB_SDP_SUPPORT` is enabled, and by the `sdp` command in U-Boot proper) emulates the i.MX boot ROM serial download protocol. On a HAB/AHAB-closed part the ROM only runs authenticated images; until recently the gadget did not, so a host that first loaded a validly signed SPL over USB could then write and jump to unsigned code and bypass secure boot.
+
+When HAB/AHAB support is enabled, this layer applies Ana Bobillo's U-Boot series that makes SDP honour a closed part: it reports `SDP_SECURITY_CLOSED`, refuses unauthenticated IVT jumps and register reads, and drops downloads that target the loader's own memory. See [the cover letter on lore](https://lore.kernel.org/all/4bdba9dc-0c21-4e33-8f20-2c0a7ebba0d6@gmail.com/).
+
+The patches are applied on:
+
+- Upstream U-Boot: i.MX6, i.MX7 and i.MX8M
+- NXP downstream U-Boot: Verdin/Aquila/SMARC iMX95 and Lino/OSM iMX93 (adapted for ELE lifecycle helpers; targets `toradex_imx_lf_v2024.04`)
+
+Apalis iMX8 and Colibri iMX8X are not covered (no SPL SDP in their boot flow).
+
 ### Bootloaders targeting SDP loading
 
 This section is currently relevant to the iMX6ULL and iMX7 SoCs where a bootloader aiming SDP loading requires a special signing procedure.

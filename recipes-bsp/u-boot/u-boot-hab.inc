@@ -37,6 +37,35 @@ TDX_UBOOT_HAB_PATCHES_DOWNSTREAM = "\
 SRC_URI:append:apalis-imx8 = "${TDX_UBOOT_HAB_PATCHES_DOWNSTREAM}"
 SRC_URI:append:colibri-imx8x = "${TDX_UBOOT_HAB_PATCHES_DOWNSTREAM}"
 
+# Close the U-Boot SDP secure-boot bypass on closed i.MX parts (Ana Bobillo's
+# series). Patches 1-4 are shared; 5-6 differ between upstream and NXP
+# downstream U-Boot (ELE lifecycle helpers / jump_to_image symbol).
+# Apalis iMX8 / Colibri iMX8X are omitted (no SPL SDP).
+TDX_UBOOT_SDP_SECURE_PATCHES_COMMON = "\
+    file://0001-usb-gadget-composite-bound-ep0-requests-to-the-reques.patch \
+    file://0002-usb-gadget-f_sdp-drop-an-empty-data-packet.patch \
+    file://0003-usb-gadget-f_sdp-write-report-2-data-only-within-a-do.patch \
+    file://0004-usb-gadget-f_sdp-decode-the-command-s-address-and-cou.patch \
+"
+TDX_UBOOT_SDP_SECURE_PATCHES = "\
+    ${TDX_UBOOT_SDP_SECURE_PATCHES_COMMON} \
+    file://0005-usb-gadget-f_sdp-report-a-closed-part-as-the-boot-ROM.patch \
+    file://0006-usb-gadget-f_sdp-refuse-unauthenticated-loads-on-a-cl.patch \
+"
+TDX_UBOOT_SDP_SECURE_PATCHES_DOWNSTREAM = "\
+    ${TDX_UBOOT_SDP_SECURE_PATCHES_COMMON} \
+    file://0005-usb-gadget-f_sdp-report-a-closed-part-as-the-boot-ROM-downstream.patch \
+    file://0006-usb-gadget-f_sdp-refuse-unauthenticated-loads-on-a-cl-downstream.patch \
+"
+SRC_URI:append:mx6-generic-bsp = "${TDX_UBOOT_SDP_SECURE_PATCHES}"
+SRC_URI:append:mx7-generic-bsp = "${TDX_UBOOT_SDP_SECURE_PATCHES}"
+SRC_URI:append:mx8m-generic-bsp = "${TDX_UBOOT_SDP_SECURE_PATCHES}"
+SRC_URI:append:verdin-imx95 = "${TDX_UBOOT_SDP_SECURE_PATCHES_DOWNSTREAM}"
+SRC_URI:append:aquila-imx95 = "${TDX_UBOOT_SDP_SECURE_PATCHES_DOWNSTREAM}"
+SRC_URI:append:toradex-smarc-imx95 = "${TDX_UBOOT_SDP_SECURE_PATCHES_DOWNSTREAM}"
+SRC_URI:append:lino-imx93 = "${TDX_UBOOT_SDP_SECURE_PATCHES_DOWNSTREAM}"
+SRC_URI:append:toradex-osm-imx93 = "${TDX_UBOOT_SDP_SECURE_PATCHES_DOWNSTREAM}"
+
 UBOOT_BINARY_HAB = "${UBOOT_BINARY}"
 UBOOT_BINARY_HAB:mx6dl-generic-bsp = "u-boot-ivt.img"
 UBOOT_BINARY_HAB:mx6q-generic-bsp = "u-boot-ivt.img"

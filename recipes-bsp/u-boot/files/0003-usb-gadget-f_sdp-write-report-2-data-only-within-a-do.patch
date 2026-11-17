@@ -1,0 +1,80 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Ana Bobillo <anabobillo3@gmail.com>
+Date: Wed, 04 Nov 2026 07:17:57 +0000
+Subject: [PATCH] usb: gadget: f_sdp: write report 2 data only within a download
+
+sdp_setup() switches to SDP_STATE_RX_FILE_DATA_BUSY on every report 2
+SET_REPORT, whatever the state, and sdp_rx_data_complete() then copies
+the packet to dnl_address. Two things follow:
+
+- a report 2 sent outside a download (after the previous WRITE_FILE
+  completed, or during a DCD_WRITE) is still copied to dnl_address,
+  where the last download ended, or wherever an earlier command left
+  it;
+- the last packet of a download is copied whole, padding included,
+  although dnl_bytes_remaining is clamped to zero: up to a packet past
+  the length the host announced in WRITE_FILE.
+
+Accept report 2 only while a WRITE_FILE or DCD_WRITE expects data and
+stall it otherwise, and copy no more than the bytes remaining. DCD data
+is still consumed without being written, as the DCD commands are
+stubs. The host tools (imx_usb_loader, uuu) send data only after the
+command and pad only the last packet, so their flows are unchanged.
+
+Fixes: 5661f08a7144 ("usb: gadget: add SDP driver")
+Upstream-Status: Submitted [https://lore.kernel.org/all/4bdba9dc-0c21-4e33-8f20-2c0a7ebba0d6@gmail.com/]
+Link: https://lore.kernel.org/u-boot/7caa5a02-b6b5-4666-a1f1-7aa8fb3ce10f@gmail.com/
+Signed-off-by: Ana Bobillo <anabobillo3@gmail.com>
+---
+ drivers/usb/gadget/f_sdp.c | 19 +++++++++++++------
+ 1 file changed, 13 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/usb/gadget/f_sdp.c b/drivers/usb/gadget/f_sdp.c
+index 20de9507d36..9af411f16ec 100644
+--- a/drivers/usb/gadget/f_sdp.c
++++ b/drivers/usb/gadget/f_sdp.c
+@@ -402,12 +402,11 @@ static void sdp_rx_data_complete(struct usb_ep *ep, struct usb_request *req)
+ 		/*
+ 		 * Some USB stacks require to send a complete buffer as
+ 		 * specified in the HID descriptor. This leads to longer
+-		 * transfers than the file length, no problem for us.
++		 * transfers than the file length: drop the padding.
+ 		 */
+-		sdp->dnl_bytes_remaining = 0;
+-	} else {
+-		sdp->dnl_bytes_remaining -= datalen;
++		datalen = sdp->dnl_bytes_remaining;
+ 	}
++	sdp->dnl_bytes_remaining -= datalen;
+ 
+ 	if (sdp->state == SDP_STATE_RX_FILE_DATA_BUSY) {
+ 		memcpy(sdp_ptr(sdp->dnl_address), req->buf + 1, datalen);
+@@ -415,7 +414,9 @@ static void sdp_rx_data_complete(struct usb_ep *ep, struct usb_request *req)
+ 	}
+ 
+ 	if (sdp->dnl_bytes_remaining) {
+-		sdp->state = SDP_STATE_RX_FILE_DATA;
++		/* DCD data is consumed, never written to dnl_address */
++		if (sdp->state == SDP_STATE_RX_FILE_DATA_BUSY)
++			sdp->state = SDP_STATE_RX_FILE_DATA;
+ 		return;
+ 	}
+ 
+@@ -509,9 +510,15 @@ static int sdp_setup(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
+ 				sdp_func->ep_int_enable = false;
+ 				break;
+ 			case 2:
++				/* Data only follows a WRITE_FILE or DCD_WRITE */
++				if (sdp_func->state == SDP_STATE_RX_FILE_DATA ||
++				    sdp_func->state == SDP_STATE_RX_FILE_DATA_BUSY)
++					sdp_func->state = SDP_STATE_RX_FILE_DATA_BUSY;
++				else if (sdp_func->state != SDP_STATE_RX_DCD_DATA)
++					return -EOPNOTSUPP;
++
+ 				value = len;
+ 				req->complete = sdp_rx_data_complete;
+-				sdp_func->state = SDP_STATE_RX_FILE_DATA_BUSY;
+ 				break;
+ 			}
+ 		}
+
