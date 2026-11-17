@@ -30,6 +30,7 @@ TDX_IMX8M_CST_ARTIFACTS = "\
     file://0002-binman-nxp_imx8mcst-allow-selecting-the-SRK-table-in.patch \
     file://0003-binman-nxp_imx8mcst-allow-enabling-fast-authenticati.patch \
     file://0004-binman-nxp_imx8mcst-support-PKCS-11-URIs-with-percen.patch \
+    file://0005-board-toradex-verdin-imx8mm-adjust-U-Boot-proper-off.patch \
     file://imx8m_cst_wrapper.sh \
 "
 SRC_URI:append:mx8m-generic-bsp = "${TDX_IMX8M_CST_ARTIFACTS}"

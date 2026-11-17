@@ -1,0 +1,82 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Sergio Prado <sergio.prado@e-labworks.com>
+Date: Wed, 18 Nov 2026 10:34:56 -0300
+Subject: [PATCH] board: toradex: verdin-imx8mm: adjust U-Boot proper offset
+ for eMMC fastboot
+
+The Verdin iMX8MM boots from the eMMC boot partitions with the eMMC
+fast boot fuse enabled, so the boot ROM loads flash.bin from offset
+1 KiB instead of the usual 33 KiB. The SPL loads U-Boot proper from the
+fixed sector CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR, so the board
+device tree moved the FIT in flash.bin to 0x5fc00 to compensate.
+
+That override only works while the fit node is placed directly in the
+binman section. With CONFIG_IMX_HAB, imx8mm-u-boot.dtsi wraps the FIT
+in an nxp-imx8mcst node with its own offset of 0x57c00, which takes
+precedence, so a signed flash.bin has the FIT at 0x57c00. When booting
+from eMMC, the SPL does not find the FIT at the expected sector, treats
+the data there as a raw U-Boot image and fails to authenticate it:
+
+  Authenticate image from DDR location 0x40200000...
+  bad magic magic=0x75 length=0x206d version=0x63
+  bad length magic=0x75 length=0x206d version=0x63
+  bad version magic=0x75 length=0x206d version=0x63
+  Error: Invalid IVT structure
+
+Drop the FIT offset override and set
+CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR to 0x2c0 instead. With flash.bin
+at 1 KiB and the FIT at the default 0x57c00, U-Boot proper starts at
+0x58000, which is sector 0x2c0, with or without HAB. Do the same for
+the MX8Menlo, which uses the same module and includes the Verdin U-Boot
+device tree.
+
+Suggested-by: Francesco Dolcini <francesco.dolcini@toradex.com>
+Upstream-Status: Submitted [https://lore.kernel.org/u-boot/20261118174255.3388175-1-sergio.prado@e-labworks.com/]
+Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
+---
+ arch/arm/dts/imx8mm-verdin-wifi-dev-u-boot.dtsi | 4 ----
+ configs/imx8mm-mx8menlo_defconfig               | 2 +-
+ configs/verdin-imx8mm_defconfig                 | 2 +-
+ 3 files changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/arch/arm/dts/imx8mm-verdin-wifi-dev-u-boot.dtsi b/arch/arm/dts/imx8mm-verdin-wifi-dev-u-boot.dtsi
+index 183de46f66a8..2dd80338c0c0 100644
+--- a/arch/arm/dts/imx8mm-verdin-wifi-dev-u-boot.dtsi
++++ b/arch/arm/dts/imx8mm-verdin-wifi-dev-u-boot.dtsi
+@@ -35,10 +35,6 @@
+ 	bootph-pre-ram;
+ };
+ 
+-&binman_imx_fit {
+-	offset = <0x5fc00>;
+-};
+-
+ &gpio1 {
+ 	bootph-pre-ram;
+ };
+diff --git a/configs/imx8mm-mx8menlo_defconfig b/configs/imx8mm-mx8menlo_defconfig
+index f8a7d6060ee1..6dcf504cbea6 100644
+--- a/configs/imx8mm-mx8menlo_defconfig
++++ b/configs/imx8mm-mx8menlo_defconfig
+@@ -52,7 +52,7 @@ CONFIG_SPL_HAS_CUSTOM_MALLOC_START=y
+ CONFIG_SPL_CUSTOM_SYS_MALLOC_ADDR=0x42200000
+ CONFIG_SPL_SYS_MALLOC_SIZE=0x80000
+ CONFIG_SPL_SYS_MMCSD_RAW_MODE=y
+-CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR=0x300
++CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR=0x2c0
+ CONFIG_SPL_I2C=y
+ CONFIG_SPL_POWER=y
+ CONFIG_SPL_WATCHDOG=y
+diff --git a/configs/verdin-imx8mm_defconfig b/configs/verdin-imx8mm_defconfig
+index c8a2a0571356..d372d5cd7557 100644
+--- a/configs/verdin-imx8mm_defconfig
++++ b/configs/verdin-imx8mm_defconfig
+@@ -47,7 +47,7 @@ CONFIG_SPL_HAS_CUSTOM_MALLOC_START=y
+ CONFIG_SPL_CUSTOM_SYS_MALLOC_ADDR=0x42200000
+ CONFIG_SPL_SYS_MALLOC_SIZE=0x80000
+ CONFIG_SPL_SYS_MMCSD_RAW_MODE=y
+-CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR=0x300
++CONFIG_SYS_MMCSD_RAW_MODE_U_BOOT_SECTOR=0x2c0
+ CONFIG_SPL_I2C=y
+ CONFIG_SPL_POWER=y
+ CONFIG_SPL_WATCHDOG=y
