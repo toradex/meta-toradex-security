@@ -1,0 +1,53 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Sergio Prado <sergio.prado@e-labworks.com>
+Date: Mon, 16 Nov 2026 08:57:08 -0300
+Subject: [PATCH] binman: nxp_imx8mcst: allow enabling fast authentication
+ via environment
+
+All the signing parameters of the nxp_imx8mcst etype can be set through
+environment variables, which lets a build system use its own key
+material without modifying the device tree. The fast authentication
+method is the exception, since it can only be enabled with the
+nxp,fast-auth device tree property.
+
+Add the FAST_AUTH environment variable, which overrides the device tree
+property. FAST_AUTH=1 enables fast authentication and any other value
+disables it.
+
+Upstream-Status: Submitted [https://lore.kernel.org/u-boot/20261117091521.3743071-1-sergio.prado@e-labworks.com/]
+Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
+---
+ doc/imx/habv4/guides/mx8m_spl_secure_boot.txt | 2 +-
+ tools/binman/etype/nxp_imx8mcst.py            | 6 +++++-
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/doc/imx/habv4/guides/mx8m_spl_secure_boot.txt b/doc/imx/habv4/guides/mx8m_spl_secure_boot.txt
+index 163e6c600a21..774c7a49d8b4 100644
+--- a/doc/imx/habv4/guides/mx8m_spl_secure_boot.txt
++++ b/doc/imx/habv4/guides/mx8m_spl_secure_boot.txt
+@@ -180,7 +180,7 @@ Note that environment variables override DT properties.
+ +--------------------+-------------+------------------------------------------------------------------+
+ | nxp,img-crt        | IMG_KEY     | full path to the IMG Key IMG1_1_sha256_4096_65537_v3_usr_crt.pem |
+ +--------------------+-------------+------------------------------------------------------------------+
+-| nxp,fast-auth      |             | enable fast authentication method                                |
++| nxp,fast-auth      | FAST_AUTH   | enable fast authentication method (FAST_AUTH=1)                  |
+ +--------------------+-------------+------------------------------------------------------------------+
+ | nxp,srk-crt        | SRK_KEY     | full path to the SRK Key SRK1_sha256_4096_65537_v3_ca_crt.pem    |
+ +--------------------+-------------+------------------------------------------------------------------+
+diff --git a/tools/binman/etype/nxp_imx8mcst.py b/tools/binman/etype/nxp_imx8mcst.py
+index 3fc708f3037d..09ee64523376 100644
+--- a/tools/binman/etype/nxp_imx8mcst.py
++++ b/tools/binman/etype/nxp_imx8mcst.py
+@@ -87,7 +87,11 @@ class Entry_nxp_imx8mcst(Entry_mkimage):
+                                             'SRK_1_2_3_4_table.bin'))
+         self.srk_index = os.getenv(
+             'SRK_INDEX', fdt_util.GetInt(self._node, 'nxp,srk-index', 0))
+-        self.fast_auth = fdt_util.GetBool(self._node, 'nxp,fast-auth')
++        fast_auth = os.getenv('FAST_AUTH')
++        if fast_auth is not None:
++            self.fast_auth = fast_auth == '1'
++        else:
++            self.fast_auth = fdt_util.GetBool(self._node, 'nxp,fast-auth')
+         if not self.fast_auth:
+             self.csf_crt = os.getenv(
+                 'CSF_KEY', fdt_util.GetString(self._node, 'nxp,csf-crt',

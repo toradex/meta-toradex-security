@@ -1,0 +1,37 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Sergio Prado <sergio.prado@e-labworks.com>
+Date: Mon, 16 Nov 2026 08:57:18 -0300
+Subject: [PATCH] binman: nxp_imx8mcst: support PKCS#11 URIs with
+ percent-encoding
+
+The CST configuration file is generated with configparser, using the
+default basic interpolation. Setting a value that contains a '%' not
+followed by '%' or '(' raises a ValueError, so signing fails when a key
+is given as a PKCS#11 URI with percent-encoded characters, which is
+common since token and object labels often contain spaces (e.g.
+"pkcs11:token=my%20token").
+
+The values written to the CST configuration file never use
+interpolation, so disable it.
+
+Upstream-Status: Submitted [https://lore.kernel.org/u-boot/20261117093953.3812080-1-sergio.prado@e-labworks.com/]
+Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
+---
+ tools/binman/etype/nxp_imx8mcst.py | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/tools/binman/etype/nxp_imx8mcst.py b/tools/binman/etype/nxp_imx8mcst.py
+index 09ee64523376..4402899ec612 100644
+--- a/tools/binman/etype/nxp_imx8mcst.py
++++ b/tools/binman/etype/nxp_imx8mcst.py
+@@ -155,7 +155,9 @@ class Entry_nxp_imx8mcst(Entry_mkimage):
+ 
+         # Generate CST configuration file used to sign payload
+         cfg_fname = tools.get_output_filename(f'nxp.csf-config-txt.{uniq}')
+-        config = configparser.ConfigParser()
++        # Disable interpolation, since values like PKCS#11 URIs may contain
++        # percent-encoded characters
++        config = configparser.ConfigParser(interpolation=None)
+         # Do not make key names lowercase
+         config.optionxform = str
+         # Load configuration template and modify keys of interest
