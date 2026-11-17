@@ -45,6 +45,8 @@ The complete list of variables can be found in the `imx-hab.bbclass` file.
 
 **NOTE**: For HAB signing, [libfaketime](https://github.com/wolfcw/libfaketime) is used when generating the CSF binaries with CST in order to create reproducible bootloader image builds.
 
+**NOTE**: On iMX8M, the bootloader is signed by U-Boot's `binman` tool while it builds `flash.bin`, and the layer configures `binman` from the variables above. Since `binman` always selects the CST backend itself (`-b ssl` or, with an HSM, `-b pkcs11`), do not add the `-b` option to `TDX_IMX_HAB_CST_ARGS`.
+
 ### Bootloaders targeting SDP loading
 
 This section is currently relevant to the iMX6ULL and iMX7 SoCs where a bootloader aiming SDP loading requires a special signing procedure.
