@@ -6,7 +6,7 @@ Subject: [PATCH 7/8] toradex: cmd: fuse: add readv command (downstream)
 Add command "fuse readv" to allow reading up to 64 fuse words into a
 variable.
 
-Upstream-Status: Pending
+Upstream-Status: Inappropriate [Toradex specific]
 Signed-off-by: Rogerio Guerra Borin <rogerio.borin@toradex.com>
 ---
 Changes v1 -> v2:
