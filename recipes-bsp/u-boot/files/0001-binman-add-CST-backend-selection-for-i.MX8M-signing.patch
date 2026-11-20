@@ -1,0 +1,169 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Marek Vasut <marex@nabladev.com>
+Date: Tue, 21 Jul 2026 04:52:37 +0200
+Subject: [PATCH] binman: add CST backend selection for i.MX8M signing
+
+Add support for setting the CST backend, both via DT property and
+CST_BACKEND environment variable. The CST currently supports two
+backends, 'ssl' and 'pkcs11', with 'ssl' being the default when
+CST tool is invoked without any -b parameter. Keep 'ssl' backend
+as the default, but explicitly pass it via the '-b' parameter,
+unless the user selects 'pkcs11' via either method.
+
+Signed-off-by: Marek Vasut <marex@nabladev.com>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+Upstream-Status: Backport [https://source.denx.de/u-boot/u-boot/-/commit/4eeaaee054bec28a2af4ed9162381255dfd22c4b]
+Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
+---
+ doc/imx/habv4/guides/mx8m_spl_secure_boot.txt | 30 ++++++++++++-------
+ tools/binman/etype/nxp_imx8mcst.py            | 19 +++++++++++-
+ tools/binman/ftest.py                         | 15 ++++++++++
+ .../test/vendor/nxp_imx8_csf_pkcs11.dts       | 27 +++++++++++++++++
+ 4 files changed, 79 insertions(+), 12 deletions(-)
+ create mode 100644 tools/binman/test/vendor/nxp_imx8_csf_pkcs11.dts
+
+diff --git a/doc/imx/habv4/guides/mx8m_spl_secure_boot.txt b/doc/imx/habv4/guides/mx8m_spl_secure_boot.txt
+index 1bea091344d1..a3ebd397d82c 100644
+--- a/doc/imx/habv4/guides/mx8m_spl_secure_boot.txt
++++ b/doc/imx/habv4/guides/mx8m_spl_secure_boot.txt
+@@ -167,17 +167,25 @@ The nxp-imx8mcst etype is configurable using either DT properties or environment
+ variables. The following DT properties and environment variables are supported.
+ Note that environment variables override DT properties.
+ 
+-+--------------------+-----------+------------------------------------------------------------------+
+-| DT property        | Variable  | Description                                                      |
+-+====================+===========+==================================================================+
+-| nxp,loader-address |           | SPL base address                                                 |
+-+--------------------+-----------+------------------------------------------------------------------+
+-| nxp,srk-table      | SRK_TABLE | full path to SRK_1_2_3_4_table.bin                               |
+-+--------------------+-----------+------------------------------------------------------------------+
+-| nxp,csf-crt        | CSF_KEY   | full path to the CSF Key CSF1_1_sha256_4096_65537_v3_usr_crt.pem |
+-+--------------------+-----------+------------------------------------------------------------------+
+-| nxp,img-crt        | IMG_KEY   | full path to the IMG Key IMG1_1_sha256_4096_65537_v3_usr_crt.pem |
+-+--------------------+-----------+------------------------------------------------------------------+
+++--------------------+-------------+------------------------------------------------------------------+
++| DT property        | Variable    | Description                                                      |
+++====================+=============+==================================================================+
++| nxp,loader-address |             | SPL base address                                                 |
+++--------------------+-------------+------------------------------------------------------------------+
++| nxp,srk-table      | SRK_TABLE   | full path to SRK_1_2_3_4_table.bin                               |
+++--------------------+-------------+------------------------------------------------------------------+
++| nxp,csf-crt        | CSF_KEY     | full path to the CSF Key CSF1_1_sha256_4096_65537_v3_usr_crt.pem |
+++--------------------+-------------+------------------------------------------------------------------+
++| nxp,img-crt        | IMG_KEY     | full path to the IMG Key IMG1_1_sha256_4096_65537_v3_usr_crt.pem |
+++--------------------+-------------+------------------------------------------------------------------+
++| nxp,fast-auth      |             | enable fast authentication method                                |
+++--------------------+-------------+------------------------------------------------------------------+
++| nxp,srk-crt        | SRK_KEY     | full path to the SRK Key SRK1_sha256_4096_65537_v3_ca_crt.pem    |
+++--------------------+-------------+------------------------------------------------------------------+
++| nxp,unlock         |             | unlock CAAM in SPL                                               |
+++--------------------+-------------+------------------------------------------------------------------+
++| nxp,cst-backend    | CST_BACKEND | CST tool backend, default is 'ssl', or selectable 'pkcs11'       |
+++--------------------+-------------+------------------------------------------------------------------+
+ 
+ Environment variables can be set as follows to point the build process
+ to external key material:
+diff --git a/tools/binman/etype/nxp_imx8mcst.py b/tools/binman/etype/nxp_imx8mcst.py
+index dd9f226b7514..a10f61aa01fe 100644
+--- a/tools/binman/etype/nxp_imx8mcst.py
++++ b/tools/binman/etype/nxp_imx8mcst.py
+@@ -65,6 +65,13 @@ class Entry_nxp_imx8mcst(Entry_mkimage):
+ 
+     Properties / Entry arguments:
+         - nxp,loader-address - loader address (SPL text base)
++        - nxp,srk-table - full path to SRK_1_2_3_4_table.bin
++        - nxp,csf-crt - full path to the CSF Key CSF1_1_sha256_4096_65537_v3_usr_crt.pem
++        - nxp,img-crt - full path to the IMG Key IMG1_1_sha256_4096_65537_v3_usr_crt.pem
++        - nxp,fast-auth - enable fast authentication method
++        - nxp,srk-crt - full path to the SRK Key SRK1_sha256_4096_65537_v3_ca_crt.pem
++        - nxp,unlock - unlock CAAM in SPL
++        - nxp,cst-backend - CST tool backend, default is 'ssl', or selectable 'pkcs11'
+     """
+ 
+     def __init__(self, section, etype, node):
+@@ -90,6 +97,10 @@ class Entry_nxp_imx8mcst(Entry_mkimage):
+                 'SRK_KEY', fdt_util.GetString(self._node, 'nxp,srk-crt',
+                                               f'SRK1_{KEY_NAME}.pem'))
+ 
++        self.backend = os.getenv(
++            'CST_BACKEND', fdt_util.GetString(self._node, 'nxp,cst-backend',
++                                              'ssl'))
++
+         self.unlock = fdt_util.GetBool(self._node, 'nxp,unlock')
+         self.ReadEntries()
+ 
+@@ -161,8 +172,14 @@ class Entry_nxp_imx8mcst(Entry_mkimage):
+         with open(cfg_fname, 'w') as cfgf:
+             config.write(cfgf)
+ 
++        # SSL is the default backend, PKCS11 backend is optional
++        if self.backend == "pkcs11":
++            cst_backend = "pkcs11"
++        else:
++            cst_backend = "ssl"
++
+         output_fname = tools.get_output_filename(f'nxp.csf-output-blob.{uniq}')
+-        args = ['-i', cfg_fname, '-o', output_fname]
++        args = ['-i', cfg_fname, '-o', output_fname, '-b', cst_backend]
+         if self.cst.run_cmd(*args) is not None:
+             outdata = tools.read_file(output_fname)
+             # fixme: 0x2000 should be CONFIG_CSF_SIZE
+diff --git a/tools/binman/ftest.py b/tools/binman/ftest.py
+index 9553eb6b7366..04f9a66f0072 100644
+--- a/tools/binman/ftest.py
++++ b/tools/binman/ftest.py
+@@ -8029,6 +8029,21 @@ fdt         fdtmap                Extract the devicetree blob from the fdtmap
+         err = stderr.getvalue()
+         self.assertRegex(err, "Image 'image'.*missing bintools.*: cst")
+ 
++    def testNxpImx8mCSTPKCS11(self):
++        """Test CST signing with IVT-format input (pkcs11 auth, no unlock)"""
++        # Create fake IVT blob: magic(4) + padding(20) + signsize_addr(4)
++        # + padding(36) = 64 bytes
++        ivt_data = struct.pack('<I', 0x412000d1)
++        ivt_data += b'\x00' * 20
++        ivt_data += struct.pack('<I', 0)
++        ivt_data += b'\x00' * 36
++        self._MakeInputFile('imx8m-ivt.bin', ivt_data)
++        with terminal.capture() as (_, stderr):
++            self._DoTestFile('vendor/nxp_imx8_csf_pkcs11.dts',
++                             force_missing_bintools='cst')
++        err = stderr.getvalue()
++        self.assertRegex(err, "Image 'image'.*missing bintools.*: cst")
++
+     def testNxpImx8mCSTFastAuth(self):
+         """Test CST signing with fast-auth mode, unlock, and FIT format"""
+         # FIT magic covers the FIT-signing path; fast-auth/unlock cover the
+diff --git a/tools/binman/test/vendor/nxp_imx8_csf_pkcs11.dts b/tools/binman/test/vendor/nxp_imx8_csf_pkcs11.dts
+new file mode 100644
+index 000000000000..835ea2368260
+--- /dev/null
++++ b/tools/binman/test/vendor/nxp_imx8_csf_pkcs11.dts
+@@ -0,0 +1,27 @@
++// SPDX-License-Identifier: GPL-2.0+
++
++/dts-v1/;
++
++/ {
++	#address-cells = <1>;
++	#size-cells = <1>;
++
++	binman {
++		nxp-imx8mcst {
++			args;
++			nxp,loader-address = <0x10>;
++			nxp,cst-backend = "pkcs11";
++
++			blob {
++				filename = "imx8m-ivt.bin";
++			};
++
++			imagename {
++				type = "section";
++
++				u-boot {
++				};
++			};
++		};
++	};
++};

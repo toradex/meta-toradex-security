@@ -3,8 +3,8 @@ inherit imx-hab
 # Need this for the create_fuse_cmds.sh script
 DEPENDS += "imx-fuses-native"
 
-# Need this for the xxd and fdtget utilities used by imx8m_sign.sh
-DEPENDS += "xxd-native dtc-native"
+# Need this for the xxd utility used to sign the i.MX6/i.MX7 bootloader
+DEPENDS += "xxd-native"
 
 # Need this to create deterministic CSF binaries when running the NXP Code Signing Tool
 DEPENDS += "libfaketime-native"
@@ -25,11 +25,15 @@ TDX_IMX6_IMX7_CSF_ARTIFACTS = "\
 SRC_URI:append:mx6-generic-bsp = "${TDX_IMX6_IMX7_CSF_ARTIFACTS}"
 SRC_URI:append:mx7-generic-bsp = "${TDX_IMX6_IMX7_CSF_ARTIFACTS}"
 
-TDX_IMX8M_CSF_ARTIFACTS = "\
-    file://imx8m_sign.sh \
-    file://imx8m_template.csf \
+TDX_IMX8M_CST_ARTIFACTS = "\
+    file://0001-binman-add-CST-backend-selection-for-i.MX8M-signing.patch \
+    file://0002-binman-nxp_imx8mcst-allow-selecting-the-SRK-table-in.patch \
+    file://0003-binman-nxp_imx8mcst-allow-enabling-fast-authenticati.patch \
+    file://0004-binman-nxp_imx8mcst-support-PKCS-11-URIs-with-percen.patch \
+    file://0005-board-toradex-verdin-imx8mm-adjust-U-Boot-proper-off.patch \
+    file://imx8m_cst_wrapper.sh \
 "
-SRC_URI:append:mx8m-generic-bsp = "${TDX_IMX8M_CSF_ARTIFACTS}"
+SRC_URI:append:mx8m-generic-bsp = "${TDX_IMX8M_CST_ARTIFACTS}"
 
 TDX_UBOOT_HAB_PATCHES_DOWNSTREAM = "\
     file://0001-bootm-don-t-use-HAB-to-authenticate-FIT-image.patch \
@@ -43,6 +47,7 @@ UBOOT_BINARY_HAB:mx6q-generic-bsp = "u-boot-ivt.img"
 
 # Sign U-Boot and generate fuse-cmds.txt again when the PKI changes
 do_uboot_assemble_fitimage[file-checksums] += "${@tdx_imx_hab_pki_file_checksums(d)}"
+do_compile[file-checksums] += "${@tdx_imx_hab_pki_file_checksums(d) if 'mx8m-generic-bsp' in d.getVar('OVERRIDES').split(':') else ''}"
 
 # Secure debug is enabled only if both tdx-secure-debug class is inherited
 # and TDX_SECURE_DEBUG_ENABLE="1"
@@ -190,35 +195,64 @@ imx6_imx7_sign_habv4() {
     create_fuse_cmds_helper "${soc}"
 }
 
-# Sign U-Boot binary and/or SPL (this works with i.MX8M).
-# This is supposed to run in the U-Boot build directory.
-imx8m_sign_habv4() {
-    local soc="$1"
-    local type="$2"
-    local binary="$3"
+# On i.MX8M, binman signs the SPL and the FIT while building flash.bin, using
+# the nxp_imx8mcst etype. The etype takes the PKI from the environment, and
+# runs the "cst" found in BINMAN_TOOLPATHS, which is a wrapper that calls the
+# CST binary selected by TDX_IMX_HAB_CST_BIN.
+TDX_IMX8M_CST_TOOLPATH = "${WORKDIR}/imx8m-cst-toolpath"
+EXTRA_OEMAKE:append:mx8m-generic-bsp = " BINMAN_TOOLPATHS=${TDX_IMX8M_CST_TOOLPATH}"
 
+imx8m_cst_env_export() {
     if [ ! -e "${TDX_IMX_HAB_CST_BIN}" ]; then
         bbfatal "Could not find CST binary at ${TDX_IMX_HAB_CST_BIN}."
     fi
 
-    # Save unsigned image
-    cp "flash.bin" "flash.bin-unsigned"
+    mkdir -p "${TDX_IMX8M_CST_TOOLPATH}"
+    ln -sf "${UNPACKDIR}/imx8m_cst_wrapper.sh" "${TDX_IMX8M_CST_TOOLPATH}/cst"
 
-    # Sign the bootloader container (in-place)
-    LIBFAKETIME_PATH="${STAGING_LIBDIR_NATIVE}/faketime/libfaketime.so.1" \
-    TDX_IMX_HAB_CST_SRK="${TDX_IMX_HAB_CST_SRK}" \
-    TDX_IMX_HAB_CST_SRK_CERT="${TDX_IMX_HAB_CST_SRK_CERT}" \
-    TDX_IMX_HAB_CST_CSF_CERT="${TDX_IMX_HAB_CST_CSF_CERT}" \
-    TDX_IMX_HAB_CST_IMG_CERT="${TDX_IMX_HAB_CST_IMG_CERT}" \
-    TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}" \
-    TDX_IMX_HAB_CST_ARGS="${TDX_IMX_HAB_CST_ARGS}" \
-    TDX_IMX_HAB_CST_HSM="${TDX_SIGNED_HSM}" \
-    TDX_IMX_HAB_CST_SRK_CA="${TDX_IMX_HAB_CST_SRK_CA}" \
-    TDX_IMX_HAB_CST_SRK_INDEX="${TDX_IMX_HAB_CST_SRK_INDEX}" \
-    ${UNPACKDIR}/imx8m_sign.sh
+    if [ "${TDX_SIGNED_HSM}" != "1" ]; then
+        srk_cert="$(basename "${TDX_IMX_HAB_CST_SRK_CERT}")"
+        case "${srk_cert}" in
+            SRK${TDX_IMX_HAB_CST_SRK_INDEX}_*) ;;
+            *) bbfatal "${srk_cert} (TDX_IMX_HAB_CST_SRK_CERT) does not match TDX_IMX_HAB_CST_SRK_INDEX = \"${TDX_IMX_HAB_CST_SRK_INDEX}\"." ;;
+        esac
+        case "${srk_cert}" in
+            *_ca_crt.pem) srk_ca="1" ;;
+            *) srk_ca="0" ;;
+        esac
+        if [ "${srk_ca}" != "${TDX_IMX_HAB_CST_SRK_CA}" ]; then
+            bbfatal "${srk_cert} (TDX_IMX_HAB_CST_SRK_CERT) does not match TDX_IMX_HAB_CST_SRK_CA = \"${TDX_IMX_HAB_CST_SRK_CA}\"."
+        fi
+    fi
 
-    # Create fuse commands
-    create_fuse_cmds_helper "${soc}"
+    export TDX_IMX_HAB_CST_BIN="${TDX_IMX_HAB_CST_BIN}"
+    export TDX_IMX_HAB_CST_ARGS="${TDX_IMX_HAB_CST_ARGS}"
+    export LIBFAKETIME_PATH="${STAGING_LIBDIR_NATIVE}/faketime/libfaketime.so.1"
+
+    export SRK_TABLE="${TDX_IMX_HAB_CST_SRK}"
+    export SRK_INDEX="$(expr ${TDX_IMX_HAB_CST_SRK_INDEX} - 1)"
+    if [ "${TDX_IMX_HAB_CST_SRK_CA}" = "1" ]; then
+        export FAST_AUTH="0"
+        export CSF_KEY="${TDX_IMX_HAB_CST_CSF_CERT}"
+        export IMG_KEY="${TDX_IMX_HAB_CST_IMG_CERT}"
+    else
+        export FAST_AUTH="1"
+        export SRK_KEY="${TDX_IMX_HAB_CST_SRK_CERT}"
+    fi
+    if [ "${TDX_SIGNED_HSM}" = "1" ]; then
+        export CST_BACKEND="pkcs11"
+    else
+        export CST_BACKEND="ssl"
+    fi
+}
+
+do_compile:prepend:mx8m-generic-bsp() {
+    imx8m_cst_env_export
+}
+
+# binman runs again when the FIT signature node is added to the DTBs
+do_uboot_assemble_fitimage:prepend:mx8m-generic-bsp() {
+    imx8m_cst_env_export
 }
 
 uboot_assemble_fitimage_helper:append:mx6dl-generic-bsp() {
@@ -246,9 +280,7 @@ uboot_assemble_fitimage_helper:append:mx7-generic-bsp() {
 }
 
 uboot_assemble_fitimage_helper:append:mx8m-generic-bsp() {
-    type="$1"
-    binary="$2"
-    imx8m_sign_habv4 "IMX8M" "${type}" "${binary}"
+    create_fuse_cmds_helper "IMX8M"
 }
 
 do_deploy:append() {
@@ -258,6 +290,9 @@ do_deploy:append() {
         install -m 0644 ${WORKDIR}/imx-config.fuse ${DEPLOYDIR}
     fi
 }
+
+# HSM-backed signing configuration
+require ${@oe.utils.conditional('TDX_SIGNED_HSM', '1', 'u-boot-hab-hsm.inc', '', d)}
 
 # HAB/AHAB status command configuration
 require u-boot-hab-status.inc

@@ -1,0 +1,136 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Stefan Bigler <stefan.bigler@securiton.ch>
+Date: Tue, 22 Sep 2026 07:18:35 +0200
+Subject: [PATCH] binman: nxp_imx8mcst: allow selecting the SRK table index
+
+The SRK table installed by HAB holds up to four keys, and the CSF
+"Install SRK" section picks one of them via "Source index".
+
+The configuration template hard codes index 0, so an image that has to be
+verified against any other key of the table cannot be generated. That is
+the normal situation once a key has been revoked and the next one of the
+table is put to use.
+
+So make the index configurable the same way as the other properties of
+this etype. Add an "nxp,srk-index" device tree property, overridable by
+the SRK_INDEX environment variable, defaulting to the previous value 0.
+
+Signed-off-by: Stefan Bigler <stefan.bigler@securiton.ch>
+Signed-off-by: Heiko Schocher <hs@nabladev.com>
+Reviewed-by: Simon Glass <sjg@chromium.org>
+Upstream-Status: Backport [https://source.denx.de/u-boot/u-boot/-/commit/b65f698bd0b3c7ce6b099b4e8c0dbd73cf3d9e3d]
+Signed-off-by: Sergio Prado <sergio.prado@e-labworks.com>
+---
+ doc/imx/habv4/guides/mx8m_spl_secure_boot.txt |  2 ++
+ tools/binman/etype/nxp_imx8mcst.py            |  4 +++
+ tools/binman/ftest.py                         | 20 ++++++++++++++
+ .../test/vendor/nxp_imx8_csf_srk_index.dts    | 27 +++++++++++++++++++
+ 4 files changed, 53 insertions(+)
+ create mode 100644 tools/binman/test/vendor/nxp_imx8_csf_srk_index.dts
+
+diff --git a/doc/imx/habv4/guides/mx8m_spl_secure_boot.txt b/doc/imx/habv4/guides/mx8m_spl_secure_boot.txt
+index a3ebd397d82c..163e6c600a21 100644
+--- a/doc/imx/habv4/guides/mx8m_spl_secure_boot.txt
++++ b/doc/imx/habv4/guides/mx8m_spl_secure_boot.txt
+@@ -174,6 +174,8 @@ Note that environment variables override DT properties.
+ +--------------------+-------------+------------------------------------------------------------------+
+ | nxp,srk-table      | SRK_TABLE   | full path to SRK_1_2_3_4_table.bin                               |
+ +--------------------+-------------+------------------------------------------------------------------+
++| nxp,srk-index      | SRK_INDEX   | index of the key in the SRK table, default is 0                  |
+++--------------------+-------------+------------------------------------------------------------------+
+ | nxp,csf-crt        | CSF_KEY     | full path to the CSF Key CSF1_1_sha256_4096_65537_v3_usr_crt.pem |
+ +--------------------+-------------+------------------------------------------------------------------+
+ | nxp,img-crt        | IMG_KEY     | full path to the IMG Key IMG1_1_sha256_4096_65537_v3_usr_crt.pem |
+diff --git a/tools/binman/etype/nxp_imx8mcst.py b/tools/binman/etype/nxp_imx8mcst.py
+index 29a7451678d3..1f83dd9b2512 100644
+--- a/tools/binman/etype/nxp_imx8mcst.py
++++ b/tools/binman/etype/nxp_imx8mcst.py
+@@ -67,6 +67,7 @@ class Entry_nxp_imx8mcst(Entry_mkimage):
+     Properties / Entry arguments:
+         - nxp,loader-address - loader address (SPL text base)
+         - nxp,srk-table - full path to SRK_1_2_3_4_table.bin
++        - nxp,srk-index - index of the key in the SRK table, default is 0
+         - nxp,csf-crt - full path to the CSF Key CSF1_1_sha256_4096_65537_v3_usr_crt.pem
+         - nxp,img-crt - full path to the IMG Key IMG1_1_sha256_4096_65537_v3_usr_crt.pem
+         - nxp,fast-auth - enable fast authentication method
+@@ -85,6 +86,8 @@ class Entry_nxp_imx8mcst(Entry_mkimage):
+         self.srk_table = os.getenv(
+             'SRK_TABLE', fdt_util.GetString(self._node, 'nxp,srk-table',
+                                             'SRK_1_2_3_4_table.bin'))
++        self.srk_index = os.getenv(
++            'SRK_INDEX', fdt_util.GetInt(self._node, 'nxp,srk-index', 0))
+         self.fast_auth = fdt_util.GetBool(self._node, 'nxp,fast-auth')
+         if not self.fast_auth:
+             self.csf_crt = os.getenv(
+@@ -169,6 +172,7 @@ class Entry_nxp_imx8mcst(Entry_mkimage):
+         # Load configuration template and modify keys of interest
+         config.read_string(CSF_CONFIG_TEMPLATE)
+         config['Install SRK']['File']  = f'"{self.srk_table}"'
++        config['Install SRK']['Source index'] = f'{self.srk_index}'
+         if not self.fast_auth:
+             config.remove_section('Install NOCAK')
+             config['Install CSFK']['File'] = f'"{self.csf_crt}"'
+diff --git a/tools/binman/ftest.py b/tools/binman/ftest.py
+index 5f0de4c74a70..bbdfdc539089 100644
+--- a/tools/binman/ftest.py
++++ b/tools/binman/ftest.py
+@@ -8130,6 +8130,26 @@ fdt         fdtmap                Extract the devicetree blob from the fdtmap
+                                         new=fake_cst_run_cmd):
+             self._DoTestFile('vendor/nxp_imx8_csf.dts')
+ 
++    def testNxpImx8mCSTSrkIndex(self):
++        """Test that nxp,srk-index selects the SRK key used for signing"""
++        ivt_data = struct.pack('<I', 0x412000d1)
++        ivt_data += b'\x00' * 20
++        ivt_data += struct.pack('<I', 0)
++        ivt_data += b'\x00' * 36
++        self._MakeInputFile('imx8m-ivt.bin', ivt_data)
++        with terminal.capture() as (_, stderr):
++            self._DoTestFile('vendor/nxp_imx8_csf_srk_index.dts',
++                             force_missing_bintools='cst')
++        err = stderr.getvalue()
++        self.assertRegex(err, "Image 'image'.*missing bintools.*: cst")
++
++        cfg_fname = glob.glob(
++            tools.get_output_filename('nxp.csf-config-txt.*'))[0]
++        config = configparser.ConfigParser()
++        config.optionxform = str
++        config.read(cfg_fname)
++        self.assertEqual('2', config['Install SRK']['Source index'])
++
+     def testNxpImx8mCSTBintool(self):
+         """Test the cst bintool run() and fetch() methods"""
+         cst = bintool.Bintool.create('cst')
+diff --git a/tools/binman/test/vendor/nxp_imx8_csf_srk_index.dts b/tools/binman/test/vendor/nxp_imx8_csf_srk_index.dts
+new file mode 100644
+index 000000000000..3c1c6d850cff
+--- /dev/null
++++ b/tools/binman/test/vendor/nxp_imx8_csf_srk_index.dts
+@@ -0,0 +1,27 @@
++// SPDX-License-Identifier: GPL-2.0+
++
++/dts-v1/;
++
++/ {
++	#address-cells = <1>;
++	#size-cells = <1>;
++
++	binman {
++		nxp-imx8mcst {
++			args;
++			nxp,loader-address = <0x10>;
++			nxp,srk-index = <2>;
++
++			blob {
++				filename = "imx8m-ivt.bin";
++			};
++
++			imagename {
++				type = "section";
++
++				u-boot {
++				};
++			};
++		};
++	};
++};
