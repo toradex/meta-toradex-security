@@ -25,7 +25,8 @@ EXTRA_OECMAKE:append = "\
     -DCFG_TEE_FS_PARENT_PATH='${TDX_OPTEE_FS_PARENT_PATH}' \
 "
 
-require ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB', '1', 'optee-fs-rpmb.inc', '', d)}
+# secure storage is either in the RPMB partition or in the REE filesystem
+require ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB', '1', 'optee-fs-rpmb.inc', 'optee-fs-ree.inc', d)}
 
 # make sure the recipe is selected by the current machine
 COMPATIBLE_MACHINE = "${MACHINE}"
