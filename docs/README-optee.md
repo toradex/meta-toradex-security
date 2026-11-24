@@ -31,6 +31,8 @@ To enable OP-TEE on the supported hardware platforms, one needs to globally inhe
 INHERIT += "tdx-optee"
 ```
 
+OP-TEE support requires the `meta-arm` layer in `bblayers.conf`.
+
 A few variables can be used to customize the behavior of this feature:
 
 | Variable | Description | Default value |

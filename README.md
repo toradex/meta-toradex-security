@@ -40,9 +40,16 @@ URI: git://git.yoctoproject.org/meta-security
 layers: meta-tpm
 branch: wrynose
 revision: HEAD
+
+URI: git://git.yoctoproject.org/meta-arm
+layers: meta-arm, meta-arm-toolchain
+branch: wrynose
+revision: HEAD
 ```
 
 The `meta-tpm` layer is required only when using the `tpm` encryption key backend (`TDX_ENC_KEY_BACKEND = "tpm"`) or fTPM support in OP-TEE (`TDX_OPTEE_FTPM = "1"`).
+
+The `meta-arm` layer is required only when using OP-TEE (`tdx-optee`).
 
 # Supported features and SoMs
 

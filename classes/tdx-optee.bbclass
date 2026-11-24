@@ -98,6 +98,9 @@ python validate_optee_support() {
     if machine not in supported_machines:
         bb.fatal("OP-TEE is currently not supported on '%s' machine!" % machine)
 
+    if 'meta-arm' not in e.data.getVar('BBFILE_COLLECTIONS').split():
+        bb.fatal("OP-TEE support (tdx-optee) requires the meta-arm layer (meta-arm/meta-arm). Please add it to bblayers.conf.")
+
     if e.data.getVar('TDX_OPTEE_FTPM') == '1' and 'tpm-layer' not in e.data.getVar('BBFILE_COLLECTIONS').split():
         bb.fatal("OP-TEE fTPM support (TDX_OPTEE_FTPM) requires the meta-tpm layer (meta-security/meta-tpm). Please add it to bblayers.conf.")
 
