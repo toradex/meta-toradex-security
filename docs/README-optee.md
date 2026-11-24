@@ -109,7 +109,7 @@ One significant challenge with RPMB is the requirement to write a private key to
 
 To address this, the `TDX_OPTEE_FS_RPMB_MODE` variable is introduced, allowing you to configure the RPMB operation mode. The supported values are: `development`, `factory`, and `production`:
 
-- `development`: The RPMB partition is emulated in software by `tee-supplicant`. Be aware that the emulation is done in memory, so the contents of the storage is lost after a reboot or when the `tee-supplicant` daemon is restarted. Suitable option for development.
+- `development`: The RPMB partition is emulated in software by `tee-supplicant`, and the real RPMB partition is not used, even if the Linux kernel is able to access it (`CONFIG_RPMB`). Be aware that the emulation is done in memory, so the contents of the storage is lost after a reboot or when the `tee-supplicant` daemon is restarted. Suitable option for development.
 - `factory`: The eMMC RPMB partition is used, and OP-TEE is configured to program the RPMB key, derived from the SoC's Hardware Unique Key (HUK) and other device specific information. This mode is intended for secure factory provisioning environments, and it should never be used outside of a trusted, secure factory setup.
 - `production`: The eMMC RPMB partition is used with the assumption that the RPMB key has already been programmed (enrolled). Designed for production environments where secure storage relies on a pre-provisioned RPMB key.
 

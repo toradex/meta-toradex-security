@@ -2,6 +2,7 @@
 EXTRA_OEMAKE:append:pn-optee-os = "\
     CFG_RPMB_FS=y \
     CFG_REE_FS=n \
+    CFG_RPMB_ANNOUNCE_PROBE_CAP=n \
     CFG_RPMB_FS_DEV_ID=${TDX_OPTEE_FS_RPMB_DEV_ID} \
     ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB_MODE', 'development', 'CFG_RPMB_WRITE_KEY=y', '', d)} \
     ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB_MODE', 'factory', 'CFG_RPMB_WRITE_KEY=y CFG_RPMB_RESET_FAT=y', '', d)} \
