@@ -1,0 +1,37 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          tee-supplicant-storage
+# Required-Start:    $local_fs
+# Required-Stop:
+# Default-Start:     1 2 3 4 5
+# Default-Stop:
+# Short-Description: Prepare the OP-TEE secure storage directory
+### END INIT INFO
+
+STORAGE_DIR="@@TDX_OPTEE_FS_PARENT_PATH@@"
+STORAGE_USER="teesuppl"
+
+start() {
+    mkdir -p -m 0700 "${STORAGE_DIR}" || return 1
+
+    owner=$(stat -c %u "${STORAGE_DIR}") || return 1
+    uid=$(id -u "${STORAGE_USER}") || return 1
+    [ "${owner}" = "${uid}" ] && return 0
+
+    # Skip files of other owners, as they could be hard links to system files,
+    # and change the directory last, to start over if interrupted.
+    find "${STORAGE_DIR}" -xdev -depth -user "${owner}" \
+        -exec chown -h "${STORAGE_USER}:${STORAGE_USER}" {} +
+}
+
+case "$1" in
+    start|restart|force-reload)
+        start
+        ;;
+    stop)
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|force-reload}" >&2
+        exit 1
+        ;;
+esac

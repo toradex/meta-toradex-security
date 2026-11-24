@@ -3,7 +3,10 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI += "\
     file://tee-supplicant-storage.conf \
     file://tee-supplicant-storage.systemd \
+    file://tee-supplicant-storage.init \
 "
+
+DEPENDS += "${@bb.utils.contains('DISTRO_FEATURES', 'sysvinit', 'update-rc.d-native', '', d)}"
 
 FILES:${PN} += "${systemd_system_unitdir}/tee-supplicant@.service.d"
 
@@ -21,5 +24,14 @@ do_install:append() {
                -e 's|@@BINDIR@@|${bindir}|g' \
                -e "s|@@CONF@@|${conf}|g" \
                ${dropin}
+    elif ${@bb.utils.contains('DISTRO_FEATURES', 'sysvinit', 'true', 'false', d)}; then
+        local script="${D}${sysconfdir}/init.d/tee-supplicant-storage"
+
+        install -D -m 0755 ${UNPACKDIR}/tee-supplicant-storage.init ${script}
+        sed -i -e 's|@@TDX_OPTEE_FS_PARENT_PATH@@|${TDX_OPTEE_FS_PARENT_PATH}|g' ${script}
+
+        # update-rc.d.bbclass handles only one script per package, and this one
+        # must run before tee-supplicant (start 10)
+        update-rc.d -r ${D} tee-supplicant-storage start 09 1 2 3 4 5 .
     fi
 }
