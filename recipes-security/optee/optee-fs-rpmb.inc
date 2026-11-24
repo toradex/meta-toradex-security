@@ -9,26 +9,11 @@ EXTRA_OEMAKE:append:pn-optee-os = "\
     ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB_MODE', 'production', '', '', d)} \
 "
 
-# additional build flags for RPMB support in upstream OP-TEE client (CMake based)
-OPTEE_CLIENT_RPMB_CMAKE_OPTS = "\
+# additional build flags for RPMB support in OP-TEE client
+EXTRA_OECMAKE:append:pn-optee-client = "\
     ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB_MODE', 'development', '-DRPMB_EMU=ON', '', d)} \
     ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB_MODE', 'factory', '-DRPMB_EMU=OFF', '', d)} \
     ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB_MODE', 'production', '-DRPMB_EMU=OFF', '', d)} \
-"
-OPTEE_CLIENT_RPMB_CMAKE_OPTS:imx-generic-bsp = ""
-EXTRA_OECMAKE:append:pn-optee-client = "\
-    ${OPTEE_CLIENT_RPMB_CMAKE_OPTS} \
-"
-
-# additional build flags for RPMB support in NXP downstream OP-TEE client (Makefile based)
-OPTEE_CLIENT_RPMB_MAKE_OPTS = ""
-OPTEE_CLIENT_RPMB_MAKE_OPTS:imx-generic-bsp = "\
-    ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB_MODE', 'development', 'RPMB_EMU=1', '', d)} \
-    ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB_MODE', 'factory', 'RPMB_EMU=0', '', d)} \
-    ${@oe.utils.conditional('TDX_OPTEE_FS_RPMB_MODE', 'production', 'RPMB_EMU=0', '', d)} \
-"
-EXTRA_OEMAKE:append:pn-optee-client = "\
-    ${OPTEE_CLIENT_RPMB_MAKE_OPTS} \
 "
 
 # The plat_rpmb_key_is_ready() function in OP-TEE is a platform-specific hook that
