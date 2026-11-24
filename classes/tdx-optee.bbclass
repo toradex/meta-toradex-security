@@ -56,6 +56,7 @@ TDX_OPTEE_PACKAGES_TESTS = "\
 # extra packages for OP-TEE support
 IMAGE_INSTALL:append = "\
     optee-os \
+    optee-os-ta \
     optee-client \
     ${@oe.utils.conditional('TDX_OPTEE_FTPM', '1', 'tpm2-tools', '', d)} \
     ${@oe.utils.conditional('TDX_OPTEE_PKCS11', '1', 'libp11 opensc', '', d)} \
