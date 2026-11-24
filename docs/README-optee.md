@@ -66,6 +66,8 @@ There is also a complete test suite that can be used to validate OP-TEE:
 # xtest
 ```
 
+Applications that don't run as root need to be in the `tee` group to access the OP-TEE device (`/dev/tee0`).
+
 In case of issues, try enabling debug messages via the `TDX_OPTEE_DEBUG` variable.
 
 ## Secure storage for persistent data in OP-TEE
