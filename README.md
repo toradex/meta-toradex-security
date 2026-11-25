@@ -13,16 +13,16 @@ This layer depends on:
 ```
 URI: git://git.openembedded.org/openembedded-core
 layers: meta
-branch: scarthgap
+branch: wrynose
 revision: HEAD
 
 URI: git://git.openembedded.org/meta-openembedded
 layers: meta-oe
-branch: scarthgap
+branch: wrynose
 revision: HEAD
 
 URI: git://git.yoctoproject.org/meta-security
-branch: scarthgap
+branch: wrynose
 revision: HEAD
 ```
 
@@ -31,17 +31,14 @@ revision: HEAD
 This layer recommends:
 
 ```
-URI: git://git.toradex.com/meta-toradex-nxp.git
-branch: scarthgap
-revision: HEAD
-
-URI: git://git.toradex.com/meta-toradex-ti.git
-branch: scarthgap
+URI: git://git.toradex.com/meta-toradex-bsp.git
+layers: meta-toradex-bsp-common, meta-toradex-nxp, meta-toradex-ti
+branch: wrynose
 revision: HEAD
 
 URI: git://git.yoctoproject.org/meta-security
 layers: meta-tpm
-branch: scarthgap
+branch: wrynose
 revision: HEAD
 ```
 
