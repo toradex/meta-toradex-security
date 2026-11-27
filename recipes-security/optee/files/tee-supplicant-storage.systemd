@@ -1,0 +1,8 @@
+[Unit]
+RequiresMountsFor=@@TDX_OPTEE_FS_PARENT_PATH@@
+After=systemd-remount-fs.service
+
+[Service]
+# Not left to systemd-tmpfiles-setup.service, which can't be ordered before
+# tee-supplicant without a cycle when local-fs.target depends on the fTPM.
+ExecStartPre=+-@@BINDIR@@/systemd-tmpfiles --create @@CONF@@

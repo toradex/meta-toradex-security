@@ -56,6 +56,7 @@ TDX_OPTEE_PACKAGES_TESTS = "\
 # extra packages for OP-TEE support
 IMAGE_INSTALL:append = "\
     optee-os \
+    optee-os-ta \
     optee-client \
     ${@oe.utils.conditional('TDX_OPTEE_FTPM', '1', 'tpm2-tools', '', d)} \
     ${@oe.utils.conditional('TDX_OPTEE_PKCS11', '1', 'libp11 opensc', '', d)} \
@@ -97,6 +98,9 @@ python validate_optee_support() {
     machine = e.data.getVar('MACHINE')
     if machine not in supported_machines:
         bb.fatal("OP-TEE is currently not supported on '%s' machine!" % machine)
+
+    if 'meta-arm' not in e.data.getVar('BBFILE_COLLECTIONS').split():
+        bb.fatal("OP-TEE support (tdx-optee) requires the meta-arm layer (meta-arm/meta-arm). Please add it to bblayers.conf.")
 
     if e.data.getVar('TDX_OPTEE_FTPM') == '1' and 'tpm-layer' not in e.data.getVar('BBFILE_COLLECTIONS').split():
         bb.fatal("OP-TEE fTPM support (TDX_OPTEE_FTPM) requires the meta-tpm layer (meta-security/meta-tpm). Please add it to bblayers.conf.")
